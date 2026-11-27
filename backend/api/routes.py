@@ -26,11 +26,7 @@ from backend.engine.schema import ExperimentSpec
 from backend.engine.state import StateError
 from backend.engine.sweep import sweep
 from backend.engine.training import SEED_RANGE, build_session
-<<<<<<< HEAD
-from backend.engine.validation import validate
-=======
 from backend.engine.validate import validate
->>>>>>> origin/main
 
 router = APIRouter(prefix="/api")
 
@@ -120,14 +116,9 @@ def post_training_session(request: TrainingRequest) -> TrainingSessionResponse:
 
 @router.post("/validate", response_model=ValidateResponse)
 def post_validate(request: ValidateRequest) -> ValidateResponse:
-<<<<<<< HEAD
-    """Erreurs par ligne du YAML reçu, puis tests 1, 3, 4 et 10 s'il est valide."""
-    return validate(request.raw_content)
-=======
     """Erreurs par ligne, puis tests 1, 3, 4 et 10 (200 répétitions). Un schéma valide est retenu
     sous la clé `import-<hash16>` (voir `registry.register_import`)."""
     result = validate(request.raw_content)
     if not result.errors:
         registry.register_import(request.raw_content)
     return result
->>>>>>> origin/main
