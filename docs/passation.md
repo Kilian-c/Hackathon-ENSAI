@@ -1,6 +1,7 @@
 # Notes de passation (la plus récente en haut)
 
 ## H6 (18 h) : 3 premières expériences du catalogue, branche `r2/catalogue` (pas une relève)
+- Fusionné dans `main` à la demande de R2, **sans relecture de R1 : R1, relisez `runner.py` après coup** (les 4 vérifications de la section 4 étaient vertes : 274 tests pytest, ruff, npm run check, 80 tests npm).
 - Nouvelles expériences niveau « 1 » (section 15 du catalogue) : `somme_des.yaml`, `seuil_roc.yaml`, `carres_residus.yaml`, chacune simulée avant d'écrire les seuils, 3 questions chacune, tous les tests de contenu verts (dont le test 6).
 - Méthodes génériques du catalogue (R2) : `statistic` (sum, mean, max, min, median), `classifier` (kind « seuil » pour l'instant), `regressor` (ols, manuelle) ; agrégateur `kurtosis` (aplatissement, sans erreur MC).
 - **R1, à relire** (`runner.py`) : emplacements de l'annexe E servis : `threshold` (scalaire, rôle `rupture`), `h1` et `observed` (méthode principale, rôle `truth`), `segments` (série `x`, `low` = from, `high` = to, `layer`) ; libellés des séries lus dans `ui.labels` (champ libre) et dans les `label` de `series`. Le runner importe tout `backend.methods`.
