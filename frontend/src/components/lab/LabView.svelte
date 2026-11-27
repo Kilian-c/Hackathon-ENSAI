@@ -22,20 +22,34 @@
   import VerdictBadge from './VerdictBadge.svelte'
   import { ApiError, createLatest, type Latest } from '../../lib/executor'
   import {
+    addPoint,
+    allowsPoints,
     axisTitle,
+    clearPoints,
     brokenValue,
     currentOnAxes,
     headlineVerdict,
     healAll,
     methodLabels,
     primaryMeasureId,
+    removePoint,
     setValue,
     sweepRequest,
     toggleMethod,
+    viewPoints,
   } from '../../lib/lab'
   import { openExperiment, type LabSource } from '../../lib/labSource'
   import { displayRoles } from '../../lib/roles'
-  import { applyPreset, brokenHypotheses, labLink, nextDraw, resolveLabLink, type Link, type UiState } from '../../lib/state'
+  import {
+    applyPreset,
+    brokenHypotheses,
+    labLink,
+    MAX_EXTRA_POINTS,
+    nextDraw,
+    resolveLabLink,
+    type Link,
+    type UiState,
+  } from '../../lib/state'
   import type { Counterexample, EngineState, ExperimentSpec, RunResult, SweepRequest, SweepResult } from '../../lib/types.gen'
   import { levelLabel } from '../../lib/format'
 
@@ -60,6 +74,7 @@
   let sweep = $state<SweepResult | null>(null)
   let sweepStatus = $state<'idle' | 'loading' | 'none' | 'error'>('idle')
   let copied = $state(false)
+  let pointsFull = $state(false)
 
   let runner: Latest<EngineState, RunResult> | null = null
   let sweeper: Latest<SweepRequest, SweepResult | null> | null = null
@@ -180,6 +195,8 @@
   const sweptMeasure = $derived(result ? (result.measures[sweep?.measure ?? primaryId ?? ''] ?? null) : null)
   const verdict = $derived(result ? headlineVerdict(result) : null)
   const anyBroken = $derived(spec && engine ? brokenHypotheses(spec, engine).length > 0 : false)
+  const pointsHere = $derived(spec ? allowsPoints(spec, activeView?.id ?? null) : false)
+  const placed = $derived(spec && engine ? viewPoints(spec, engine) : [])
 
   // --- Actions ---
   function changeHypothesis(id: string, value: number | boolean | string): void {
@@ -202,6 +219,7 @@
     if (!spec || !engine) return
     engine = applyPreset(spec, engine, { params: c.state.params as EngineState['params'], hypotheses: c.state.hypotheses })
     activeCounterexample = c
+    pointsFull = false
     openHyp = Object.keys(c.state.hypotheses)[0] ?? openHyp
   }
 
@@ -209,6 +227,26 @@
     if (!spec || !engine) return
     engine = healAll(spec, engine)
     activeCounterexample = null
+  }
+
+  // --- Ajout de points par clic (fiche F) : toutes les vues se recalculent ---
+  function placePoint(at: { x: number; y: number }): void {
+    if (!spec || !engine) return
+    const next = addPoint(spec, engine, at)
+    pointsFull = next === null
+    if (next) engine = next
+  }
+
+  function unplacePoint(index: number): void {
+    if (!spec || !engine) return
+    engine = removePoint(spec, engine, index)
+    pointsFull = false
+  }
+
+  function clearAllPoints(): void {
+    if (!spec || !engine) return
+    engine = clearPoints(spec, engine)
+    pointsFull = false
   }
 
   function newDraw(): void {
@@ -339,6 +377,22 @@
                     : 'Aucun balayage disponible pour cette vue.'}
               </p>
             {:else}
+              {#if pointsHere}
+                <div class="points-bar">
+                  <span>
+                    Cliquez dans le graphique pour poser un point, sur une étoile pour la retirer ·
+                    <strong>{placed.length} / {MAX_EXTRA_POINTS} points</strong>
+                  </span>
+                  {#if placed.length > 0}
+                    <button type="button" class="link" onclick={clearAllPoints}>Retirer tous les points</button>
+                  {/if}
+                </div>
+                {#if pointsFull}
+                  <p class="banner error" role="alert">
+                    Vous avez posé {MAX_EXTRA_POINTS} points, le maximum. Retirez-en un pour en poser un autre.
+                  </p>
+                {/if}
+              {/if}
               <!-- Un graphique par vue : le zoom d'une vue ne passe pas à la suivante. -->
               {#key activeView.id}
                 <PlotlyChart
@@ -352,6 +406,9 @@
                   methodLabels={labels}
                   axisLabel={sweepShown ? axisTitle(spec, sweepShown.axes[0].target) : undefined}
                   height={420}
+                  injected={pointsHere ? placed : []}
+                  onaddpoint={pointsHere ? placePoint : undefined}
+                  onremovepoint={pointsHere ? unplacePoint : undefined}
                 />
               {/key}
             {/if}
@@ -510,6 +567,18 @@
   .ref-mark {
     color: var(--ct-role-reference);
     font-weight: 700;
+  }
+  .points-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--ct-space-2);
+    margin-bottom: var(--ct-space-2);
+    font-size: var(--ct-text-sm);
+    color: var(--ct-muted);
+  }
+  .view .banner {
+    margin-bottom: var(--ct-space-2);
   }
   .tabs {
     display: flex;

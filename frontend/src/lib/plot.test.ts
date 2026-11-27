@@ -181,3 +181,25 @@ describe('distribution', () => {
     expect(shapes[0].line.dash).toBe('dash')
   })
 })
+
+describe('points posés', () => {
+  const view = {
+    id: 'nuage', type: 'scatter', axes: { x: [0, 10], y: [0, 10] },
+    series: [{
+      id: 'nuage.xy', slot: 'xy', method: null, role: 'data', label: 'Échantillon', layer: null,
+      x: [1, 2], y: [1, 2], low: null, high: null, hit: null, value: null, paths: null,
+    }],
+  } as unknown as ViewResult
+  it('ajoute une trace d’étoiles, avec l’indice de chaque point', () => {
+    const fig = buildFigure(view, { methodsOn: new Set(), showReference: false, injected: [{ x: 4, y: 5 }, { x: 6, y: 7 }] })!
+    const t = fig.data.at(-1) as { uid: string; x: number[]; customdata: number[]; marker: { symbol: string } }
+    expect(t.uid).toBe('nuage.points-poses')
+    expect(t.x).toEqual([4, 6])
+    expect(t.customdata).toEqual([0, 1])
+    expect(t.marker.symbol).toContain('star')
+  })
+  it('sans point posé, aucune trace en plus', () => {
+    const fig = buildFigure(view, { methodsOn: new Set(), showReference: false, injected: [] })!
+    expect(fig.data.some((t) => String(t.uid).endsWith('.points-poses'))).toBe(false)
+  })
+})

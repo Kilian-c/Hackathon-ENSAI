@@ -6,7 +6,7 @@
 import type { MethodRole, Verdict } from './roles'
 import type { EngineState, ExperimentSpec, Hypothesis, MethodInfo, RunResult, SweepRequest } from './types.gen'
 import type { UiState } from './state'
-import { canonicalState } from './state'
+import { canonicalState, injectAxes, MAX_EXTRA_POINTS } from './state'
 
 type HValue = number | boolean | string
 
@@ -141,4 +141,45 @@ export function axisTitle(spec: Pick<ExperimentSpec, 'hypotheses' | 'params'>, t
 /** Libellés des méthodes, pour les légendes. */
 export function methodLabels(methods: readonly Pick<MethodInfo, 'id' | 'label'>[]): Record<string, string> {
   return Object.fromEntries(methods.map((m) => [m.id, m.label]))
+}
+
+// ---------------------------------------------------------------------------
+// Ajout de points par clic (P1, fiche F « Ajout de points par clic »)
+// ---------------------------------------------------------------------------
+
+/** La vue accepte-t-elle des points posés au clic ? (YAML : allow_point_injection et generator.inject) */
+export function allowsPoints(spec: ExperimentSpec, viewId: string | null): boolean {
+  if (!viewId || injectAxes(spec).length === 0) return false
+  return spec.views.some((v) => v.id === viewId && v.allow_point_injection)
+}
+
+/** Points posés, en coordonnées de la vue (axe x, et y s'il fait partie de generator.inject). */
+export function viewPoints(spec: ExperimentSpec, state: EngineState): { x: number; y: number | null }[] {
+  const axes = injectAxes(spec)
+  if (!axes.includes('x')) return []
+  return state.extra_points.map((pt) => ({ x: pt.x, y: axes.includes('y') ? pt.y : null }))
+}
+
+/** Arrondi d'une coordonnée posée au clic : un lien de partage court, sans bruit de pixels. */
+function roundCoord(v: number): number {
+  return Math.round(v * 1000) / 1000 || 0
+}
+
+/** Pose un point ; null si le plafond (20 points) est atteint. Les axes absents de inject sont ignorés. */
+export function addPoint(spec: ExperimentSpec, state: EngineState, at: { x: number; y: number }): EngineState | null {
+  if (state.extra_points.length >= MAX_EXTRA_POINTS) return null
+  const axes = injectAxes(spec)
+  const coords: Record<string, number> = { x: at.x, y: at.y }
+  const point = Object.fromEntries(axes.map((a) => [a, roundCoord(coords[a] ?? 0)]))
+  return canonicalState(spec, { ...state, extra_points: [...state.extra_points, point] })
+}
+
+/** Retire le point posé d'indice `index`. */
+export function removePoint(spec: ExperimentSpec, state: EngineState, index: number): EngineState {
+  return canonicalState(spec, { ...state, extra_points: state.extra_points.filter((_, i) => i !== index) })
+}
+
+/** Retire tous les points posés. */
+export function clearPoints(spec: ExperimentSpec, state: EngineState): EngineState {
+  return canonicalState(spec, { ...state, extra_points: [] })
 }

@@ -52,6 +52,30 @@ export interface ChartOptions {
   methodLabels?: Readonly<Record<string, string>>
   /** Vue Sensibilité : titre de l'axe balayé (lab.axisTitle), si la vue n'en impose pas un. */
   axisLabel?: string
+  /**
+   * Points posés au clic (EngineState.extra_points, coordonnées de la vue), dessinés en étoiles
+   * par-dessus l'échantillon. Seulement pour une vue qui autorise l'ajout de points.
+   */
+  injected?: ReadonlyArray<{ x: number; y?: number | null }>
+}
+
+/** Identifiant de la trace des points posés : PlotlyChart le reconnaît au clic (pour un retrait). */
+export const INJECTED_SUFFIX = '.points-poses'
+
+/** Points posés au clic, en étoiles ; y absent (vue à une dimension) : posés sur l'axe horizontal. */
+export function injectedTrace(viewId: string, points: NonNullable<ChartOptions['injected']>): Trace {
+  const style = pointsStyle('injected')
+  return {
+    type: 'scatter',
+    uid: `${viewId}${INJECTED_SUFFIX}`,
+    name: points.length > 1 ? 'Points posés' : 'Point posé',
+    ...style,
+    x: points.map((p) => p.x),
+    y: points.map((p) => (typeof p.y === 'number' ? p.y : 0)),
+    customdata: points.map((_, i) => i),
+    hovertemplate: 'Point posé (cliquez pour le retirer)<extra></extra>',
+    cliponaxis: false,
+  }
 }
 
 /** Emplacements dessinés en ligne ; les autres sont des points. */
@@ -338,6 +362,7 @@ function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
       clipped += m.clipped
     }
   }
+  if (opts.injected && opts.injected.length > 0) data.push(injectedTrace(view.id, opts.injected))
   const shapes: Trace[] = []
   if (view.type === 'residuals') {
     shapes.push({
@@ -453,6 +478,7 @@ function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
       },
     })
   }
+  if (opts.injected && opts.injected.length > 0) data.push(injectedTrace(view.id, opts.injected.map((p) => ({ x: p.x }))))
   return { data, layout: baseLayout(view, { barmode: 'overlay', shapes, annotations }), caption: captionFor(view, 0) }
 }
 
