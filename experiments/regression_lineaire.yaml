@@ -198,19 +198,7 @@ views:
     allow_point_injection: true     # fiche F.4
     inspect: true                   # fiche F.6
     axes: { x: auto, y: auto }
-    layers:                         # fiche F.7, dans l'ordre des étapes
-      - { id: nuage, label: "Le nuage" }
-      - { id: sct,   label: "Écarts à la moyenne (SCT)" }
-      - { id: sce,   label: "Écarts expliqués (SCE)" }
-      - { id: scr,   label: "Résidus (SCR)" }
-    bind:
-      x: { path: example.x, layer: nuage }
-      y: { path: example.y, layer: nuage }
-      fit: { path: example.y_hat, layer: sce }
-      segments:
-        - { from: example.y,     to: example.y_mean, layer: sct, label: "y - moyenne" }
-        - { from: example.y_hat, to: example.y_mean, layer: sce, label: "prédiction - moyenne" }
-        - { from: example.y,     to: example.y_hat,  layer: scr, label: "résidu" }
+    bind: { x: example.x, y: example.y, fit: example.y_hat }   # segments dans la vue « decomposition »
   - id: residus
     type: residuals
     title: "Résidus"
@@ -230,6 +218,24 @@ views:
     type: validity_domain
     title: "Domaine de validité"
     sweep: { axes: [h.hetero, p.n] }
+  - id: decomposition               # sortie prévue : une seconde vue du même type (CLAUDE.md, section 11)
+    type: scatter
+    title: "Décomposition SCT = SCE + SCR"
+    ui: { x_title: "x", y_title: "y" }
+    axes: { x: auto, y: auto }
+    layers:                         # fiche F.7 (calques pas à pas, P2), dans l'ordre des étapes
+      - { id: nuage, label: "Le nuage" }
+      - { id: sct,   label: "Écarts à la moyenne (SCT)" }
+      - { id: sce,   label: "Écarts expliqués (SCE)" }
+      - { id: scr,   label: "Résidus (SCR)" }
+    bind:
+      x: { path: example.x, layer: nuage }
+      y: { path: example.y, layer: nuage }
+      fit: { path: example.y_hat, layer: sce }
+      segments:
+        - { from: example.y,     to: example.y_mean, layer: sct, label: "y - moyenne" }
+        - { from: example.y_hat, to: example.y_mean, layer: sce, label: "prédiction - moyenne" }
+        - { from: example.y,     to: example.y_hat,  layer: scr, label: "résidu" }
 
 # --- 11. Les questions d'Entraînement ---
 opening_question: "reg-q1-biais"   # P1 : carte « Pariez » non bloquante dans le Laboratoire

@@ -10,6 +10,7 @@
   Usage :
     <PlotlyChart view={result.views[0]} {result} methodsOn={ui.methodsOn} />
     Vue Sensibilité : ajouter sweep, measure, roles={displayRoles(result.methods)} et methodLabels.
+    Dans un panneau qui porte déjà le titre (onglets du Laboratoire) : bare (ni titre ni cadre).
     Ajout de points (fiche F) : passer injected, onaddpoint et onremovepoint. Un clic dans le cadre
     pose un point (coordonnées de données) ; un clic sur une étoile la retire ; un glissement
     (zoom) ne pose rien.
@@ -44,6 +45,8 @@
     /** Domaine de validité : titres des deux axes, et clic sur une case (indices sur l'axe 1 et l'axe 2). */
     axisLabels?: readonly [string, string]
     onpickcell?: (i: number, j: number) => void
+    /** Sans titre ni cadre : le parent affiche déjà le nom de la vue (onglet). */
+    bare?: boolean
   }
 
   let {
@@ -62,6 +65,7 @@
     onremovepoint,
     axisLabels,
     onpickcell,
+    bare = false,
   }: Props = $props()
 
   let el: HTMLDivElement | undefined = $state()
@@ -150,8 +154,8 @@
   })
 </script>
 
-<figure class="chart">
-  <figcaption class="title">{view.title}</figcaption>
+<figure class="chart" class:bare>
+  {#if !bare}<figcaption class="title">{view.title}</figcaption>{/if}
   {#if figure}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <div
@@ -182,6 +186,11 @@
     background: var(--ct-surface);
     border: 1px solid var(--ct-border);
     border-radius: var(--ct-radius-lg);
+  }
+  .chart.bare {
+    padding: 0;
+    border: none;
+    background: none;
   }
   .injectable :global(.nsewdrag) {
     cursor: crosshair;

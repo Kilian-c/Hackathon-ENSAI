@@ -1,13 +1,14 @@
 <!--
   HypothesisControl.svelte : le contrôle d'une hypothèse, selon son type (R3).
-  - continuous : curseur h dans range, avec raccourcis vers les deux bornes ;
-  - boolean    : interrupteur Respectée / Relâchée (ok_label / broken_label) ;
-  - choice     : sélecteur d'option (lois).
+  - continuous : curseur h dans range, avec sa valeur ;
+  - boolean    : interrupteur (allumé = hypothèse respectée), suivi de l'état en mots
+                 (ok_label / broken_label) ;
+  - choice     : sélecteur d'option (lois), l'option saine marquée « (saine) ».
   Le composant ne garde aucun état : il reçoit la valeur et signale le changement (onchange).
 -->
 <script lang="ts">
   import { formatControl } from '../../lib/format'
-  import { isHealthy } from '../../lib/lab'
+  import { hypothesisStatus, isHealthy } from '../../lib/lab'
   import type { Hypothesis } from '../../lib/types.gen'
 
   type Value = number | boolean | string
@@ -32,9 +33,6 @@
 <div class="control" class:broken={!healthy}>
   {#if h.type === 'continuous'}
     <div class="row">
-      <button type="button" class="ghost" {disabled} onclick={() => onchange(range[0])} title="Aller à {formatControl(range[0], step)}">
-        {formatControl(range[0], step)}
-      </button>
       <input
         id="h-{id}"
         type="range"
@@ -46,19 +44,23 @@
         aria-label={h.label}
         oninput={(e) => onchange(Number(e.currentTarget.value))}
       />
-      <button type="button" class="ghost" {disabled} onclick={() => onchange(range[1])} title="Aller à {formatControl(range[1], step)}">
-        {formatControl(range[1], step)}
-      </button>
       <output for="h-{id}" class="value">h = {formatControl(value as number, step)}</output>
     </div>
   {:else if h.type === 'boolean'}
-    <div class="row toggle" role="group" aria-label={h.label}>
-      <button type="button" aria-pressed={healthy} {disabled} onclick={() => onchange(h.healthy_value)}>
-        {h.ok_label ?? 'Respectée'}
+    <div class="row">
+      <button
+        type="button"
+        role="switch"
+        class="switch"
+        aria-checked={healthy}
+        aria-label="{h.label} : {healthy ? 'respectée' : 'relâchée'}"
+        title={healthy ? 'Cliquez pour relâcher cette hypothèse' : 'Cliquez pour la rétablir'}
+        {disabled}
+        onclick={() => onchange(healthy ? !h.healthy_value : h.healthy_value)}
+      >
+        <span class="knob" aria-hidden="true"></span>
       </button>
-      <button type="button" aria-pressed={!healthy} {disabled} onclick={() => onchange(!h.healthy_value)}>
-        {h.broken_label ?? 'Relâchée'}
-      </button>
+      <span class="state">{hypothesisStatus(h, value)}</span>
     </div>
   {:else}
     <select
@@ -86,27 +88,74 @@
   }
   .row {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: var(--ct-space-2);
+    gap: var(--ct-space-3);
   }
   input[type='range'] {
     flex: 1;
     min-width: 4rem;
+    margin: 0;
     accent-color: var(--ct-role-method);
   }
   .broken input[type='range'] {
     accent-color: var(--ct-role-rupture);
   }
   .value {
-    min-width: 4.5rem;
-    margin-left: auto;
+    flex: none;
+    min-width: 4.2rem;
     font-family: var(--ct-font-mono);
-    font-size: var(--ct-text-sm);
+    font-size: 0.8rem;
+    color: var(--ct-muted);
     text-align: right;
   }
-  button,
+  .broken .value {
+    color: var(--ct-role-rupture);
+  }
+
+  /* --- Interrupteur : allumé (vert, à droite) = respectée ; éteint (rouge, à gauche) = relâchée --- */
+  .switch {
+    position: relative;
+    flex: none;
+    width: 2.4rem;
+    height: 1.35rem;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ct-verdict-ok) 55%, var(--ct-surface-2));
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .switch[aria-checked='false'] {
+    background: color-mix(in srgb, var(--ct-role-rupture) 60%, var(--ct-surface-2));
+  }
+  .knob {
+    position: absolute;
+    top: 0.175rem;
+    left: 1.225rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--ct-text);
+    transition: left 0.15s ease;
+  }
+  .switch[aria-checked='false'] .knob {
+    left: 0.175rem;
+  }
+  .switch:focus-visible {
+    outline: 2px solid var(--ct-focus);
+    outline-offset: 2px;
+  }
+  .state {
+    font-size: var(--ct-text-sm);
+    color: var(--ct-muted);
+    line-height: 1.3;
+  }
+  .broken .state {
+    color: var(--ct-role-rupture);
+  }
+
   select {
+    width: 100%;
     font: inherit;
     font-size: var(--ct-text-sm);
     color: var(--ct-text);
@@ -116,26 +165,14 @@
     padding: var(--ct-space-1) var(--ct-space-2);
     cursor: pointer;
   }
+  .broken select {
+    border-color: color-mix(in srgb, var(--ct-role-rupture) 60%, var(--ct-border));
+  }
   button:disabled,
-  select:disabled {
+  select:disabled,
+  input:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-  }
-  .ghost {
-    background: transparent;
-    font-family: var(--ct-font-mono);
-  }
-  .toggle button[aria-pressed='true'] {
-    border-color: var(--ct-role-method);
-    color: var(--ct-role-method);
-    font-weight: 600;
-  }
-  .broken .toggle button[aria-pressed='true'] {
-    border-color: var(--ct-role-rupture);
-    color: var(--ct-role-rupture);
-  }
-  select {
-    width: 100%;
   }
   .disabled-text {
     margin: 0;

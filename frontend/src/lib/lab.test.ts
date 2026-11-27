@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatControl, formatMargin, formatMeasure } from './format'
+import { formatControl, formatMargin, formatMeasure, splitTitle } from './format'
 import {
   addPoint,
   allowsPoints,
@@ -42,6 +42,11 @@ describe('format', () => {
   })
   it('sans unité, signe moins typographique', () => {
     expect(formatMeasure(-0.0044, { unit: '', scale: 1, decimals: 3 })).toBe('−0,004')
+  })
+  it('titre coupé au premier deux-points', () => {
+    expect(splitTitle("Régression linéaire : quand l'IC devient faux")).toEqual({ head: 'Régression linéaire', tail: "quand l'IC devient faux" })
+    expect(splitTitle('Tests : a : b')).toEqual({ head: 'Tests', tail: 'a : b' })
+    expect(splitTitle('Sans deux-points')).toEqual({ head: 'Sans deux-points', tail: null })
   })
   it('contrôle : décimales tirées du pas', () => {
     expect(formatControl(0.85, 0.05)).toBe('0,85')

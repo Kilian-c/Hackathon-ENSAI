@@ -3,8 +3,10 @@
 
   Une seule expérience à l'écran, entièrement décrite par son YAML (ExperimentSpec) : aucun code
   propre à un théorème. Trois étapes, une seule visible à la fois, pour alléger l'écran (parcours du
-  cahier, section 2.2) : Comprendre (lecture), Expérimenter (contrôles, mesure principale, graphique),
-  Défis. Deux états :
+  cahier, section 2.2) : Comprendre (lecture), Expérimenter, Défis.
+  Expérimenter montre l'essentiel d'abord : les contrôles à gauche (cas limites et animation repliés),
+  puis le Résultat (jauge de la mesure principale, phrase « Que se passe-t-il ? », bouton Correction),
+  puis le graphique ; l'équation dynamique et toutes les mesures sont repliées dessous. Deux états :
   - engine (EngineState) : part au moteur à chaque changement (regroupé à 100 ms, ancien appel annulé) ;
   - ui (UiState) et showReference : affichage seul, aucun appel.
   Les deux sont recopiés dans l'URL (lien de partage) à chaque changement.
@@ -20,11 +22,10 @@
   import ControlsPanel from './ControlsPanel.svelte'
   import CounterexampleBar from './CounterexampleBar.svelte'
   import MeasurePanel from './MeasurePanel.svelte'
-  import MeasureStrip from './MeasureStrip.svelte'
-  import MethodBench from './MethodBench.svelte'
+  import ResultPanel from './ResultPanel.svelte'
   import UnderstandStage from './UnderstandStage.svelte'
-  import VerdictBadge from './VerdictBadge.svelte'
   import { ApiError, createLatest, type Latest } from '../../lib/executor'
+  import { equationTerms } from '../../lib/equation'
   import {
     addPoint,
     allowsPoints,
@@ -32,10 +33,10 @@
     clearPoints,
     brokenValue,
     currentOnAxes,
-    headlineVerdict,
     healAll,
     methodLabels,
     primaryMeasureId,
+    primaryStates,
     removePoint,
     setValue,
     sweepRequest,
@@ -57,7 +58,7 @@
     type UiState,
   } from '../../lib/state'
   import type { Challenge, Counterexample, EngineState, ExperimentSpec, RunResult, SweepRequest, SweepResult } from '../../lib/types.gen'
-  import { levelLabel } from '../../lib/format'
+  import { levelLabel, splitTitle } from '../../lib/format'
   import { disciplineLabel } from '../home/experiments'
 
   interface Props {
@@ -96,6 +97,11 @@
   /** Balayage automatique sur un paramètre : bornes des vues figées sur la première image. */
   let frozenAxes = $state<Record<string, RunResult['views'][number]['axes']> | null>(null)
   let animating = $state<string | null>(null)
+  /** Taille de la fenêtre et haut de la zone du graphique : le graphique tient dans l'écran. */
+  let innerHeight = $state(900)
+  let innerWidth = $state(1440)
+  let viewBox: HTMLDivElement | undefined = $state()
+  let viewTop = $state(0)
 
   let runner: Latest<EngineState, RunResult> | null = null
   let sweeper: Latest<SweepRequest, SweepResult | null> | null = null
@@ -245,9 +251,36 @@
   const labels = $derived(result ? methodLabels(result.methods) : {})
   const primaryId = $derived(result ? primaryMeasureId(result) : null)
   const sweptMeasure = $derived(result ? (result.measures[sweep?.measure ?? primaryId ?? ''] ?? null) : null)
-  const verdict = $derived(result ? headlineVerdict(result) : null)
+  /** Termes de l'équation en cause (résumé du bloc repliable « Équation dynamique »). */
+  const termTones = $derived.by(() => {
+    if (!spec || !result) return { broken: 0, repaired: 0 }
+    const terms = equationTerms(spec.equation, result.equation, {
+      methods: result.methods,
+      primaryStates: primaryStates(result),
+      methodsOn: ui.methodsOn,
+    })
+    return {
+      broken: terms.filter((t) => t.tone === 'broken').length,
+      repaired: terms.filter((t) => t.tone === 'repaired').length,
+    }
+  })
   const pointsHere = $derived(spec ? allowsPoints(spec, activeView?.id ?? null) : false)
   const placed = $derived(spec && engine ? viewPoints(spec, engine) : [])
+  const titleParts = $derived(splitTitle(spec?.title ?? ''))
+
+  // --- Hauteur du graphique : remplir la fenêtre sans la dépasser (pas de défilement pour le voir) ---
+  /** Place gardée sous le graphique (légende du bas, marge du panneau). */
+  const CHART_BOTTOM = 64
+  const chartHeight = $derived(Math.round(Math.min(780, Math.max(320, innerHeight - viewTop - CHART_BOTTOM))))
+
+  $effect(() => {
+    // Remesure quand la fenêtre, l'étape, l'onglet ou les bandeaux du haut changent.
+    void [innerHeight, innerWidth, stage, activeTab, result === null, pointsFull, error === null, source?.kind]
+    const el = viewBox
+    if (!el) return
+    const frame = requestAnimationFrame(() => (viewTop = el.getBoundingClientRect().top + window.scrollY))
+    return () => cancelAnimationFrame(frame)
+  })
 
   // --- Actions ---
   function changeHypothesis(id: string, value: number | boolean | string): void {
@@ -363,6 +396,8 @@
   }
 </script>
 
+<svelte:window bind:innerHeight bind:innerWidth />
+
 {#if error && !result}
   <div class="state-msg error" role="alert">
     <p>{error}</p>
@@ -374,41 +409,37 @@
 {:else}
   <div class="lab">
     <header class="top">
-      <div class="titles">
+      <p class="crumbs">
         {#if imported}
           <a class="back" href="?import">← Import</a>
         {:else}
           <a class="back" href="?labo">← Expériences</a>
         {/if}
-        <h1>{spec.title}</h1>
-        <p class="meta">
+        <span>
           {disciplineLabel(spec.discipline)} · {levelLabel(spec.level)}
           {#if origin.kind === 'share'} · Expérience partagée{:else if origin.kind === 'draft'} · Brouillon importé{/if}
-        </p>
-      </div>
-      <div class="actions">
-        {#if loading}<span class="busy" aria-live="polite">Calcul…</span>{/if}
-        {#if verdict}<VerdictBadge {verdict} large />{/if}
-        <button type="button" class="ghost" onclick={newDraw} title="Tirer de nouveaux échantillons (graine {engine.seed})">
-          ↻ Nouveau tirage
-        </button>
+        </span>
         {#if origin.kind !== 'draft'}
-          <button type="button" class="ghost" onclick={copyLink}>{copied ? '✓ Lien copié' : 'Copier le lien'}</button>
+          <button type="button" class="crumb-btn" onclick={copyLink}>{copied ? '✓ Lien copié' : 'Copier le lien'}</button>
         {/if}
+      </p>
+      <div class="title-row">
+        <h1 title={spec.title}>
+          {titleParts.head}{#if titleParts.tail}<span class="subtitle">{` : ${titleParts.tail}`}</span>{/if}
+        </h1>
+        <nav class="stages" aria-label="Étapes">
+          {#each STAGES as st, k (st.id)}
+            <button type="button" aria-current={stage === st.id ? 'step' : undefined} onclick={() => (stage = st.id)}>
+              <span class="num">{k + 1}</span>
+              {st.title}
+              {#if st.id === 'defis' && spec.challenges.length > 0}
+                <span class="count">{wonChallenges.size} / {spec.challenges.length}</span>
+              {/if}
+            </button>
+          {/each}
+        </nav>
       </div>
     </header>
-
-    <nav class="stages" aria-label="Étapes">
-      {#each STAGES as st, k (st.id)}
-        <button type="button" aria-current={stage === st.id ? 'step' : undefined} onclick={() => (stage = st.id)}>
-          <span class="num">{k + 1}</span>
-          {st.title}
-          {#if st.id === 'defis' && spec.challenges.length > 0}
-            <span class="count">{wonChallenges.size} / {spec.challenges.length}</span>
-          {/if}
-        </button>
-      {/each}
-    </nav>
 
     {#if source?.kind === 'fixtures'}
       <p class="banner fixtures">
@@ -441,38 +472,46 @@
         <button type="button" class="primary" onclick={() => (stage = 'experimenter')}>Expérimenter →</button>
       </section>
     {:else}
+      <!-- Trois colonnes sur grand écran : contrôles | graphique | résultat ; le graphique tient dans la fenêtre. -->
       <div class="workspace">
         <aside class="side">
-          <ControlsPanel
-            {spec}
-            {engine}
-            onhypothesis={changeHypothesis}
-            onparam={changeParam}
-            onexplain={explainHypothesis}
-            onheal={heal}
-          />
-          {#if spec.counterexamples.length > 0}
-            <div class="side-block">
-              <CounterexampleBar counterexamples={spec.counterexamples} active={activeCounterexample?.id ?? null} onpick={pickCounterexample} />
+          <ControlsPanel {spec} {engine} onhypothesis={changeHypothesis} onparam={changeParam} onheal={heal} />
+          <button
+            type="button"
+            class="ghost draw"
+            onclick={newDraw}
+            title="Mêmes réglages, nouveaux échantillons (graine {engine.seed})"
+          >
+            ↻ Nouveau tirage
+          </button>
+          {#if spec.counterexamples.length > 0 || source}
+            <div class="side-block extras">
+              <h2 class="extras-title">Pour aller plus loin</h2>
+              {#if spec.counterexamples.length > 0}
+                <details class="more">
+                  <summary>Cas limites ({spec.counterexamples.length})</summary>
+                  <CounterexampleBar counterexamples={spec.counterexamples} active={activeCounterexample?.id ?? null} onpick={pickCounterexample} />
+                </details>
+              {/if}
+              {#if source}
+                <details class="more">
+                  <summary>Animer un contrôle</summary>
+                  <AutoSweepPlayer
+                    {spec}
+                    {engine}
+                    {ui}
+                    {source}
+                    onframe={sweepFrame}
+                    onfinish={(u) => (ui = u)}
+                    onplaying={sweepPlaying}
+                  />
+                </details>
+              {/if}
             </div>
-          {/if}
-          {#if source}
-            <details class="side-block more">
-              <summary>Animer un contrôle</summary>
-              <AutoSweepPlayer
-                {spec}
-                {engine}
-                {ui}
-                {source}
-                onframe={sweepFrame}
-                onfinish={(u) => (ui = u)}
-                onplaying={sweepPlaying}
-              />
-            </details>
           {/if}
         </aside>
 
-        <section class="main">
+        <aside class="results" aria-label="Résultat et explications">
           {#if justWon}
             <p class="banner won" role="status">
               <strong>✓ Défi réussi.</strong>
@@ -483,29 +522,26 @@
           {/if}
           {#if activeCounterexample}
             <p class="banner counter">
-              <strong>{activeCounterexample.label}.</strong>
+              <strong>Cas limite : {activeCounterexample.label}.</strong>
               {activeCounterexample.explain}
               <button type="button" class="link" onclick={() => (activeCounterexample = null)}>Fermer</button>
             </p>
           {/if}
-
           {#if result}
-            <div class="panel summary">
-              <MeasureStrip {result} methodsOn={ui.methodsOn} {showReference} />
-              <div class="summary-side">
-                <MethodBench methods={spec.methods} {roles} methodsOn={ui.methodsOn} ontoggle={toggle} />
-                <label class="ref">
-                  <input type="checkbox" bind:checked={showReference} />
-                  <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
-                </label>
-              </div>
-            </div>
-
-            <div class="panel equation">
-              <DynamicEquation equation={spec.equation} {result} hypotheses={spec.hypotheses} methodsOn={ui.methodsOn} />
-            </div>
+            <ResultPanel
+              {spec}
+              {engine}
+              {result}
+              methodsOn={ui.methodsOn}
+              {showReference}
+              ontoggle={toggle}
+              onheal={heal}
+              onexplain={explainHypothesis}
+            />
           {/if}
+        </aside>
 
+        <section class="main">
           <div class="panel chart">
             <div class="tabs" role="tablist" aria-label="Vues">
               {#each tabs as t (t.id)}
@@ -514,11 +550,29 @@
                 </button>
               {/each}
             </div>
+            <div class="chart-tools">
+              <span>
+                {#if pointsHere}
+                  Cliquez pour ajouter un point, sur une étoile pour la retirer :
+                  <strong>{placed.length} / {MAX_EXTRA_POINTS}</strong>
+                  {#if placed.length > 0}
+                    <button type="button" class="link" onclick={clearAllPoints}>Tout retirer</button>
+                  {/if}
+                {/if}
+              </span>
+              <span class="tools-right">
+                {#if loading}<span class="busy" aria-live="polite">Calcul…</span>{/if}
+                <label class="ref" title="La même expérience avec toutes les hypothèses respectées (même graine)">
+                  <input type="checkbox" bind:checked={showReference} />
+                  <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
+                </label>
+              </span>
+            </div>
 
-            <div class="view" role="tabpanel">
+            <div class="view" role="tabpanel" bind:this={viewBox}>
               {#if activeView}
                 {#if (activeView.type === 'sensitivity' || activeView.type === 'validity_domain') && !sweepShown}
-                  <p class="muted">
+                  <p class="muted" style:min-height="{chartHeight}px">
                     {sweepStatus === 'loading'
                       ? 'Balayage en cours…'
                       : sweepStatus === 'error'
@@ -526,21 +580,10 @@
                         : 'Aucun balayage disponible pour cette vue.'}
                   </p>
                 {:else}
-                  {#if pointsHere}
-                    <div class="points-bar">
-                      <span>
-                        Cliquez dans le graphique pour poser un point, sur une étoile pour la retirer ·
-                        <strong>{placed.length} / {MAX_EXTRA_POINTS} points</strong>
-                      </span>
-                      {#if placed.length > 0}
-                        <button type="button" class="link" onclick={clearAllPoints}>Retirer tous les points</button>
-                      {/if}
-                    </div>
-                    {#if pointsFull}
-                      <p class="banner error" role="alert">
-                        Vous avez posé {MAX_EXTRA_POINTS} points, le maximum. Retirez-en un pour en poser un autre.
-                      </p>
-                    {/if}
+                  {#if pointsHere && pointsFull}
+                    <p class="banner error" role="alert">
+                      Vous avez posé {MAX_EXTRA_POINTS} points, le maximum. Retirez-en un pour en poser un autre.
+                    </p>
                   {/if}
                   <!-- Un graphique par vue : le zoom d'une vue ne passe pas à la suivante. -->
                   {#key activeView.id}
@@ -554,7 +597,8 @@
                       {roles}
                       methodLabels={labels}
                       axisLabel={sweepShown ? axisTitle(spec, sweepShown.axes[0].target) : undefined}
-                      height={440}
+                      height={chartHeight}
+                      bare
                       injected={pointsHere ? placed : []}
                       onaddpoint={pointsHere ? placePoint : undefined}
                       onremovepoint={pointsHere ? unplacePoint : undefined}
@@ -566,12 +610,25 @@
                   {/key}
                 {/if}
               {:else}
-                <p class="muted">Calcul en cours…</p>
+                <p class="muted" style:min-height="{chartHeight}px">Calcul en cours…</p>
               {/if}
             </div>
           </div>
 
           {#if result}
+            <details class="panel more">
+              <summary>
+                Équation dynamique
+                {#if termTones.broken > 0}
+                  <span class="sum-tag broken">✕ {termTones.broken} terme{termTones.broken > 1 ? 's' : ''} en cause</span>
+                {:else if termTones.repaired > 0}
+                  <span class="sum-tag repaired">✓ corrigée</span>
+                {/if}
+              </summary>
+              <div class="equation">
+                <DynamicEquation equation={spec.equation} {result} hypotheses={spec.hypotheses} methodsOn={ui.methodsOn} />
+              </div>
+            </details>
             <details class="panel more">
               <summary>Toutes les mesures</summary>
               <MeasurePanel {result} methodsOn={ui.methodsOn} {showReference} />
@@ -585,44 +642,64 @@
 
 <style>
   .lab {
-    max-width: 90rem;
+    max-width: 112rem;
     margin: 0 auto;
-    padding: var(--ct-space-4) var(--ct-space-6) var(--ct-space-8);
+    padding: var(--ct-space-3) var(--ct-space-6) var(--ct-space-6);
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--ct-space-4);
+    gap: var(--ct-space-3);
   }
   .top {
+    display: grid;
+    gap: var(--ct-space-1);
+  }
+  .crumbs {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: var(--ct-space-4);
     flex-wrap: wrap;
-  }
-  h1 {
-    margin: var(--ct-space-1) 0 0;
-    font-size: var(--ct-text-xl);
-    letter-spacing: -0.01em;
-  }
-  .back,
-  .meta {
-    font-size: var(--ct-text-sm);
+    align-items: baseline;
+    gap: var(--ct-space-3);
+    margin: 0;
+    font-size: 0.8rem;
     color: var(--ct-muted);
   }
   .back {
+    color: var(--ct-muted);
     text-decoration: none;
   }
-  .back:hover {
+  .back:hover,
+  .crumb-btn:hover {
     color: var(--ct-text);
   }
-  .meta {
-    margin: 0;
+  .crumb-btn {
+    margin-left: auto;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 0.8rem;
+    color: var(--ct-muted);
+    text-decoration: underline;
   }
-  .actions {
+  .title-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--ct-space-3);
+    justify-content: space-between;
+    gap: var(--ct-space-2) var(--ct-space-6);
+  }
+  h1 {
+    flex: 1 1 22rem;
+    min-width: 0;
+    margin: 0;
+    font-size: 1.4rem;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .subtitle {
+    font-weight: 400;
+    color: var(--ct-muted);
   }
   .busy {
     font-size: var(--ct-text-sm);
@@ -661,13 +738,13 @@
     border: 1px solid var(--ct-border);
     border-radius: 999px;
     background: var(--ct-surface);
-    justify-self: start;
+    flex: none;
   }
   .stages button {
     display: inline-flex;
     align-items: center;
     gap: var(--ct-space-2);
-    padding: 0.4rem 1rem;
+    padding: 0.25rem 0.85rem;
     border: none;
     border-radius: 999px;
     background: none;
@@ -738,34 +815,80 @@
   /* --- Étape Expérimenter --- */
   .workspace {
     display: grid;
-    grid-template-columns: minmax(17rem, 21rem) minmax(0, 1fr);
-    gap: var(--ct-space-6);
+    /* Colonnes latérales proportionnelles à l'écran : le graphique garde la plus grande part. */
+    grid-template-columns: clamp(15rem, 20vw, 18rem) minmax(0, 1fr) clamp(18rem, 24vw, 23rem);
+    grid-template-areas: 'side main results';
+    gap: var(--ct-space-4);
     align-items: start;
   }
-  @media (max-width: 56rem) {
-    .workspace {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
   .side {
+    grid-area: side;
     position: sticky;
-    top: var(--ct-space-4);
+    top: var(--ct-space-3);
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--ct-space-6);
-    padding: var(--ct-space-4) var(--ct-space-4) var(--ct-space-6);
+    gap: var(--ct-space-4);
+    padding: var(--ct-space-4);
     background: var(--ct-surface);
     border: 1px solid var(--ct-border);
     border-radius: var(--ct-radius-lg);
-    max-height: calc(100vh - 2 * var(--ct-space-4));
+    max-height: calc(100vh - 2 * var(--ct-space-3));
     overflow-y: auto;
     box-sizing: border-box;
+  }
+  .results {
+    grid-area: results;
+    position: sticky;
+    top: var(--ct-space-3);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ct-space-3);
+    max-height: calc(100vh - 2 * var(--ct-space-3));
+    overflow-y: auto;
+  }
+  /* Écran moyen (tablette) : le résultat passe au-dessus du graphique. */
+  @media (max-width: 64rem) {
+    .workspace {
+      grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
+      grid-template-areas: 'side results' 'side main';
+    }
+    .results {
+      position: static;
+      max-height: none;
+      overflow: visible;
+    }
+  }
+  @media (max-width: 48rem) {
+    .workspace {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: 'side' 'results' 'main';
+    }
+    .side {
+      position: static;
+      max-height: none;
+    }
+  }
+  .draw {
+    justify-self: start;
   }
   .side-block {
     padding-top: var(--ct-space-4);
     border-top: 1px solid var(--ct-border);
   }
+  .extras {
+    display: grid;
+    gap: var(--ct-space-3);
+  }
+  .extras-title {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ct-muted);
+  }
   .main {
+    grid-area: main;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--ct-space-4);
@@ -778,29 +901,18 @@
     border-radius: var(--ct-radius-lg);
     min-width: 0;
   }
-  .summary {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--ct-space-4) var(--ct-space-8);
-  }
-  .summary-side {
-    display: grid;
-    gap: var(--ct-space-2);
-    align-content: start;
-    max-width: 28rem;
-  }
   .equation {
-    padding-top: var(--ct-space-3);
-    padding-bottom: var(--ct-space-3);
     overflow-x: auto;
   }
   .ref {
     display: flex;
     align-items: center;
     gap: var(--ct-space-2);
+    padding: var(--ct-space-2) 0;
     font-size: var(--ct-text-sm);
     color: var(--ct-muted);
+    white-space: nowrap;
+    cursor: pointer;
   }
   .ref-mark {
     color: var(--ct-role-reference);
@@ -813,14 +925,31 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--ct-space-1);
-    margin: 0 calc(-1 * var(--ct-space-2)) var(--ct-space-3);
+    margin: 0 calc(-1 * var(--ct-space-2));
     border-bottom: 1px solid var(--ct-border);
+  }
+  .chart-tools {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0 var(--ct-space-4);
+    margin-bottom: var(--ct-space-1);
+    font-size: 0.8rem;
+    color: var(--ct-muted);
+  }
+  .tools-right {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ct-space-4);
+    margin-left: auto;
   }
   .tabs button {
     border: none;
     border-bottom: 2px solid transparent;
     background: none;
-    padding: var(--ct-space-3) var(--ct-space-2);
+    padding: 0.55rem var(--ct-space-2) 0.45rem;
+    font-size: 0.85rem;
     color: var(--ct-muted);
   }
   .tabs button:hover {
@@ -831,15 +960,6 @@
     border-bottom-color: var(--ct-role-method);
     font-weight: 600;
   }
-  .points-bar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--ct-space-2);
-    margin-bottom: var(--ct-space-2);
-    font-size: var(--ct-text-sm);
-    color: var(--ct-muted);
-  }
   .view .banner {
     margin-bottom: var(--ct-space-2);
   }
@@ -848,6 +968,20 @@
     font-size: var(--ct-text-sm);
     font-weight: 600;
     color: var(--ct-muted);
+  }
+  details.panel.more {
+    padding-top: var(--ct-space-3);
+    padding-bottom: var(--ct-space-3);
+  }
+  .sum-tag {
+    margin-left: var(--ct-space-2);
+    font-weight: 400;
+  }
+  .sum-tag.broken {
+    color: var(--ct-role-rupture);
+  }
+  .sum-tag.repaired {
+    color: var(--ct-role-correction);
   }
   details.more > summary:hover {
     color: var(--ct-text);
