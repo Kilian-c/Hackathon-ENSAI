@@ -88,9 +88,9 @@ CAHIER_RUN_RESULT = {
         {
             "id": "nuage", "type": "scatter", "title": "Nuage et droite ajustée",
             "axes": {"x": [-3.1, 6.4], "y": [-9.8, 11.4]}, "shown": 151, "total": 151, "clipped": 0,
-            "data": {
-                "series": [{"id": "nuage.x.ols", "method": "ols", "role": "method", "label": "x", "data": {}}]
-            },
+            "series": [
+                {"id": "nuage.xy.gen", "slot": "xy", "role": "data", "label": "Obs.", "x": [0.1], "y": [1.0]}
+            ],
         }
     ],
     "draw_log": None,
@@ -132,7 +132,7 @@ def test_extra_points_capped():
 def test_run_result_from_cahier():
     result = RunResult.model_validate(CAHIER_RUN_RESULT)
     assert result.measures["coverage"].states["ols"] == "broken"
-    assert result.model_dump(mode="json")["views"][0]["data"]["series"][0]["id"] == "nuage.x.ols"
+    assert result.model_dump(mode="json")["views"][0]["series"][0]["id"] == "nuage.xy.gen"
 
 
 def test_sweep_from_cahier():
@@ -215,3 +215,13 @@ def test_training_session_from_cahier():
         }
     )
     assert session.questions[0].choices[0].reveal.state.hypotheses["hetero"] == 0.9
+
+
+FIXTURES = Path(__file__).parent.parent / "frontend" / "src" / "fixtures"
+
+
+@pytest.mark.parametrize("path", sorted(FIXTURES.glob("*.json")), ids=lambda p: p.name)
+def test_fixtures_respect_contracts(path):
+    kind = path.stem.rsplit(".", 1)[-1]
+    model = {"run": RunResult, "sweep": SweepResult}.get(kind, TrainingSessionResponse)
+    model.model_validate_json(path.read_text(encoding="utf-8"))

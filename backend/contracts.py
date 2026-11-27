@@ -25,9 +25,12 @@ MAX_YAML_CHARS = 64 * 1024
 Verdict = Literal["ok", "warning", "broken"]
 Direction = Literal["below", "above", "both"]
 MethodRole = Literal["method", "correction", "alternative"]
-# Rôle de style d'une série (lib/roles.ts) : les alternatives reçoivent leur rang dans l'ordre du YAML.
+# Rôle d'une série (lib/roles.ts, lib/views.ts) : celui de sa méthode (les alternatives reçoivent leur
+# rang dans l'ordre du YAML), ou `reference` (même série à l'état sain), `truth` (vraie valeur, solution
+# exacte), `data` (données du générateur, communes à toutes les méthodes), `rupture`, `injected`.
 SeriesRole = Literal[
-    "method", "correction", "alternative_1", "alternative_2", "reference", "truth", "rupture", "injected"
+    "method", "correction", "alternative_1", "alternative_2",
+    "reference", "truth", "data", "rupture", "injected",
 ]
 # Axe de balayage : `h.<id>` (hypothèse) ou `p.<id>` (paramètre).
 Axis = Annotated[str, StringConstraints(pattern=r"^[hp]\.[A-Za-z_][A-Za-z0-9_]*$")]
@@ -125,32 +128,42 @@ class ChallengeResult(Contract):
 
 
 class Series(Contract):
+    """Série prête à dessiner : le moteur a résolu les `bind` du YAML (format proposé par R3, views.ts)."""
+
     id: str  # stable : <vue>.<emplacement>.<methode>
-    method: str | None = None
+    slot: str  # emplacement du `bind` : x/y, fit, resid, est, stat, series, truth...
+    method: str | None = None  # null pour les données du générateur
     role: SeriesRole
     label: str
     layer: str | None = None  # calque pas à pas (P2)
-    data: dict[str, Any]  # selon le type de vue (annexe E du cahier)
+    x: list[float | None] | None = None
+    y: list[float | None] | None = None
+    # Vue Répétitions (intervalles) : bornes et succès par répétition ; `x` porte l'estimation.
+    low: list[float | None] | None = None
+    high: list[float | None] | None = None
+    hit: list[bool] | None = None
+    value: float | None = None  # scalaire : vraie valeur d'un paramètre, seuil
+    paths: list[list[float | None]] | None = None  # Répétitions (trajectoires) : une liste par trajectoire
 
 
-class ViewData(BaseModel):
-    """Contenu d'une vue. Les séries sont typées ; le reste dépend du type de vue (annexe E)."""
+class ViewAxes(Contract):
+    """Bornes [min, max] calculées sur la Référence (ou fixées dans le YAML) ; null = automatique."""
 
-    model_config = ConfigDict(extra="allow")
-
-    series: list[Series] = []
+    x: list[float] | None = None
+    y: list[float] | None = None
 
 
 class ViewResult(Contract):
     id: str
     type: str
     title: str
-    axes: dict[str, list[float]] | None = None  # bornes [min, max], calculées sur la Référence
+    mode: Literal["intervals", "paths"] | None = None  # vue Répétitions
+    axes: ViewAxes = Field(default_factory=ViewAxes)
     shown: int = 0  # ce qui est affiché
     total: int = 0  # ce qui a été calculé
     clipped: int = 0  # points hors cadre
     ui: dict[str, Any] | None = None  # champ libre du YAML, transmis tel quel
-    data: ViewData = Field(default_factory=ViewData)
+    series: list[Series] = []  # vide pour `sensitivity` : l'interface appelle /api/sweep
 
 
 class DrawLog(Contract):
