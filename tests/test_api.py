@@ -104,6 +104,7 @@ def test_training_unknown_filter_is_french_422() -> None:
     assert r.status_code == 422 and "Aucune expérience" in r.json()["detail"]
 
 
+<<<<<<< HEAD
 def test_validate_official_yaml_passes() -> None:
     from backend.api.registry import EXPERIMENTS_DIR
 
@@ -133,3 +134,40 @@ def test_caps_on_requests() -> None:
     assert client.post("/api/run", json={"raw_content": big}).status_code == 422
     assert client.post("/api/validate", json={"raw_content": big}).status_code == 422
     assert client.post("/api/training/session", json={"filter": "toutes", "count": 11}).status_code == 422
+=======
+# --- POST /api/validate (P1) -----------------------------------------------------------------------------
+
+SOMME_DES = Path(__file__).resolve().parent.parent / "experiments" / "somme_des.yaml"
+
+
+def test_validate_valid_yaml_runs_tests_and_registers_import() -> None:
+    from backend.api import registry
+
+    raw = SOMME_DES.read_text(encoding="utf-8")
+    r = client.post("/api/validate", json={"raw_content": raw})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["errors"] == []
+    assert [t["id"] for t in body["tests"]] == [1, 3, 4, 10]
+    assert body["ok"] is all(t["passed"] for t in body["tests"])
+    key = registry.import_key(raw)
+    spec = client.get(f"/api/experiments/{key}").json()
+    assert spec["id"] == "somme-de-des"
+    hyp = next(iter(spec["hypotheses"]))
+    sweep = client.post("/api/sweep", json={"experiment_id": key, "axes": [{"target": f"h.{hyp}"}]})
+    assert sweep.status_code == 200
+
+
+def test_validate_reports_errors_with_line_numbers() -> None:
+    raw = SOMME_DES.read_text(encoding="utf-8").replace("schema_version: 1", "schema_version: 7", 1)
+    body = client.post("/api/validate", json={"raw_content": raw}).json()
+    assert body["ok"] is False and body["tests"] == []
+    assert body["errors"][0]["line"] is not None
+    bad = client.post("/api/validate", json={"raw_content": "id: [\n"}).json()
+    assert bad["ok"] is False and bad["errors"][0]["message"].startswith("YAML invalide")
+
+
+def test_unknown_import_key_is_french_404() -> None:
+    r = client.get("/api/experiments/import-0000000000000000")
+    assert r.status_code == 404 and "validez" in r.json()["detail"]
+>>>>>>> origin/main

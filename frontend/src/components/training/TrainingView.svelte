@@ -173,6 +173,10 @@
           {/if}
           <a class="summary-link" href="?bilan">Voir mon bilan →</a>
         </p>
+        <p class="summary-hint">
+          Le bilan compare votre confiance à vos réussites, sur toutes vos séries : score de Brier et courbe
+          de calibration.
+        </p>
       </section>
     {/if}
   {/if}
@@ -261,9 +265,22 @@
     margin: 0;
   }
   .summary-link {
-    margin-left: var(--ct-space-4);
-    color: var(--ct-role-method);
+    display: inline-block;
+    margin-left: var(--ct-space-3);
+    padding: var(--ct-space-2) var(--ct-space-4);
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    color: var(--ct-text);
     font-weight: 600;
+    text-decoration: none;
+  }
+  .summary-link:hover {
+    background: var(--ct-surface-2);
+  }
+  .summary-hint {
+    margin-top: var(--ct-space-2);
+    color: var(--ct-muted);
+    font-size: var(--ct-text-sm);
   }
   .score {
     font-size: var(--ct-text-xl);

@@ -64,7 +64,15 @@
   const correction = $derived(spec ? methodWithRole(spec.methods, 'correction') : null)
   const correctionOn = $derived(!!correction && !!ui && ui.methodsOn.includes(correction.id))
   const labUrl = $derived(
-    spec && ui ? labLink(spec, canonicalState(spec, reveal.state), { ...ui, tab: view?.id ?? null }) : null,
+    spec && ui
+      ? labLink(spec, canonicalState(spec, reveal.state), {
+          ...ui,
+          tab: view?.id ?? null,
+          // Cahier, section 3.4 : le Laboratoire s'ouvre sur Comprendre, à l'hypothèse de la question.
+          stage: question.hypothesis ? 'comprendre' : null,
+          focus: question.hypothesis,
+        })
+      : null,
   )
 
   function toggleCorrection(): void {

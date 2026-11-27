@@ -34,3 +34,33 @@ def content_digest() -> str:
 def from_raw(content: str) -> ExperimentSpec:
     """Expérience importée (YAML brut) : validée une fois par contenu. `ExperimentError` si invalide."""
     return load_experiment(content)
+
+
+# --- Expériences importées (P1) ------------------------------------------------------------------------
+# Un YAML importé dont le schéma est valide est retenu sous la clé `import-<16 premiers caractères du
+# SHA-256 du contenu>`. L'interface calcule la même clé : elle lit la spécification par
+# `GET /api/experiments/{clé}` et lance `/api/sweep` avec `experiment_id = clé`, sans changer les contrats.
+# Mémoire seulement : après un redémarrage, l'interface renvoie le YAML à `/api/validate`.
+
+IMPORT_PREFIX = "import-"
+_IMPORTED_MAX = 64
+_imported: dict[str, ExperimentSpec] = {}
+
+
+def import_key(content: str) -> str:
+    return IMPORT_PREFIX + content_hash(content)[:16]
+
+
+def register_import(content: str) -> str:
+    """Valide (`ExperimentError` sinon) et retient le YAML ; renvoie sa clé."""
+    spec = from_raw(content)
+    key = import_key(content)
+    _imported.pop(key, None)
+    _imported[key] = spec
+    while len(_imported) > _IMPORTED_MAX:
+        _imported.pop(next(iter(_imported)))
+    return key
+
+
+def imported(key: str) -> ExperimentSpec | None:
+    return _imported.get(key)

@@ -156,7 +156,7 @@ Sur les 7 expériences jouables : Laboratoire (casser, Correction, Référence, 
 ```bash
 # Moteur
 uv sync
-uv run uvicorn backend.main:app --reload --port 8000
+uv run uvicorn backend.main:app --reload --reload-include "*.yaml" --port 8000   # recharge aussi quand un YAML change
 uv run pytest -q
 uv run ruff check .
 

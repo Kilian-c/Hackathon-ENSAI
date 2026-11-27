@@ -266,7 +266,7 @@ questions:
 
   - id: "reg-q3-n"                # P1
     type: prediction
-    prompt: "Sous forte hétéroscédasticité, que devient la couverture des IC classiques si n passe de {n} à {n} x 2 ?"
+    prompt: "Sous forte hétéroscédasticité, que devient la couverture des IC classiques si n passe de {n} au double ?"
     procedural_params:
       n: { min: 100, max: 400, step: 50 }
     state: { hypotheses: { hetero: 0.9 } }

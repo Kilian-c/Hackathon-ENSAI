@@ -27,6 +27,10 @@ export interface UiState {
   methodsOn: string[]
   /** Onglet ouvert du Laboratoire (identifiant de vue), null = premier onglet. */
   tab: string | null
+  /** Étape du Laboratoire (`comprendre`, `defis`) ; absente = Expérimenter. */
+  stage?: string | null
+  /** Hypothèse ouverte dans l'étape Comprendre (pont depuis l'Entraînement). */
+  focus?: string | null
 }
 
 type Value = number | boolean | string
@@ -149,19 +153,30 @@ export function brokenHypotheses(spec: ExperimentSpec, state: EngineState): stri
  * Ce qu'une URL demande d'ouvrir. Pour le Laboratoire, les valeurs restent du TEXTE tant qu'on n'a
  * pas la spécification de l'expérience : resolveLabLink() les convertit ensuite.
  */
+/**
+ * D'où vient l'expérience du Laboratoire : officielle (`?exp=<id>`), partagée par Supabase
+ * (`?share=<id>`, P1) ou brouillon de l'écran Import gardé dans ce navigateur (`?brouillon`, P1).
+ */
+export type LabOrigin = { kind: 'official' } | { kind: 'share'; id: string } | { kind: 'draft' }
+
 export type Link =
   | { kind: 'home' }
+  | { kind: 'import' }
   | { kind: 'error'; message: string }
   | { kind: 'training'; filter: string; seed: number | null }
   | {
       kind: 'lab'
       experimentId: string
+      /** Absent : expérience officielle. */
+      origin?: LabOrigin
       params: Record<string, string>
       hypotheses: Record<string, string>
       points: string | null
       seed: number | null
       on: string[] | null
       tab: string | null
+      stage?: string | null
+      focus?: string | null
     }
 
 function parseSeed(raw: string | null): number | null {
@@ -173,7 +188,7 @@ function parseSeed(raw: string | null): number | null {
 export function parseLink(url: string): Link {
   const q = new URLSearchParams(url.includes('?') ? url.slice(url.indexOf('?') + 1) : url)
   const v = q.get('v')
-  if ((q.has('exp') || q.has('train')) && v !== null && v !== String(LINK_VERSION)) {
+  if ((q.has('exp') || q.has('train') || q.has('share')) && v !== null && v !== String(LINK_VERSION)) {
     return {
       kind: 'error',
       message: `Ce lien a été créé pour une autre version de Crash-Test (version ${v}). Il ne peut pas être ouvert ici : demandez un nouveau lien.`,
@@ -182,7 +197,9 @@ export function parseLink(url: string): Link {
   const train = q.get('train')
   if (train) return { kind: 'training', filter: train, seed: parseSeed(q.get('seed')) }
   const exp = q.get('exp')
-  if (!exp) return { kind: 'home' }
+  const share = q.get('share')
+  const origin: LabOrigin = share ? { kind: 'share', id: share } : q.has('brouillon') ? { kind: 'draft' } : { kind: 'official' }
+  if (!exp && origin.kind === 'official') return q.has('import') ? { kind: 'import' } : { kind: 'home' }
   const params: Record<string, string> = {}
   const hypotheses: Record<string, string> = {}
   for (const [key, value] of q) {
@@ -192,13 +209,16 @@ export function parseLink(url: string): Link {
   const on = q.get('on')
   return {
     kind: 'lab',
-    experimentId: exp,
+    experimentId: origin.kind === 'official' ? (exp as string) : '',
+    origin,
     params,
     hypotheses,
     points: q.get('pts'),
     seed: parseSeed(q.get('seed')),
     on: on === null ? null : on.split(',').filter(Boolean),
     tab: q.get('tab'),
+    stage: q.get('stage'),
+    focus: q.get('hyp'),
   }
 }
 
@@ -249,7 +269,12 @@ export function resolveLabLink(
   const known = new Set(spec.methods.map((m) => m.id))
   const ui = defaultUi(spec)
   const on = link.on?.filter((id) => known.has(id))
-  return { engine, ui: { methodsOn: on && on.length > 0 ? on : ui.methodsOn, tab: link.tab } }
+  const stage = link.stage === 'comprendre' || link.stage === 'defis' ? link.stage : null
+  const focus = link.focus && link.focus in spec.hypotheses ? link.focus : null
+  const out: UiState = { methodsOn: on && on.length > 0 ? on : ui.methodsOn, tab: link.tab }
+  if (stage) out.stage = stage
+  if (focus) out.focus = focus
+  return { engine, ui: out }
 }
 
 function formatValue(v: Value): string {
@@ -260,9 +285,16 @@ function formatValue(v: Value): string {
  * URL lisible d'un état de Laboratoire. Seules les valeurs qui diffèrent du défaut sont écrites,
  * pour que le lien reste court et se tape en démo : ?exp=regression-lineaire&v=1&h.hetero=0.85&seed=42
  */
-export function labLink(spec: ExperimentSpec, engine: EngineState, ui: UiState): string {
+export function labLink(
+  spec: ExperimentSpec,
+  engine: EngineState,
+  ui: UiState,
+  origin: LabOrigin = { kind: 'official' },
+): string {
   const base = defaultState(spec)
-  const q = new URLSearchParams({ exp: spec.id, v: String(LINK_VERSION) })
+  const head: Record<string, string> =
+    origin.kind === 'share' ? { share: origin.id } : origin.kind === 'draft' ? { brouillon: '' } : { exp: spec.id }
+  const q = new URLSearchParams({ ...head, v: String(LINK_VERSION) })
   for (const [id, v] of Object.entries(engine.params)) if (v !== base.params[id]) q.set(`p.${id}`, formatValue(v))
   for (const [id, v] of Object.entries(engine.hypotheses)) {
     if (v !== base.hypotheses[id]) q.set(`h.${id}`, formatValue(v))
@@ -271,6 +303,8 @@ export function labLink(spec: ExperimentSpec, engine: EngineState, ui: UiState):
   const defaultOn = defaultUi(spec).methodsOn
   if (ui.methodsOn.join(',') !== defaultOn.join(',')) q.set('on', ui.methodsOn.join(','))
   if (ui.tab) q.set('tab', ui.tab)
+  if (ui.stage) q.set('stage', ui.stage)
+  if (ui.focus) q.set('hyp', ui.focus)
   const axes = injectAxes(spec)
   if (engine.extra_points.length > 0) {
     q.set('pts', engine.extra_points.map((pt) => axes.map((a) => pt[a]).join(',')).join(';'))
