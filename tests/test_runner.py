@@ -58,12 +58,17 @@ def test_pendulum_truth_and_time_axis() -> None:
     assert res.repeat_used == 1
 
 
-@pytest.mark.parametrize("name", ["regression_lineaire", "test_student"])
+def _all_specs() -> list[str]:
+    return sorted(p.stem for p in EXP.glob("*.yaml")) + ["archives/test_student"]
+
+
+@pytest.mark.parametrize("name", _all_specs())
 def test_same_state_same_result_byte_for_byte(name: str) -> None:
-    spec = _spec(name, ARCHIVES if name == "test_student" else EXP)
-    a = runner.run(spec).model_dump(exclude={"compute_ms"})
+    """Test 8 sur toutes les expériences officielles (et Student, archivée) : même état, même JSON."""
+    spec = _spec(Path(name).name, ARCHIVES if name.startswith("archives/") else EXP)
+    a = runner.run(spec).model_dump_json(exclude={"compute_ms"})
     runner._CACHE.clear()
-    b = runner.run(spec).model_dump(exclude={"compute_ms"})
+    b = runner.run(spec).model_dump_json(exclude={"compute_ms"})
     assert a == b
 
 
@@ -116,3 +121,33 @@ def test_clt_paths_view_serves_a_bundle_of_trajectories() -> None:
     healthy = runner.run(_spec("theoreme_central_limite"))
     healthy_view = next(v for v in healthy.views if v.id == "trajectoires")
     assert healthy_view.axes == view.axes  # bornes sur la Référence : elles ne bougent pas avec l'état
+
+
+def test_non_finite_value_is_always_broken() -> None:
+    """Une seule règle : NaN et infini sont `broken`, comme dans l'affichage, les défis et le balayage."""
+    for bad in (float("nan"), float("inf"), float("-inf")):
+        for direction in ("below", "above", "both"):
+            assert runner.verdict(bad, 0.95, direction, 0.02, 0.10) == "broken"
+    assert runner.verdict(0.95, 0.95, "below", 0.02, 0.10) == "ok"
+
+
+def test_method_failure_is_a_french_run_error() -> None:
+    """Une méthode inconnue ou qui échoue ne donne pas un 500 anglais mais une `RunError`."""
+    spec = _spec("regression_lineaire")
+    main = next(m for m in spec.methods if m.role == "method")
+    methods = [m.model_copy(update={"call": "inexistante"}) if m is main else m for m in spec.methods]
+    broken = spec.model_copy(update={"methods": methods})
+    with pytest.raises(runner.RunError, match="a échoué"):
+        runner.run(broken, EngineState())
+
+
+def test_cache_survives_concurrent_runs_with_evictions(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Le pool de threads de FastAPI partage le cache : des évictions en parallèle ne doivent pas planter."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(runner, "_CACHE_SIZE", 2)
+    spec = _spec("somme_des")
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(lambda seed: runner.run(spec, EngineState(seed=seed)), range(40)))
+    assert len(results) == 40
+    assert runner.run(spec, EngineState(seed=3)).state_hash == results[3].state_hash

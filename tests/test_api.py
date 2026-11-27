@@ -93,8 +93,10 @@ def test_training_same_seed_same_series() -> None:
     a = _session(filter="regression-lineaire", seed=99)
     b = _session(filter="regression-lineaire", seed=99)
     assert a == b
-    c = _session(filter="regression-lineaire", seed=100)
-    assert [q["prompt"] for q in a["questions"]] != [q["prompt"] for q in c["questions"]] or a != c
+    # Une autre graine change la série (sur « toutes », assez de questions pour que l'ordre diffère).
+    d = _session(filter="toutes", seed=99)
+    e = _session(filter="toutes", seed=100)
+    assert [q["qid"] for q in d["questions"]] != [q["qid"] for q in e["questions"]]
 
 
 def test_training_unknown_filter_is_french_422() -> None:
