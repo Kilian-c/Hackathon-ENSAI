@@ -139,3 +139,68 @@ def test_linsolve_experiment_jacobi_breaks_but_the_direct_method_does_not() -> N
     assert weak.measures["erreur"].states == expected
     history = next(v for v in weak.views if v.id == "convergence")
     assert history.series and history.series[0].y is not None
+
+
+# --- eigen ------------------------------------------------------------------------------------------------
+
+
+def _spiked(r: int = 15, d: int = 8, spike: float = 3.0):
+    rng = np.random.default_rng(21)
+    a = rng.standard_normal((r, d * d))
+    g = a.reshape(r, d, d)
+    mat = (g + np.swapaxes(g, 1, 2)) / np.sqrt(2 * d) + spike / d * np.ones((d, d))
+    return a, mat
+
+
+def test_eigen_direct_is_exact_and_keeps_the_sign_of_the_dominant_eigenvalue() -> None:
+    from backend.methods.linalg.eigen import eigen
+
+    for spike in (3.0, -3.0):  # pic négatif : la valeur propre de plus grand module est négative
+        a, mat = _spiked(spike=spike)
+        result = eigen(a=a, d=8, spike=spike, kind="numpy", rng=np.random.default_rng(0))
+        eig = np.linalg.eigvalsh(mat)
+        expected = eig[np.arange(len(eig)), np.argmax(np.abs(eig), axis=1)]
+        assert result.reps["estimate"] == pytest.approx(expected, abs=1e-12)
+        assert (result.reps["estimate"] * np.sign(spike) > 0).all()
+        assert result.reps["log_error"].max() <= -15.9 and not result.reps["failed"].any()
+
+
+def test_power_and_qr_converge_when_the_dominant_eigenvalue_is_isolated() -> None:
+    from backend.methods.linalg.eigen import eigen
+
+    a, _ = _spiked(spike=3.0)
+    for kind in ("power", "qr"):
+        result = eigen(a=a, d=8, spike=3.0, kind=kind, iters=60, rng=np.random.default_rng(1))
+        assert np.median(result.reps["log_error"]) < -10, kind
+        history = result.curves["history"]
+        assert history[-1] < history[0] - 8 and len(history) == len(result.curves["k"]) == 61
+
+
+def test_power_is_slow_without_an_isolated_eigenvalue() -> None:
+    from backend.methods.linalg.eigen import eigen
+
+    a = np.random.default_rng(2).standard_normal((15, 144))
+    isolated = eigen(a=a, d=12, spike=3.0, kind="power", iters=20, rng=np.random.default_rng(1))
+    flat = eigen(a=a, d=12, spike=0.0, kind="power", iters=20, rng=np.random.default_rng(1))
+    gap = np.median(flat.reps["log_error"]) - np.median(isolated.reps["log_error"])
+    assert gap > 5
+
+
+def test_eigen_bad_arguments_are_french_errors() -> None:
+    from backend.methods.linalg.eigen import eigen
+
+    rng = np.random.default_rng(0)
+    with pytest.raises(ValueError, match="kind doit valoir"):
+        eigen(a=np.zeros((2, 4)), d=2, kind="jacobi", rng=rng)
+    with pytest.raises(ValueError, match="d \\* d"):
+        eigen(a=np.zeros((2, 5)), d=2, rng=rng)
+    with pytest.raises(ValueError, match="iters"):
+        eigen(a=np.zeros((2, 4)), d=2, iters=500, rng=rng)
+
+
+def test_eigen_experiment_power_fails_without_a_spike_but_the_direct_method_does_not() -> None:
+    spec = load_experiment_file(WIGNER.parent / "valeurs_propres.yaml")
+    healthy = runner.run(spec, EngineState())
+    assert healthy.measures["erreur"].states == {"puissance": "ok", "qr": "ok", "directe": "ok"}
+    flat = runner.run(spec, EngineState(hypotheses={"separation": 1.0}))
+    assert flat.measures["erreur"].states == {"puissance": "broken", "qr": "broken", "directe": "ok"}
