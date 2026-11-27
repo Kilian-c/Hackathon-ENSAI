@@ -77,6 +77,8 @@
     locale: 'fr',
     locales: PLOTLY_FR,
     modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
+    // Plotly 4 ajoute « Share chart... », qui envoie le graphique sur Plotly Cloud (service externe, en anglais).
+    showSendToCloud: false,
   }
 
   $effect(() => {
