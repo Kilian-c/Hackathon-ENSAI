@@ -1,12 +1,17 @@
 # Notes de passation (la plus récente en haut)
 
+## H6 (18 h 30) : décision, `level` = difficulté 1, 2, 3 (pas une relève)
+- Décision de R2 : `level` vaut « 1 » (Découverte), « 2 » (Intermédiaire) ou « 3 » (Avancé), comme le propose le catalogue ; l'année (« 1A », « 2A ») disparaît. Niveaux repris des tableaux du catalogue : 1 = somme de dés, seuil et ROC, carrés des résidus ; 2 = TCL, tests multiples, pendule ; 3 = régression, Student, multicolinéarité (absente du catalogue : rangée comme « Variable omise »).
+- `tests/test_engine.py` (R1) : la chaîne repérée dans la régression passe de `level: "1A/2A"` à `level: "3"`.
+- **R3 / R4** : l'accueil (`App.svelte`) et le Laboratoire (`LabView.svelte`) affichent le chiffre brut (« probabilites · 1 ») : afficher « Découverte », « Intermédiaire », « Avancé » ; la galerie peut trier par niveau. Specs de repli (`src/dev/specs/`) à régénérer.
+
 ## H6 (18 h) : 3 premières expériences du catalogue, branche `r2/catalogue` (pas une relève)
 - Fusionné dans `main` à la demande de R2, **sans relecture de R1 : R1, relisez `runner.py` après coup** (les 4 vérifications de la section 4 étaient vertes : 274 tests pytest, ruff, npm run check, 80 tests npm).
 - Nouvelles expériences niveau « 1 » (section 15 du catalogue) : `somme_des.yaml`, `seuil_roc.yaml`, `carres_residus.yaml`, chacune simulée avant d'écrire les seuils, 3 questions chacune, tous les tests de contenu verts (dont le test 6).
 - Méthodes génériques du catalogue (R2) : `statistic` (sum, mean, max, min, median), `classifier` (kind « seuil » pour l'instant), `regressor` (ols, manuelle) ; agrégateur `kurtosis` (aplatissement, sans erreur MC).
 - **R1, à relire** (`runner.py`) : emplacements de l'annexe E servis : `threshold` (scalaire, rôle `rupture`), `h1` et `observed` (méthode principale, rôle `truth`), `segments` (série `x`, `low` = from, `high` = to, `layer`) ; libellés des séries lus dans `ui.labels` (champ libre) et dans les `label` de `series`. Le runner importe tout `backend.methods`.
 - **R3, interface (non fait, fichiers de Kilian)** : (1) `plot.ts` ne dessine pas encore les `segments` (séries sans `y` : ignorées sans erreur) ; (2) dans `distribution`, `h1` (rôle `truth`) sort en orange : à vérifier à l'œil ; (3) `theory` (courbe sur un histogramme) n'est pas servi : il serait dessiné comme un histogramme.
-- **À décider (équipe)** : le champ `level` vaut « 1 » (Découverte) dans ces 3 fichiers, comme le propose le catalogue, mais « 1A », « 2A » (année) dans les autres. Choisir une seule convention avant la galerie de R4.
+- Convention de `level` : tranchée à 18 h 30 (note ci-dessus).
 
 ## H5 (17 h) : Entraînement côté moteur, branche `r2/training` (pas une relève)
 - Fusionné dans `main` à la demande de R2, **sans relecture de R1 : R1, relisez après coup** (les 4 vérifications de la section 4 étaient vertes). Fait par R2, dans des fichiers de R1 : `backend/engine/training.py` et `POST /api/training/session` (`backend/api/routes.py`), empreinte des YAML dans `backend/api/registry.py` (`content_digest`). Tests : `tests/test_training.py`, tests d'API de la section 12 ajoutés à `tests/test_api.py`. 227 tests verts.

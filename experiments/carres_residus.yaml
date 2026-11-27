@@ -2,7 +2,7 @@ schema_version: 1
 id: "carres-residus"
 title: "Moindres carrés : trouvez la droite qui fait le moins de carrés"
 discipline: "statistique"
-level: "1"                      # catalogue : 1 Découverte, 2 Intermédiaire, 3 Avancé
+level: "1"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
 concepts: ["moindres-carres", "residus", "droite-de-regression", "valeur-aberrante"]
 
 theorem:

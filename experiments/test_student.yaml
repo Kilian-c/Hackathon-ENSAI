@@ -2,7 +2,7 @@ schema_version: 1
 id: "test-student"
 title: "Test de Student : queues lourdes, niveau et puissance"
 discipline: "statistique"
-level: "1A"
+level: "3"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
 concepts: ["test-de-student", "wilcoxon", "queues-lourdes", "puissance", "risque-alpha"]
 
 theorem:

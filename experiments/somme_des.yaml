@@ -2,7 +2,7 @@ schema_version: 1
 id: "somme-de-des"
 title: "Somme de dés : quand la cloche apparaît-elle ?"
 discipline: "probabilites"
-level: "1"                      # catalogue : 1 Découverte, 2 Intermédiaire, 3 Avancé
+level: "1"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
 concepts: ["somme-de-variables", "convolution", "theoreme-central-limite", "independance"]
 
 theorem:
