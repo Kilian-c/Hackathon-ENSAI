@@ -1,5 +1,10 @@
 # Notes de passation (la plus récente en haut)
 
+## H7 (19 h) : expérience « Déséquilibre », branche `r2/desequilibre` (pas une relève)
+- Fusionné dans `main` à la demande de R2. Aucun fichier de R1 ni de R3 touché : seulement `experiments/desequilibre.yaml` (niveau « 1 », méthode `classifier`, 3 questions, 2 défis). Vérifications vertes (pytest, test 6 à 50 tirages, ruff, npm check, npm test).
+- Chiffres (graine 42, 300 études de 600 patients) : sensibilité du seuil « qui se trompe le moins » 77 % (50 % de malades), 44 % (1 sur 5), 1,2 % (1 sur 100) ; exactitude 77 %, 85 %, 99 %. Seuils 0,10 / 0,30 ; « un malade sur 5 » est Rompu avec 0,03 de marge : ne pas les changer sans rejouer la simulation.
+- **R3** : pas de ligne de seuil dans la vue `distribution` (le seuil dépend de `h.rarete` et `p.ecart`, et `bind.threshold` n'accepte qu'un `p.<id>`) ; pas de courbe ROC (indépendante du seuil).
+
 ## H6 (18 h 30) : décision, `level` = difficulté 1, 2, 3 (pas une relève)
 - Décision de R2 : `level` vaut « 1 » (Découverte), « 2 » (Intermédiaire) ou « 3 » (Avancé), comme le propose le catalogue ; l'année (« 1A », « 2A ») disparaît. Niveaux repris des tableaux du catalogue : 1 = somme de dés, seuil et ROC, carrés des résidus ; 2 = TCL, tests multiples, pendule ; 3 = régression, Student, multicolinéarité (absente du catalogue : rangée comme « Variable omise »).
 - `tests/test_engine.py` (R1) : la chaîne repérée dans la régression passe de `level: "1A/2A"` à `level: "3"`.
