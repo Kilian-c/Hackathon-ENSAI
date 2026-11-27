@@ -1,5 +1,9 @@
 # Notes de passation (la plus récente en haut)
 
+## Format du pitch (info donnée par R2, pas une relève)
+- **Pitch : 3 minutes, puis 2 minutes de questions** (17 h, H29). Le déroulé de `CLAUDE.md` (« pendule 2:45 à 3:30 », « Import montré à 3:30 ») suppose plus de 3:30 : **à raccourcir**. Proposition : une seule expérience en démo (régression, graine fixée), un second exemple très court (TCL sous Cauchy ou tests multiples) ; l'Import seulement s'il tient dans les 3 minutes, sinon en réponse aux questions.
+- Priorités avant d'ajouter des expériences (déjà 11 jouables) : démo de bout en bout sans erreur, vérification à l'œil du jalon P0, vidéo de secours, réponses préparées aux 2 minutes de questions.
+
 ## H9 (21 h) : R3 + R2 -> R1 + R4
 - **Brouillon préparé par R2 : R3 (Kilian) complète et corrige sa ligne avant de valider.** Vérifié sur `main` (`3b2ffea`) : pytest, ruff, `npm run check` (0 erreur) et `npm test` (111 tests) verts.
 - R3 (interface) : tourne : niveaux en mots, `segments` et `h1` dessinés, banc de méthodes, ajout de points par clic (correctif du double comptage dans `runner.py`), trajectoires (`mode: paths`), balayage automatique, Domaine de validité, écran Bilan, vue de secours `measures_table`, Entraînement, partage par URL (d'après `docs/notes/r3.md` et `git log`) / en cours : à compléter / bloque : à compléter (rien d'écrit dans les notes). **À vérifier à l'œil dans le navigateur** : la vue `trajectoires` du TCL (sous Cauchy), le tableau des mesures de repli, les specs de repli du pendule et de Student (`lab.test.ts` les importe encore).
