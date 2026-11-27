@@ -20,9 +20,7 @@ from typing import Any
 import numpy as np
 from scipy.integrate import solve_ivp
 
-import backend.methods.integrate  # noqa: F401  (enregistrent les méthodes)
-import backend.methods.ols_ci  # noqa: F401
-import backend.methods.one_sample_test  # noqa: F401
+import backend.methods  # noqa: F401  (importer le paquet enregistre toutes les méthodes)
 from backend.contracts import (
     SCHEMA_VERSION,
     ChallengeResult,
@@ -350,6 +348,11 @@ def _method_role(spec: ExperimentSpec) -> dict[str, str]:
 
 
 _COMPANIONS = ("low", "high", "hit")  # emplacements lus par la série `est` d'une vue Répétitions
+# Emplacements lus sur la méthode principale seulement (annexe E du cahier), dessinés comme une donnée fixe.
+_MAIN_ONLY = {"h1": "Sous l'alternative", "observed": "Valeur observée"}
+# Libellés et rôles par défaut des emplacements scalaires (`p.<id>`) ; `ui.labels` les remplace.
+_SCALAR_LABELS = {"threshold": "Seuil", "truth": "Valeur vraie"}
+_SCALAR_ROLES = {"threshold": "rupture"}
 
 
 def _arr(value: Any) -> np.ndarray | None:
@@ -366,6 +369,18 @@ def _build_view(
     paths = _bind_paths(view.bind)
     roles, labels = _method_role(spec), {m.id: m.label for m in spec.methods}
     primary = next(m.id for m in spec.methods if m.role == "method")
+    ui_labels = dict((view.ui or {}).get("labels") or {})  # champ libre `ui` : nom de chaque emplacement
+    for slot, items in view.bind.items():  # `series: [{ y, label }]` (annexe E) : le libellé du YAML
+        if isinstance(items, list) and slot != "segments":
+            named = [i["label"] for i in items if isinstance(i, dict) and i.get("label")]
+            if named:
+                ui_labels.setdefault(slot, named[-1])
+
+    def label_for(slot: str, method: str) -> str:
+        if slot not in ui_labels:
+            return labels[method]
+        return str(ui_labels[slot]) if method == primary else f"{ui_labels[slot]} : {labels[method]}"
+
     x_path = paths.get("x") or paths.get("t")
     is_distribution = view.type == "distribution"
     is_intervals = view.type == "repetitions"
@@ -380,14 +395,37 @@ def _build_view(
         root = path.split(".")[0]
         if slot in ("x", "t") or (is_intervals and slot in _COMPANIONS):
             continue
-        if root == "p":  # valeur scalaire : vraie valeur d'un paramètre
+        if root == "p":  # valeur scalaire : vraie valeur d'un paramètre, seuil
             result.series.append(
                 Series(
                     id=f"{view.id}.{slot}.gen",
                     slot=slot,
-                    role="truth",
-                    label="Valeur vraie",
+                    role=_SCALAR_ROLES.get(slot, "truth"),  # type: ignore[arg-type]
+                    label=str(ui_labels.get(slot) or _SCALAR_LABELS.get(slot, "Valeur vraie")),
                     value=_clean(_path(comp, primary, path, rs)),
+                )
+            )
+            continue
+        if slot in _MAIN_ONLY:  # h1, observed : lus sur la méthode principale, toujours affichés
+            yv = _arr(_path(comp, primary, path, rs))
+            if yv is None:
+                continue
+            if is_distribution:  # une grandeur : x porte les valeurs
+                sx, sy = _floats(yv), None
+                xs.append(yv)
+            else:
+                xv = _arr(_path(comp, primary, x_path, rs)) if x_path else None
+                sx, sy = (_floats(xv) if xv is not None else None), _floats(yv)
+                ys.append(yv)
+            result.series.append(
+                Series(
+                    id=f"{view.id}.{slot}.{primary}",
+                    slot=slot,
+                    method=primary,
+                    role="truth",
+                    label=str(ui_labels.get(slot) or _MAIN_ONLY[slot]),
+                    x=sx,
+                    y=sy,
                 )
             )
             continue
@@ -453,7 +491,7 @@ def _build_view(
                         slot=slot,
                         method=m.id,
                         role=role,  # type: ignore[arg-type]
-                        label=labels[m.id],
+                        label=label_for(slot, m.id),
                         x=_floats(yv),
                     )
                 )
@@ -475,7 +513,7 @@ def _build_view(
                         slot=slot,
                         method=m.id,
                         role=role,  # type: ignore[arg-type]
-                        label=labels[m.id],
+                        label=label_for(slot, m.id),
                         x=_floats(xv) if xv is not None else None,
                         y=_floats(yv),
                     )
@@ -509,6 +547,32 @@ def _build_view(
             (xs if is_distribution else ys).append(yv)
             if xv is not None and not is_distribution:
                 xs.append(xv)
+
+    # Segments du nuage (annexe E) : un segment vertical par observation, de `from` à `to`, lus sur la
+    # méthode principale. Série : x, low (= from), high (= to), et le calque éventuel.
+    segments = view.bind.get("segments")
+    if isinstance(segments, list) and x_path:
+        sx = _arr(_path(comp, primary, x_path, rs))
+        for i, item in enumerate(segments):
+            if not isinstance(item, dict) or sx is None:
+                continue
+            start = _arr(_path(comp, primary, str(item.get("from", "")), rs))
+            end = _arr(_path(comp, primary, str(item.get("to", "")), rs))
+            if start is None or end is None:
+                continue
+            result.series.append(
+                Series(
+                    id=f"{view.id}.segments-{i}.{primary}",
+                    slot="segments",
+                    method=primary,
+                    role=roles[primary],  # type: ignore[arg-type]
+                    label=str(item.get("label") or "Segments"),
+                    layer=item.get("layer"),
+                    x=_floats(sx),
+                    low=_floats(start),
+                    high=_floats(end),
+                )
+            )
 
     result.shown, result.total = shown, total or shown
     if is_intervals:  # bornes sur la Référence : intervalles sains

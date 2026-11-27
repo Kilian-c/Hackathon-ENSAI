@@ -1,0 +1,211 @@
+schema_version: 1
+id: "carres-residus"
+title: "Moindres carrés : trouvez la droite qui fait le moins de carrés"
+discipline: "statistique"
+level: "1"                      # catalogue : 1 Découverte, 2 Intermédiaire, 3 Avancé
+concepts: ["moindres-carres", "residus", "droite-de-regression", "valeur-aberrante"]
+
+theorem:
+  name: "La droite des moindres carrés"
+  statement: |
+    Pour chaque droite, on mesure l'écart vertical entre chaque point et la droite (le résidu), on
+    l'élève au carré et on additionne. La droite des moindres carrés (MCO) est celle dont cette somme
+    est la plus petite : toute autre droite fait plus de carrés. Comme les écarts sont élevés au carré,
+    un seul point très éloigné peut tirer cette droite vers lui.
+
+equation:
+  tex: '\min_{a,\,b}\ {{carres}}'
+  terms:
+    carres:
+      ok: '\sum_{i=1}^{n} \big(y_i - a - b\,x_i\big)^2'
+
+params:
+  pente: { type: number, label: "Pente de votre droite", min: -1, max: 4, step: 0.05, default: 1.5,
+           sweep_values: [-1, 0, 0.5, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4] }
+
+hypotheses:
+  bruit:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Points proches d'une droite"
+    category: "bruit"
+    ok_label: "Peu dispersés"
+    broken_label: "Très dispersés (écart type multiplié par 4)"
+    robust_expected: true
+    statement_tex: '\sigma = 1'
+    why: "Quand les points sont proches d'une droite, une pente un peu fausse se voit tout de suite : les carrés grossissent vite."
+    when_broken: "Avec beaucoup de bruit, la droite des moindres carrés reste celle qui fait le moins de carrés. Mais le minimum devient plat : une pente un peu fausse ne coûte presque rien de plus, et les données disent mal quelle est la bonne pente."
+    affects: [carres]
+  aberrant:
+    type: boolean
+    healthy_value: false
+    label: "Aucun point aberrant"
+    category: "donnees"
+    ok_label: "Aucun"
+    broken_label: "Un point très au-dessus, à droite du nuage"
+    statement_tex: '|y_i - a - b\,x_i| \ \text{modérés}'
+    why: "Élever les écarts au carré donne beaucoup de poids aux grands écarts : la méthode suppose qu'aucun point n'est très loin des autres."
+    when_broken: "Un seul point très éloigné a un carré énorme. Pour le réduire, la droite des moindres carrés se tord vers lui : sa pente s'éloigne de la vraie, même si les 19 autres points sont parfaitement alignés."
+    affects: [carres]
+
+counterexamples:
+  - id: "droite-plate"
+    label: "Droite plate"
+    explain: "Une droite horizontale ignore la tendance : les carrés sont trois fois plus gros que ceux des moindres carrés."
+    state: { params: { pente: 0 } }
+  - id: "point-aberrant"
+    label: "Un point aberrant"
+    explain: "La droite des moindres carrés se tord vers le point isolé ; votre droite, à la vraie pente, fait alors bien plus de carrés qu'elle."
+    state: { hypotheses: { aberrant: true } }
+
+generator:
+  type: random
+  n: 20                           # 20 points
+  repeat: 500                     # 500 nuages
+  variables:
+    x: { expr: "where(h.aberrant * (idx == 19), 2.5, normal())" }   # le point aberrant : à droite
+    e: { expr: "normal()" }
+    y: { expr: "1 + 1.5 * x + (1 + 3 * h.bruit) * e + 15 * h.aberrant * (idx == 19)" }
+
+methods:
+  - id: votre_droite
+    role: method
+    call: regressor
+    label: "Votre droite (pente choisie)"
+    args: { x: x, y: y, kind: "manuelle", slope: p.pente }
+  - id: mco
+    role: correction
+    call: regressor
+    label: "Droite des moindres carrés (MCO)"
+    explain: "Parmi toutes les droites, c'est celle dont la somme des carrés des résidus est la plus petite. On la calcule directement, sans tâtonner : sa pente vaut la covariance de x et y divisée par la variance de x."
+    args: { x: x, y: y, kind: "ols" }
+
+measures:
+  surplus:
+    agg: "mean(reps.excess)"
+    label: "Carrés en plus par rapport à la droite des moindres carrés"
+    unit: "%"
+    scale: 100
+    decimals: 0
+    primary: true
+    target: 0
+    direction: above
+    ok_within: 0.10
+    broken_beyond: 0.25
+    texts:
+      ok: "Presque le minimum : {value} de carrés en plus."
+      warning: "Pas loin : {value} de carrés en plus."
+      broken: "Loin du minimum : {value} de carrés en plus."
+  biais:
+    agg: "bias(reps.slope, 1.5)"
+    label: "Écart à la vraie pente (1,5)"
+    decimals: 2
+    target: 0
+    direction: both
+    ok_within: 0.2
+    broken_beyond: 0.5
+    texts:
+      ok: "Pente juste (écart de {value})."
+      warning: "Pente un peu faussée (écart de {value})."
+      broken: "Pente faussée (écart de {value})."
+  carres_affiches:
+    agg: "first(reps.sse)"
+    label: "Somme des carrés sur le nuage affiché"
+    decimals: 1
+
+challenges:
+  - id: "minimum-plat"
+    goal: "Avec des points très dispersés, trouvez une pente éloignée d'au moins 0,5 de la vraie qui reste Fiable."
+    when: "h.bruit >= 0.5 and abs(p.pente - 1.5) >= 0.5 and s.surplus == 'ok'"
+    unlock: "Quand les points sont très dispersés, le minimum est plat : les données disent mal quelle est la bonne pente."
+  - id: "battre-les-mco"
+    goal: "Placez un point aberrant, puis trouvez une pente plus proche de la vraie que celle des moindres carrés."
+    when: "h.aberrant and abs(p.pente - 1.5) < abs(m.biais.mco)"
+    unlock: "Votre droite est plus juste, mais elle fait plus de carrés : minimiser les carrés n'est pas toujours trouver la vraie pente."
+
+auto_sweep: [p.pente]
+
+views:
+  - id: nuage
+    type: scatter
+    title: "Le nuage, votre droite et ses résidus"
+    bind:
+      x: example.x
+      y: example.y
+      fit: example.y_hat
+      segments:
+        - { from: example.y, to: example.y_hat, label: "Résidus de votre droite" }
+    ui: { x_title: "x", y_title: "y" }
+  - id: sens-pente
+    type: sensitivity
+    title: "Les carrés en plus selon la pente"
+    sweep: { axes: [p.pente] }
+  - id: sens-bruit
+    type: sensitivity
+    title: "Selon la dispersion des points"
+    sweep: { axes: [h.bruit] }
+
+questions:
+  - id: "car-q1-pente"
+    type: misconception
+    prompt: "Votre droite a une pente de {b} ; celle des moindres carrés vaut environ 1,5. Votre droite peut-elle faire moins de carrés ?"
+    hypothesis: "bruit"
+    procedural_params:
+      b: { min: 0, max: 0.8, step: 0.2 }
+    choices:
+      - id: "a"
+        label: "Oui, si elle passe tout près de quelques points."
+        correct: false
+        reveal_state: { params: { pente: "{b}" } }
+        verify: "m.surplus > 0.25 and m.surplus.mco < 0.001"
+        focus_view: "nuage"
+        explain: "Passer près de quelques points ne suffit pas : les autres résidus grossissent, et le total aussi."
+      - id: "b"
+        label: "Non : aucune droite ne fait moins de carrés que celle des moindres carrés."
+        correct: true
+        reveal_state: { params: { pente: "{b}" } }
+        verify: "m.surplus > 0.25 and m.surplus.mco < 0.001"
+        focus_view: "nuage"
+        explain: "Exact : c'est sa définition. Toute autre droite fait plus de carrés."
+
+  - id: "car-q2-bruit"
+    type: misconception
+    prompt: "Les points sont très dispersés. Vous choisissez une pente de 1, au lieu d'environ 1,5. Cette erreur coûte-t-elle beaucoup de carrés en plus ?"
+    hypothesis: "bruit"
+    choices:
+      - id: "a"
+        label: "Oui : une pente fausse coûte toujours beaucoup de carrés."
+        correct: false
+        reveal_state: { params: { pente: 1.0 }, hypotheses: { bruit: 1.0 } }
+        verify: "s.surplus == 'ok'"
+        focus_view: "nuage"
+        explain: "Comparez votre droite à celle des moindres carrés : avec autant de bruit, le total des carrés ne change presque pas."
+      - id: "b"
+        label: "Non : avec beaucoup de bruit, le total change peu autour du minimum."
+        correct: true
+        reveal_state: { params: { pente: 1.0 }, hypotheses: { bruit: 1.0 } }
+        verify: "s.surplus == 'ok'"
+        focus_view: "nuage"
+        explain: "Exact : le minimum est plat, et les données disent mal quelle est la bonne pente."
+
+  - id: "car-q3-aberrant"
+    type: misconception
+    prompt: "Un point est très au-dessus des autres, à droite du nuage. La droite des moindres carrés garde-t-elle la bonne pente ?"
+    hypothesis: "aberrant"
+    choices:
+      - id: "a"
+        label: "Oui : un seul point sur 20 ne change presque rien."
+        correct: false
+        reveal_state: { hypotheses: { aberrant: true } }
+        verify: "s.biais.mco == 'broken'"
+        focus_view: "nuage"
+        explain: "Un écart de 15 donne un carré de 225 : pour le réduire, la droite se tord nettement vers ce point."
+      - id: "b"
+        label: "Non : elle se tord vers ce point, car son carré pèse énormément."
+        correct: true
+        reveal_state: { hypotheses: { aberrant: true } }
+        verify: "s.biais.mco == 'broken'"
+        focus_view: "nuage"
+        explain: "Exact : les grands écarts comptent au carré, donc un seul point peut fausser la pente."

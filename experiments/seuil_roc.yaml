@@ -1,0 +1,239 @@
+schema_version: 1
+id: "seuil-roc"
+title: "Test médical : où placer le seuil ?"
+discipline: "apprentissage"
+level: "1"                      # catalogue : 1 Découverte, 2 Intermédiaire, 3 Avancé
+concepts: ["classification", "seuil", "matrice-de-confusion", "courbe-roc", "prevalence"]
+
+theorem:
+  name: "Seuil d'un test et règle de Bayes"
+  statement: |
+    Un test donne un score à chaque patient ; on le déclare malade si son score dépasse un seuil.
+    Monter le seuil évite des fausses alertes mais rate des malades : la courbe ROC montre ce
+    compromis. Quand malades et sains sont aussi nombreux, le seuil qui fait le moins d'erreurs est
+    au milieu des deux cloches. Quand la maladie est rare, il faut le monter.
+
+equation:
+  tex: '\text{malade si } s > {{seuil}}'
+  terms:
+    seuil:
+      ok: 't = \tfrac{\mu_0 + \mu_1}{2}'
+      corrected: 't = \tfrac{\mu_0 + \mu_1}{2} + \dfrac{\ln\big((1 - \pi) / \pi\big)}{\mu_1 - \mu_0}'
+
+params:
+  seuil: { type: number, label: "Seuil du test", min: -2, max: 5, step: 0.05, default: 1.25,
+           sweep_values: [-1, 0, 0.5, 1, 1.25, 1.5, 2, 2.5, 3, 4] }
+
+hypotheses:
+  prevalence:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Autant de malades que de sains"
+    category: "classes"
+    ok_label: "50 % de malades"
+    broken_label: "Maladie rare (jusqu'à 2 % de malades)"
+    statement_tex: 'P(\text{malade}) = \pi = 1/2'
+    why: "Le milieu des deux cloches est le meilleur seuil seulement si un patient a, au départ, autant de chances d'être malade que sain."
+    when_broken: "Quand la maladie est rare, la plupart des patients sont sains : un seuil au milieu déclare malades beaucoup de sains. La plupart des tests positifs sont alors de fausses alertes, et il faut monter le seuil."
+    affects: [seuil]
+  separation:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Scores des malades et des sains bien séparés"
+    category: "classes"
+    ok_label: "Bien séparés"
+    broken_label: "Presque confondus"
+    statement_tex: '\mu_1 - \mu_0 = 2{,}5'
+    why: "Un seuil ne peut trier que ce que le score distingue : il faut que les deux cloches soient assez éloignées."
+    when_broken: "Si les deux cloches se chevauchent, aucun seuil ne sépare les malades des sains : la courbe ROC se rapproche de la diagonale et l'aire sous la courbe tombe vers 0,5."
+    affects: [seuil]
+
+counterexamples:
+  - id: "maladie-rare"
+    label: "Maladie rare"
+    explain: "Seuil au milieu, 2 % de malades : le test déclare malades environ 1 sain sur 10, bien plus que de vrais malades."
+    state: { hypotheses: { prevalence: 1.0 } }
+  - id: "seuil-bas"
+    label: "Seuil trop bas"
+    explain: "Presque tous les malades sont détectés, mais la moitié des sains aussi."
+    state: { params: { seuil: 0 } }
+  - id: "cloches-confondues"
+    label: "Cloches confondues"
+    explain: "Les scores ne distinguent presque plus les malades : aucun seuil ne fait un bon test."
+    state: { hypotheses: { separation: 1.0 } }
+
+generator:
+  type: random
+  n: 200                          # 200 patients par étude
+  repeat: 500                     # 500 études
+  variables:
+    malade: { expr: "bernoulli(0.5 - 0.48 * h.prevalence)" }
+    score: { expr: "normal() + (2.5 - 2 * h.separation) * malade" }
+
+methods:
+  - id: manuel
+    role: method
+    call: classifier
+    label: "Seuil choisi à la main"
+    args: { score: score, label: malade, threshold: p.seuil, kind: "seuil" }
+  - id: bayes
+    role: correction
+    call: classifier
+    label: "Seuil de Bayes (tient compte de la rareté)"
+    explain: "Le seuil qui fait le moins d'erreurs est l'endroit où un patient a autant de chances d'être malade que sain. Quand la maladie est rare, il faut un score plus élevé pour y arriver : le seuil monte."
+    repairs: [prevalence]
+    args:
+      score: score
+      label: malade
+      kind: "seuil"
+      threshold: "(2.5 - 2 * h.separation) / 2 + log((0.5 + 0.48 * h.prevalence) / (0.5 - 0.48 * h.prevalence)) / (2.5 - 2 * h.separation)"
+
+measures:
+  exces:
+    agg: "mean(reps.excess)"
+    label: "Erreurs en trop par rapport au meilleur seuil possible"
+    unit: "%"
+    scale: 100
+    decimals: 1
+    primary: true
+    target: 0
+    direction: above
+    ok_within: 0.025
+    broken_beyond: 0.05
+    texts:
+      ok: "Seuil bien placé : seulement {value} d'erreurs en trop."
+      warning: "Seuil un peu mal placé : {value} d'erreurs en trop."
+      broken: "Seuil mal placé : {value} d'erreurs en trop."
+  erreur:
+    agg: "mean(reps.error)"
+    label: "Taux d'erreur"
+    unit: "%"
+    scale: 100
+    decimals: 1
+  sensibilite:
+    agg: "mean(reps.sens)"
+    label: "Sensibilité (malades détectés)"
+    unit: "%"
+    scale: 100
+    decimals: 1
+  specificite:
+    agg: "mean(reps.spec)"
+    label: "Spécificité (sains reconnus)"
+    unit: "%"
+    scale: 100
+    decimals: 1
+  exactitude:
+    agg: "mean(reps.accuracy)"
+    label: "Exactitude (bonnes réponses)"
+    unit: "%"
+    scale: 100
+    decimals: 1
+  auc:
+    agg: "mean(reps.auc)"
+    label: "Aire sous la courbe ROC (1 : parfait, 0,5 : au hasard)"
+    decimals: 3
+    target: 0.8
+    direction: below
+    ok_within: 0.05
+    broken_beyond: 0.15
+    texts:
+      ok: "Le score sépare bien malades et sains (aire {value})."
+      warning: "Le score sépare mal malades et sains (aire {value})."
+      broken: "Le score ne sépare presque plus rien (aire {value})."
+
+challenges:
+  - id: "seuil-maladie-rare"
+    goal: "Avec une maladie rare (2 % de malades), placez le seuil à la main pour faire presque aussi peu d'erreurs que possible."
+    when: "h.prevalence >= 0.95 and s.exces == 'ok'"
+    unlock: "Pour une maladie rare, le bon seuil est bien plus haut que le milieu des deux cloches."
+  - id: "exactitude-trompeuse"
+    goal: "Obtenez plus de 95 % d'exactitude avec un test qui ne détecte presque aucun malade."
+    when: "m.exactitude > 0.95 and m.sensibilite < 0.1"
+    unlock: "Quand une classe est rare, l'exactitude trompe : regardez aussi la sensibilité."
+
+auto_sweep: [p.seuil]
+
+views:
+  - id: scores
+    type: distribution
+    title: "Scores des sains et des malades"
+    bind: { stat: example.score_neg, h1: example.score_pos, threshold: p.seuil }
+    ui: { x_title: "Score du test", labels: { stat: "Sains", h1: "Malades", threshold: "Seuil" } }
+  - id: roc
+    type: curves
+    title: "Courbe ROC"
+    bind: { t: curves.fpr, series: [ { y: curves.tpr, label: "Courbe ROC" } ] }
+    ui: { x_title: "Fausses alertes (1 - spécificité)", y_title: "Malades détectés (sensibilité)" }
+  - id: sens-seuil
+    type: sensitivity
+    title: "Selon le seuil"
+    sweep: { axes: [p.seuil] }
+  - id: sens-prevalence
+    type: sensitivity
+    title: "Selon la rareté de la maladie"
+    sweep: { axes: [h.prevalence] }
+
+questions:
+  - id: "roc-q1-rare"
+    type: misconception
+    prompt: "Une maladie ne touche que 2 % des patients. Vous gardez le seuil au milieu des deux cloches. Ce seuil fait-il aussi peu d'erreurs que possible ?"
+    hypothesis: "prevalence"
+    choices:
+      - id: "a"
+        label: "Oui : le milieu des deux cloches reste le meilleur seuil."
+        correct: false
+        reveal_state: { hypotheses: { prevalence: 1.0 } }
+        verify: "s.exces == 'broken' and s.exces.bayes == 'ok'"
+        focus_view: "scores"
+        explain: "Le seuil au milieu déclare malades environ 1 sain sur 10 : avec 98 % de sains, c'est beaucoup d'erreurs."
+      - id: "b"
+        label: "Non : il faut le monter, sinon trop de sains sont déclarés malades."
+        correct: true
+        reveal_state: { hypotheses: { prevalence: 1.0 } }
+        verify: "s.exces == 'broken' and s.exces.bayes == 'ok'"
+        focus_view: "scores"
+        explain: "Exact : quand la maladie est rare, le seuil qui fait le moins d'erreurs est bien plus haut."
+
+  - id: "roc-q2-exactitude"
+    type: misconception
+    prompt: "La maladie touche 2 % des patients. Un test paresseux déclare tout le monde sain. Son exactitude (la part de bonnes réponses) est-elle faible ?"
+    hypothesis: "prevalence"
+    choices:
+      - id: "a"
+        label: "Oui : il rate tous les malades, donc il se trompe souvent."
+        correct: false
+        reveal_state: { params: { seuil: 5 }, hypotheses: { prevalence: 1.0 } }
+        verify: "m.exactitude > 0.95 and m.sensibilite < 0.05"
+        focus_view: "scores"
+        explain: "Il ne se trompe que sur les malades, soit 2 % des patients : son exactitude dépasse 95 %."
+      - id: "b"
+        label: "Non : elle dépasse 95 %, sans détecter un seul malade."
+        correct: true
+        reveal_state: { params: { seuil: 5 }, hypotheses: { prevalence: 1.0 } }
+        verify: "m.exactitude > 0.95 and m.sensibilite < 0.05"
+        focus_view: "scores"
+        explain: "Exact : quand une classe est rare, l'exactitude trompe. Il faut regarder la sensibilité."
+
+  - id: "roc-q3-separation"
+    type: misconception
+    prompt: "Les scores des malades et des sains se chevauchent presque entièrement. En déplaçant le seuil, peut-on obtenir un bon test ?"
+    hypothesis: "separation"
+    choices:
+      - id: "a"
+        label: "Oui : il suffit de bien placer le seuil."
+        correct: false
+        reveal_state: { hypotheses: { separation: 1.0 } }
+        verify: "s.auc == 'broken' and s.auc.bayes == 'broken'"
+        focus_view: "roc"
+        explain: "La courbe ROC colle à la diagonale : quel que soit le seuil, on détecte à peine plus de malades que de fausses alertes."
+      - id: "b"
+        label: "Non : aucun seuil ne sépare deux cloches presque confondues."
+        correct: true
+        reveal_state: { hypotheses: { separation: 1.0 } }
+        verify: "s.auc == 'broken' and s.auc.bayes == 'broken'"
+        focus_view: "roc"
+        explain: "Exact : le seuil choisit un point sur la courbe ROC, mais il ne peut pas améliorer la courbe elle-même."

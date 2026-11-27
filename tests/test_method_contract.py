@@ -206,8 +206,9 @@ def test_laws_common_uniforms_monotone() -> None:
 
 
 def test_aggregators_registry() -> None:
-    """Vérifie que les 10 agrégateurs de la Table 8 sont enregistrés."""
+    """Vérifie que les 10 agrégateurs de la Table 8 sont enregistrés, plus `kurtosis` (catalogue)."""
     expected = {
+        "kurtosis",
         "rate",
         "mean",
         "bias",
@@ -222,6 +223,13 @@ def test_aggregators_registry() -> None:
     assert set(AGGREGATORS.keys()) == expected
     with pytest.raises(KeyError):
         get_aggregator("inexistant")
+
+
+def test_kurtosis_is_zero_for_normal_and_flat_for_uniform() -> None:
+    rng = np.random.default_rng(0)
+    assert abs(AGGREGATORS["kurtosis"](rng.standard_normal(200_000)).value) < 0.05
+    assert abs(AGGREGATORS["kurtosis"](rng.uniform(size=200_000)).value + 1.2) < 0.02
+    assert AGGREGATORS["kurtosis"]([1.0, 1.0, 1.0, 1.0]).mc_se is None
 
 
 def test_aggregators_values_and_mc_se() -> None:
@@ -306,6 +314,21 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
     ),
     "ols_ci": (
         {"x": _X0, "y": 1.0 + 1.5 * _X0 + _X0[::-1], "truth": 1.5, "alpha": 0.05, "se_type": "HC3"},
+        20,
+        15,
+    ),
+    "statistic": (
+        {"x": _X0, "kind": "sum", "continuity": True, "rng": np.random.default_rng(0)},
+        20,
+        15,
+    ),
+    "classifier": (
+        {"score": _X0, "label": _X0[::-1] > 0, "threshold": 0.0, "kind": "seuil"},
+        20,
+        15,
+    ),
+    "regressor": (
+        {"x": _X0, "y": 1.0 + 1.5 * _X0 + _X0[::-1], "kind": "manuelle", "slope": 1.0},
         20,
         15,
     ),
