@@ -151,3 +151,18 @@ def test_cache_survives_concurrent_runs_with_evictions(monkeypatch: pytest.Monke
         results = list(pool.map(lambda seed: runner.run(spec, EngineState(seed=seed)), range(40)))
     assert len(results) == 40
     assert runner.run(spec, EngineState(seed=3)).state_hash == results[3].state_hash
+
+
+def test_draw_log_served_only_when_declared_and_matches_first_repetition() -> None:
+    from backend.engine.runner import _compute, spec_hash
+    from backend.engine.state import resolve_state
+
+    spec = _spec("test_student", ARCHIVES)
+    state = EngineState(hypotheses={"loi": "cauchy"})
+    res = runner.run(spec, state)
+    reps = _compute(spec, resolve_state(spec, state), spec_hash(spec)).results["student"].reps
+    assert res.draw_log is not None
+    assert res.draw_log.reject == bool(reps["reject"][0])
+    assert res.draw_log.pvalue == pytest.approx(float(reps["pvalue"][0]), abs=1e-5)
+    assert runner.run(spec, state).draw_log == res.draw_log  # déterministe
+    assert runner.run(_spec("regression_lineaire")).draw_log is None  # non déclaré : null
