@@ -13,16 +13,21 @@
 
   let experiments = $state<ExperimentSummary[] | null>(null)
   let listKind = $state<'api' | 'fixtures'>('api')
+  let listError = $state<string | null>(null)
 
-  $effect(() => {
-    if (link.kind !== 'home' || dev) return
+  function loadList(): void {
+    listError = null
     listExperiments().then(
       (r) => {
         experiments = r.items
         listKind = r.kind
       },
-      () => (experiments = []),
+      (err) => (listError = err instanceof Error ? err.message : 'Une erreur inattendue est survenue.'),
     )
+  }
+
+  $effect(() => {
+    if (link.kind === 'home' && !dev) loadList()
   })
 </script>
 
@@ -45,13 +50,16 @@
     <h1>Crash-Test</h1>
     <p>Cassez une hypothèse, mesurez ce qui cède, puis réparez.</p>
     <p><a href="?train=toutes&v={LINK_VERSION}">S'entraîner avec des questions →</a></p>
-    {#if experiments === null}
+    {#if listError}
+      <p class="error" role="alert">{listError}</p>
+      <p><button type="button" onclick={loadList}>Réessayer</button></p>
+    {:else if experiments === null}
       <p class="muted">Chargement des expériences…</p>
     {:else if experiments.length === 0}
-      <p class="muted">Aucune expérience disponible. Vérifiez que le moteur est lancé.</p>
+      <p class="muted">Aucune expérience disponible.</p>
     {:else}
       {#if listKind === 'fixtures'}
-        <p class="muted">Le moteur ne répond pas : expériences de démonstration.</p>
+        <p class="muted">Expériences de démonstration.</p>
       {/if}
       <ul class="list">
         {#each experiments as e (e.id)}
@@ -75,6 +83,9 @@
   }
   .muted {
     color: var(--ct-muted);
+  }
+  .error {
+    color: var(--ct-role-rupture);
   }
   .list {
     list-style: none;

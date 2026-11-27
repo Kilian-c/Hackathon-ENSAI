@@ -240,6 +240,7 @@
 {#if error && !result}
   <div class="state-msg error" role="alert">
     <p>{error}</p>
+    <p><button type="button" onclick={() => location.reload()}>Réessayer</button></p>
     <p><a href="?">Revenir à l'accueil</a></p>
   </div>
 {:else if !spec || !engine}
@@ -264,8 +265,8 @@
 
     {#if source?.kind === 'fixtures'}
       <p class="banner fixtures">
-        Données de démonstration : le moteur ne sert pas encore cette expérience. Les résultats affichés
-        viennent de fixtures et ne suivent pas exactement les curseurs.
+        Données de démonstration : les résultats affichés ne viennent pas du moteur et ne suivent pas
+        exactement les curseurs.
       </p>
     {/if}
 
@@ -345,17 +346,20 @@
                     : 'Aucun balayage disponible pour cette vue.'}
               </p>
             {:else}
-              <PlotlyChart
-                view={activeView}
-                methodsOn={methodsOnSet}
-                {showReference}
-                sweep={sweepShown}
-                measure={sweptMeasure}
-                {roles}
-                methodLabels={labels}
-                axisLabel={sweepShown ? axisTitle(spec, sweepShown.axes[0].target) : undefined}
-                height={420}
-              />
+              <!-- Un graphique par vue : le zoom d'une vue ne passe pas à la suivante. -->
+              {#key activeView.id}
+                <PlotlyChart
+                  view={activeView}
+                  methodsOn={methodsOnSet}
+                  {showReference}
+                  sweep={sweepShown}
+                  measure={sweptMeasure}
+                  {roles}
+                  methodLabels={labels}
+                  axisLabel={sweepShown ? axisTitle(spec, sweepShown.axes[0].target) : undefined}
+                  height={420}
+                />
+              {/key}
             {/if}
           {:else if !result}
             <p class="muted">Calcul en cours…</p>
