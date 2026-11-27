@@ -1,0 +1,165 @@
+schema_version: 1
+id: "test-student"
+title: "Test de Student : queues lourdes, niveau et puissance"
+discipline: "statistique"
+level: "1A"
+concepts: ["test-de-student", "wilcoxon", "queues-lourdes", "puissance", "risque-alpha"]
+
+theorem:
+  name: "Test de Student pour un échantillon"
+  statement: |
+    Si les observations sont indépendantes et de loi normale, la statistique
+    T = moyenne / (S / racine de n) suit une loi de Student à n - 1 degrés de liberté :
+    le test rejette H0 à tort dans exactement 5 % des cas.
+
+equation:
+  tex: '{{stat}}'
+  terms:
+    stat:
+      ok: 'T = \frac{\bar{X}}{S / \sqrt{n}} \sim t_{n-1}'
+      corrected: 'W^{+} = \sum_{i} R_i \, \mathbf{1}\{X_i > 0\}'
+
+params:
+  n:     { type: number, label: "Taille d'échantillon n", min: 5, max: 200, step: 1, default: 25,
+           sweep_values: [5, 10, 25, 50, 100, 200] }
+  delta: { type: number, label: "Décalage sous H1", min: 0.1, max: 1.5, step: 0.1, default: 0.5 }
+
+hypotheses:
+  loi:
+    type: choice
+    healthy_value: "normal"
+    label: "Loi des observations (toutes symétriques)"
+    category: "normalite"
+    options:
+      normal:    { label: "Normale", law: normal }
+      uniform:   { label: "Uniforme", law: uniform, robust_expected: true }
+      bimodal:   { label: "Bimodale", law: bimodal, robust_expected: true }
+      student_2: { label: "Student à 2 ddl (queues lourdes)", law: student_2 }
+      cauchy:    { label: "Cauchy (sans espérance)", law: cauchy }
+    statement_tex: 'X_i \sim \mathcal{N}(\mu, \sigma^2)'
+    why: "La normalité donne la loi exacte de T ; la moyenne et l'écart type empiriques supposent des queues légères."
+    when_broken: "Avec des queues lourdes, un seul point extrême gonfle S : le test devient trop prudent et perd presque toute sa puissance."
+    affects: [stat]
+
+counterexamples:
+  - id: "cauchy-petit-n"
+    label: "Cauchy, n = 25"
+    explain: "Le test de Student ne détecte presque plus rien : comparez sa puissance à celle de la Référence (loi normale)."
+    state: { hypotheses: { loi: "cauchy" } }
+  - id: "cauchy-grand-n"
+    label: "Cauchy, n = 200"
+    explain: "Un grand échantillon ne sauve pas le test de Student ; Wilcoxon retrouve toute sa puissance."
+    state: { params: { n: 200 }, hypotheses: { loi: "cauchy" } }
+
+generator:
+  type: random
+  n: p.n
+  repeat: 500
+  variables:
+    x0: { expr: "@h.loi" }               # sous H0 : centre de symétrie en 0
+    x1: { expr: "x0 + p.delta" }         # sous H1 : mêmes tirages, décalés
+
+methods:
+  - id: student
+    role: method
+    call: one_sample_test
+    label: "Test de Student"
+    args: { x0: x0, x1: x1, alpha: 0.05, kind: "student" }
+  - id: wilcoxon
+    role: correction
+    call: one_sample_test
+    label: "Test de Wilcoxon (rangs signés)"
+    explain: "Les rangs ne voient pas la taille des valeurs extrêmes : sous une loi symétrique, le niveau reste exact et la puissance tient."
+    repairs: [loi]
+    args: { x0: x0, x1: x1, alpha: 0.05, kind: "wilcoxon" }
+
+measures:
+  power:
+    agg: "rate(reps.reject_h1)"
+    label: "Puissance sous H1"
+    unit: "%"
+    scale: 100
+    decimals: 1
+    primary: true
+    target: base                 # la cible est la puissance de la même méthode sous loi normale
+    direction: below
+    ok_within: 0.10
+    broken_beyond: 0.25          # n = 25 : Student Rompu sous Student à 2 ddl et Cauchy ; Wilcoxon Fragile sous Cauchy
+    texts:
+      ok: "Puissance préservée : {value}."
+      warning: "Puissance entamée : {value}."
+      broken: "Puissance effondrée : {value}."
+  alpha:
+    agg: "rate(reps.reject)"
+    label: "Risque de première espèce réel"
+    unit: "%"
+    scale: 100
+    decimals: 1
+    target: 0.05
+    direction: both
+    ok_within: 0.025             # au moins 2,5 erreurs Monte Carlo : le hasard seul ne change pas le verdict
+    broken_beyond: 0.04          # Cauchy : 1,8 % à n = 25 (Fragile), 0,4 % à n = 200 (Rompu)
+
+draw_log: { reject: reps.reject, pvalue: reps.pvalue, reject_label: "faux positif" }   # P1
+
+challenges:
+  - id: "moitie-puissance"
+    goal: "Trouvez une loi pour laquelle le test de Student perd plus de la moitié de sa puissance."
+    when: "m.power < 0.5 * base.power"
+    unlock: "Avec des queues lourdes, l'écart type empirique explose et masque l'effet."
+  - id: "grand-n-cauchy"
+    goal: "Montrez qu'un grand échantillon ne rend pas sa puissance au test de Student sous Cauchy."
+    when: "h.loi == 'cauchy' and p.n >= 100 and s.power == 'broken'"
+    unlock: "Sans espérance, il n'y a pas de théorème central limite : n ne répare rien."
+
+auto_sweep: [p.n]
+
+views:
+  - id: pvalues
+    type: distribution
+    title: "Distribution des p-values sous H0"
+    bind: { stat: reps.pvalue }
+    ui: { x_range: [0, 1], uniform_reference: true }   # un test exact donne des p-values uniformes
+  - id: echantillon
+    type: distribution
+    title: "Un échantillon"
+    bind: { stat: example.x0 }
+  - id: sens
+    type: sensitivity
+    title: "Puissance selon la loi"
+    sweep: { axes: [h.loi] }
+  - id: validite
+    type: validity_domain
+    title: "Loi et taille d'échantillon"
+    sweep: { axes: [h.loi, p.n] }
+
+questions:
+  - id: "stu-q1-cauchy"
+    type: misconception
+    prompt: "Sous une loi de Cauchy (n = {n}), le test de Student rejette-t-il H0 à tort plus souvent que 5 % ?"
+    hypothesis: "loi"
+    procedural_params:
+      n: { min: 15, max: 60, step: 5 }
+    choices:
+      - id: "a"
+        label: "Oui, beaucoup plus souvent."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "cauchy" } }
+        verify: "m.alpha < 0.05 and s.power == 'broken'"
+        focus_view: "pvalues"
+        explain: "Les p-values s'entassent près de 1 : le test devient trop prudent, et c'est sa puissance qui s'effondre."
+      - id: "b"
+        label: "Non : il devient trop prudent, et c'est sa puissance qui s'effondre."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "cauchy" } }
+        verify: "m.alpha < 0.05 and s.power == 'broken'"
+        focus_view: "pvalues"
+        explain: "Exact : un point extrême gonfle S, donc T reste petit, sous H0 comme sous H1."
+
+  - id: "stu-q2-diag"
+    type: diagnostic_auto
+    prompt: "Voici un échantillon de 200 observations. De quelle loi vient-il ?"
+    view: "echantillon"
+    state: { params: { n: 200 } }
+    pathologies:
+      from: [loi.student_2, loi.cauchy]      # plus « Normale », ajoutée d'office
