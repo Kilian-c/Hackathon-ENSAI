@@ -355,3 +355,87 @@ def test_expression_checks_report_lines():
 def test_variable_cycle_is_refused():
     issue = _first_issue(REGRESSION.replace("law('normal')\" }", "x + 1\" }", 1))
     assert "Cycle" in issue.message
+
+
+# --- État canonique et générateur `random` ------------------------------------------------------------------
+
+from backend.contracts import EngineState  # noqa: E402
+from backend.engine.generators.random_world import generate  # noqa: E402
+from backend.engine.state import StateError, healthy, resolve_state  # noqa: E402
+
+REG_SPEC = load_experiment(REGRESSION)
+
+
+def world_for(hypotheses=None, params=None, seed=42, points=None, spec=REG_SPEC):
+    state = resolve_state(
+        spec,
+        EngineState(params=params or {}, hypotheses=hypotheses or {}, seed=seed, extra_points=points or []),
+    )
+    return generate(spec, state)
+
+
+def test_state_defaults_rounding_and_hash():
+    a = resolve_state(REG_SPEC, EngineState(hypotheses={"hetero": 0.30000000000000004}))
+    explicit = EngineState(params={"n": 150}, hypotheses={"hetero": 0.3, "error_law": "normal"})
+    b = resolve_state(REG_SPEC, explicit)
+    assert a.hypotheses["hetero"] == 0.3 and a.hash() == b.hash() and len(a.hash()) == 16
+    assert resolve_state(REG_SPEC, EngineState(seed=7)).hash() != a.hash()
+    ref = healthy(REG_SPEC, resolve_state(REG_SPEC, EngineState(hypotheses={"hetero": 0.9}, seed=3)))
+    assert ref.hypotheses["hetero"] == 0.0 and ref.seed == 3
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        EngineState(params={"zzz": 1}),
+        EngineState(params={"n": 5000.0}),
+        EngineState(hypotheses={"hetero": 1.5}),
+        EngineState(hypotheses={"error_law": "gamma"}),
+        EngineState(hypotheses={"add_leverage": 1.0}),
+    ],
+)
+def test_state_errors(state):
+    with pytest.raises(StateError):
+        resolve_state(REG_SPEC, state)
+
+
+def test_generator_shapes_and_determinism():
+    w1, w2 = world_for(), world_for()
+    assert (w1.repeat, w1.n) == (500, 150)
+    assert all(v.shape == (500, 150) for v in w1.variables.values())
+    assert all(np.array_equal(w1.variables[k], w2.variables[k]) for k in w1.variables)
+    assert not np.array_equal(w1.variables["x"], world_for(seed=43).variables["x"])
+    assert world_for(params={"n": 30.0}).variables["y"].shape == (500, 30)
+
+
+def test_generator_shares_draws_across_hypotheses():
+    sain, hetero = world_for(), world_for({"hetero": 0.8})
+    assert np.array_equal(sain.variables["x"], hetero.variables["x"])
+    assert np.array_equal(sain.variables["base_eps"], hetero.variables["base_eps"])
+    assert not np.allclose(sain.variables["y"], hetero.variables["y"])
+    # La variance de l'erreur croît avec x quand hetero > 0.
+    x, eps = hetero.variables["x"], hetero.variables["eps"]
+    assert eps[x > 1].std() > 2 * eps[x < -1].std()
+
+
+def test_generator_options_leverage_and_autocorr():
+    expo = world_for({"error_law": "exponential"}).variables["base_eps"]
+    assert expo.min() > -1.01 and expo.max() > 4  # asymétrique : loi exponentielle centrée réduite
+    lev = world_for({"add_leverage": True}).variables
+    assert lev["lev"][:, 0].all() and not lev["lev"][:, 1:].any() and (lev["x"][:, 0] == 6.0).all()
+    quad = world_for({"relation": "quadratic"}).variables["signal"]
+    x = world_for().variables["x"]
+    assert np.allclose(quad, x + 0.5 * (x**2 - 1))
+    ar = world_for({"autocorr": True}).variables["x"]
+    assert np.corrcoef(ar[:, 1:].ravel(), ar[:, :-1].ravel())[0, 1] == pytest.approx(0.7, abs=0.03)
+
+
+def test_generator_extra_points_only_in_current_state():
+    pts = [{"x": 4.2, "y": -2.0}, {"x": 5.0, "y": 1.0}]
+    w = world_for(points=pts)
+    assert (w.n, w.variables["x"].shape, w.variables["y"].shape) == (152, (500, 152), (500, 152))
+    assert (w.variables["x"][:, -2] == 4.2).all() and (w.variables["y"][:, -1] == 1.0).all()
+    state = resolve_state(REG_SPEC, EngineState(extra_points=pts))
+    assert generate(REG_SPEC, healthy(REG_SPEC, state)).n == 150
+    with pytest.raises(ExprError):
+        world_for(points=[{"x": 1.0}])
