@@ -2,15 +2,15 @@
  * views.ts : lecture des vues du moteur (R3).
  *
  * Les TYPES viennent de types.gen.ts (générés depuis backend/contracts.py) : ViewResult, Series,
- * SweepResult... Ce fichier ajoute seulement ce que le contrat laisse libre, à savoir le contenu de
- * `Series.data` selon le type de vue (annexe E du cahier), et des accès typés à ce contenu.
+ * SweepResult... Ce fichier ajoute des accès tolérants aux valeurs absentes (NaN et Infinity
+ * arrivent en null) et quelques règles de lecture communes à toutes les vues.
  *
- * Contenu de `Series.data` attendu par l'interface (à garder aligné avec les fixtures de R1) :
- * - points ou ligne (nuage, résidus, courbes) : { x: number[], y: number[] }
- * - intervalles (Répétitions)                 : { est, low, high: number[], hit: boolean[] }
- * - distribution                             : { x: number[] }  (valeurs à mettre en histogramme)
- * - valeur scalaire (vraie valeur, seuil)    : { value: number }
- * Les NaN arrivent en null : toutes les lectures les tolèrent.
+ * Données d'une série (contrat, `Series`) :
+ * - points ou ligne (nuage, résidus, courbes) : x, y
+ * - intervalles (Répétitions, mode « intervals ») : x (estimation), low, high, hit
+ * - distribution : x (valeurs à mettre en histogramme)
+ * - valeur scalaire (vraie valeur, seuil) : value
+ * - trajectoires (Répétitions, mode « paths ») : paths
  */
 
 import type { MeasureResult, Series, SweepResult, ViewResult } from './types.gen'
@@ -23,27 +23,21 @@ export type Range = [number, number]
 /** Mise en forme d'une mesure (sous-ensemble de RunResult.measures.<id>). */
 export type MeasureFormat = Pick<MeasureResult, 'label'> & Partial<Pick<MeasureResult, 'unit' | 'scale' | 'decimals'>>
 
-/** Emplacement d'une série, lu dans son identifiant stable `<vue>.<emplacement>.<methode>`. */
-export function slotOf(s: Series): string {
-  return s.id.split('.')[1] ?? ''
+type NumKey = 'x' | 'y' | 'low' | 'high'
+
+/** Tableau numérique d'une série (null pour les valeurs absentes ou non finies). */
+export function nums(s: Series, key: NumKey): Num[] {
+  return (s[key] ?? []).map((v) => (typeof v === 'number' && Number.isFinite(v) ? v : null))
 }
 
-/** Tableau numérique d'une série (null pour les valeurs absentes ou non numériques). */
-export function nums(s: Series, key: string): Num[] {
-  const v = s.data[key]
-  return Array.isArray(v) ? v.map((x) => (typeof x === 'number' && Number.isFinite(x) ? x : null)) : []
-}
-
-/** Tableau booléen d'une série. */
-export function bools(s: Series, key: string): boolean[] {
-  const v = s.data[key]
-  return Array.isArray(v) ? v.map((x) => x === true) : []
+/** Succès par répétition (intervalles). */
+export function bools(s: Series): boolean[] {
+  return (s.hit ?? []).map((v) => v === true)
 }
 
 /** Valeur scalaire d'une série, ou null. */
-export function scalar(s: Series, key = 'value'): Num {
-  const v = s.data[key]
-  return typeof v === 'number' && Number.isFinite(v) ? v : null
+export function scalar(s: Series): Num {
+  return typeof s.value === 'number' && Number.isFinite(s.value) ? s.value : null
 }
 
 /** Bornes [min, max] d'un axe de la vue, ou null (automatique). */
@@ -52,10 +46,7 @@ export function axisRange(view: ViewResult, axis: 'x' | 'y'): Range | null {
   return r && r.length === 2 ? [r[0], r[1]] : null
 }
 
-/**
- * Série de données du générateur (nuage d'observations), commune à toutes les méthodes :
- * pas de méthode d'origine, et ni vraie valeur, ni Référence, ni point ajouté.
- */
+/** Données du générateur (nuage d'observations), communes à toutes les méthodes : style neutre. */
 export function isGeneratorData(s: Series): boolean {
-  return s.method === null && (s.role === 'method' || s.role === 'correction')
+  return s.role === 'data'
 }

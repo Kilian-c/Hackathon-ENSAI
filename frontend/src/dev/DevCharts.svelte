@@ -6,7 +6,14 @@
 <script lang="ts">
   import PlotlyChart from '../components/PlotlyChart.svelte'
   import { displayRoles } from '../lib/roles'
+  import type { RunResult, SweepResult } from '../lib/types.gen'
   import type { ViewResult } from '../lib/views'
+
+  // Vraies fixtures (scripts/make_fixtures.py, R1) : on vérifie qu'elles s'affichent toutes.
+  const runFixtures = import.meta.glob<RunResult>('../fixtures/*.run.json', { eager: true, import: 'default' })
+  const sweepFixture = Object.values(
+    import.meta.glob<SweepResult>('../fixtures/*.sweep.json', { eager: true, import: 'default' }),
+  )[0]
   import { pendulumFixture, regressionFixture, regressionMethods, regressionSweep } from './fakeViews'
 
   let hetero = $state(0.8)
@@ -29,7 +36,7 @@
 
   const sensView: ViewResult = {
     id: 'sens', type: 'sensitivity', title: 'Étude de sensibilité',
-    axes: null, shown: 11, total: 11, clipped: 0, data: { series: [] },
+    mode: null, axes: { x: null, y: null }, shown: 11, total: 11, clipped: 0, series: [],
     ui: { x_title: 'Hétéroscédasticité h' },
   }
   const pct = (v: number) => `${(v * 100).toFixed(1).replace('.', ',')} %`
@@ -70,6 +77,26 @@
     <PlotlyChart view={reg.views.pentes} methodsOn={regOn} {showReference} />
     <PlotlyChart view={pen.view} methodsOn={penOn} {showReference} />
   </div>
+
+  <h2>Vraies fixtures du moteur (R1, src/fixtures/)</h2>
+  {#each Object.entries(runFixtures) as [name, run] (name)}
+    {@const on = new Set(run.methods.filter((m) => correction || m.role === 'method').map((m) => m.id))}
+    <h3>{name.replace('../fixtures/', '')}</h3>
+    <div class="grid">
+      {#each run.views as view (view.id)}
+        {@const primary = Object.values(run.measures).find((m) => m.primary)}
+        <PlotlyChart
+          {view}
+          methodsOn={on}
+          {showReference}
+          sweep={view.type === 'sensitivity' && name.includes('regression') ? sweepFixture : null}
+          measure={primary ?? null}
+          roles={displayRoles(run.methods)}
+          methodLabels={Object.fromEntries(run.methods.map((m) => [m.id, m.label]))}
+        />
+      {/each}
+    </div>
+  {/each}
 </section>
 
 <style>

@@ -13,17 +13,24 @@ import type { Num, Range, Series, SweepResult, ViewResult } from '../lib/views'
 type Role = Series['role']
 
 /** Une série au format du contrat : id stable `<vue>.<emplacement>.<methode>`. */
-function series(view: string, slot: string, method: string | null, role: Role, label: string, data: Record<string, unknown>): Series {
+function series(
+  view: string, slot: string, method: string | null, role: Role, label: string,
+  data: Partial<Pick<Series, 'x' | 'y' | 'low' | 'high' | 'hit' | 'value'>>,
+): Series {
   const suffix = role === 'reference' ? '.ref' : ''
-  return { id: `${view}.${slot}.${method ?? 'gen'}${suffix}`, method, role, label, layer: null, data }
+  return {
+    id: `${view}.${slot}.${method ?? 'gen'}${suffix}`, slot, method, role, label, layer: null,
+    x: null, y: null, low: null, high: null, hit: null, value: null, paths: null, ...data,
+  }
 }
 
 /** Une vue au format du contrat. */
 function view(
-  id: string, type: string, title: string, axes: Record<string, Range>, shown: number, total: number,
+  id: string, type: string, title: string, axes: { x?: Range; y?: Range }, shown: number, total: number,
   list: Series[], ui: Record<string, unknown> | null = null,
 ): ViewResult {
-  return { id, type, title, axes, shown, total, clipped: 0, ui, data: { series: list } }
+  const mode = type === 'repetitions' ? 'intervals' : null
+  return { id, type, title, mode, axes: { x: axes.x ?? null, y: axes.y ?? null }, shown, total, clipped: 0, ui, series: list }
 }
 
 // --- Aléatoire déterministe (mulberry32 + Box-Muller) ---
@@ -170,8 +177,8 @@ export function regressionFixture(h: number, seed: number, reps = 500, shown = 1
   const residRange = stableRange(fRef.resid)
 
   const nuage = view('nuage', 'scatter', 'Nuage et droite ajustée', axesXY, N, N, [
-    // Données du générateur : pas de méthode (method: null).
-    series('nuage', 'xy', null, 'method', 'Observations', { x: cur.x, y: cur.y }),
+    // Données du générateur : rôle « data », sans méthode.
+    series('nuage', 'xy', null, 'data', 'Observations', { x: cur.x, y: cur.y }),
     series('nuage', 'fit', 'ols', 'reference', 'Référence (état sain)', { x: ref.x, y: fRef.yHat }),
     // HC3 donne la même droite que les MCO (seule la variance change) : une seule série « fit ».
     series('nuage', 'fit', 'ols', 'method', METHODS[0].label, { x: cur.x, y: fCur.yHat }),
@@ -187,7 +194,7 @@ export function regressionFixture(h: number, seed: number, reps = 500, shown = 1
   const ic = view('ic', 'repetitions', '100 intervalles de confiance empilés', { x: stableRange(refBounds) }, shown, reps, [
     ...(['ols', 'hc3'] as const).map((m, k) =>
       series('ic', 'est', m, k === 0 ? 'method' : 'correction', METHODS[k].label, {
-        est: take(est), low: take(bounds[m].low), high: take(bounds[m].high), hit: hitOf(m),
+        x: take(est), low: take(bounds[m].low), high: take(bounds[m].high), hit: hitOf(m),
       }),
     ),
     series('ic', 'truth', null, 'truth', 'Vraie pente', { value: BETA1 }),

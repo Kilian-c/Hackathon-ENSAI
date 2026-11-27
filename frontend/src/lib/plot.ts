@@ -19,7 +19,6 @@ import {
   isGeneratorData,
   nums,
   scalar,
-  slotOf,
   type MeasureFormat,
   type Num,
   type Range,
@@ -271,13 +270,13 @@ function captionFor(view: ViewResult, clipped: number): string[] {
 function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
   const data: Trace[] = []
   let clipped = 0
-  const visible = view.data.series.filter(
-    (s) => isVisible(s, opts) && s.data.x !== undefined && s.data.y !== undefined,
+  const visible = view.series.filter(
+    (s) => isVisible(s, opts) && s.x != null && s.y != null,
   )
   // Référence d'abord, pour qu'elle reste derrière.
   visible.sort((a, b) => Number(b.role === 'reference') - Number(a.role === 'reference'))
   for (const s of visible) {
-    if (LINE_SLOTS.has(slotOf(s)) || view.type === 'curves') {
+    if (LINE_SLOTS.has(s.slot) || view.type === 'curves') {
       // Une courbe dans le temps arrive déjà dans l'ordre ; une droite ajustée doit être triée.
       data.push(lineTrace(s, view.type !== 'curves'))
     } else {
@@ -302,8 +301,8 @@ function intervalsFigure(view: ViewResult, opts: ChartOptions): Figure {
   const shapes: Trace[] = []
   const annotations: Trace[] = []
   const rupture = cssVar('--ct-role-rupture')
-  const series = view.data.series.filter(
-    (s) => isVisible(s, opts) && s.data.low !== undefined && s.data.high !== undefined,
+  const series = view.series.filter(
+    (s) => isVisible(s, opts) && s.low != null && s.high != null,
   )
   const spacing = series.length > 1 ? 0.8 / series.length : 0
   let rows = 0
@@ -311,10 +310,10 @@ function intervalsFigure(view: ViewResult, opts: ChartOptions): Figure {
   series.forEach((s, k) => {
     const role = seriesRole(s) ?? 'method'
     const color = markerColor(role)
-    const est = nums(s, 'est')
+    const est = nums(s, 'x') // l'estimation est portée par x
     const low = nums(s, 'low')
     const high = nums(s, 'high')
-    const hit = bools(s, 'hit')
+    const hit = bools(s)
     rows = Math.max(rows, est.length)
     const groups = { ok: [] as number[], miss: [] as number[] }
     est.forEach((e, i) => {
@@ -346,7 +345,7 @@ function intervalsFigure(view: ViewResult, opts: ChartOptions): Figure {
     }
   })
 
-  for (const t of view.data.series.filter((s) => s.role === 'truth')) {
+  for (const t of view.series.filter((s) => s.role === 'truth')) {
     const v = scalar(t)
     if (v === null) continue
     const line = verticalLine(v, cssVar('--ct-role-truth'), 'solid', t.label)
@@ -372,7 +371,7 @@ function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
   const annotations: Trace[] = []
   const rx = axisRange(view, 'x')
   const bins = rx ? { start: rx[0], end: rx[1], size: (rx[1] - rx[0]) / 40 } : undefined
-  for (const s of view.data.series.filter((x) => isVisible(x, opts))) {
+  for (const s of view.series.filter((x) => isVisible(x, opts))) {
     const v = scalar(s)
     if (v !== null) {
       const color = s.role === 'truth' ? cssVar('--ct-role-truth') : cssVar('--ct-plot-axis')
@@ -548,8 +547,8 @@ export function buildFigure(view: ViewResult, opts: ChartOptions): Figure | null
     case 'curves':
       return xyFigure(view, opts)
     case 'repetitions':
-      // Intervalles si les séries portent des bornes ; sinon trajectoires (LGN et TCL, P1).
-      return view.data.series.some((s) => s.data.low !== undefined) ? intervalsFigure(view, opts) : xyFigure(view, opts)
+      // TODO(passation) : trajectoires (mode « paths », LGN et TCL, P1) à dessiner depuis Series.paths.
+      return view.mode === 'paths' ? xyFigure(view, opts) : intervalsFigure(view, opts)
     case 'distribution':
       return distributionFigure(view, opts)
     case 'sensitivity':

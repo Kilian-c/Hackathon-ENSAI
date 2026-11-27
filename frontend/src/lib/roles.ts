@@ -42,6 +42,7 @@ const ROLE_SPECS: Record<DisplayRole, RoleSpec> = {
   truth:         { label: 'Vraie valeur',  colorVar: '--ct-role-truth',         dash: 'solid',   width: 1,   symbol: null },
   rupture:       { label: 'Rupture',       colorVar: '--ct-role-rupture',       dash: 'solid',   width: 2,   symbol: 'x' },
   injected:      { label: 'Point ajouté',  colorVar: '--ct-role-injected',      dash: null,      width: 0,   symbol: 'star' },
+  data:          { label: 'Observations',  colorVar: '--ct-plot-data',          dash: null,      width: 0,   symbol: 'circle' },
 }
 
 interface VerdictSpec {

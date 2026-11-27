@@ -622,12 +622,11 @@ export interface RunResult {
  * via the `definition` "ViewResult".
  */
 export interface ViewResult {
-  axes: {
-    [k: string]: number[];
-  } | null;
+  axes: ViewAxes;
   clipped: number;
-  data: ViewData;
   id: string;
+  mode: ("intervals" | "paths") | null;
+  series: Series[];
   shown: number;
   title: string;
   total: number;
@@ -637,28 +636,44 @@ export interface ViewResult {
   } | null;
 }
 /**
- * Contenu d'une vue. Les séries sont typées ; le reste dépend du type de vue (annexe E).
+ * Bornes [min, max] calculées sur la Référence (ou fixées dans le YAML) ; null = automatique.
  *
  * This interface was referenced by `Schema`'s JSON-Schema
- * via the `definition` "ViewData".
+ * via the `definition` "ViewAxes".
  */
-export interface ViewData {
-  series: Series[];
-  [k: string]: unknown;
+export interface ViewAxes {
+  x: number[] | null;
+  y: number[] | null;
 }
 /**
+ * Série prête à dessiner : le moteur a résolu les `bind` du YAML (format proposé par R3, views.ts).
+ *
  * This interface was referenced by `Schema`'s JSON-Schema
  * via the `definition` "Series".
  */
 export interface Series {
-  data: {
-    [k: string]: unknown;
-  };
+  high: (number | null)[] | null;
+  hit: boolean[] | null;
   id: string;
   label: string;
   layer: string | null;
+  low: (number | null)[] | null;
   method: string | null;
-  role: "method" | "correction" | "alternative_1" | "alternative_2" | "reference" | "truth" | "rupture" | "injected";
+  paths: (number | null)[][] | null;
+  role:
+    | "method"
+    | "correction"
+    | "alternative_1"
+    | "alternative_2"
+    | "reference"
+    | "truth"
+    | "data"
+    | "rupture"
+    | "injected";
+  slot: string;
+  value: number | null;
+  x: (number | null)[] | null;
+  y: (number | null)[] | null;
 }
 /**
  * This interface was referenced by `Schema`'s JSON-Schema
