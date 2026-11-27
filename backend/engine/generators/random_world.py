@@ -19,6 +19,8 @@ from backend.engine.rng import rng_for
 from backend.engine.schema import MAX_N, MAX_REPEAT, ExperimentSpec, RandomGenerator
 from backend.engine.state import ResolvedState
 
+MAX_CELLS = 20_000_000  # répétitions x taille x variables : environ 160 Mo de flottants au plus
+
 
 @dataclass
 class World:
@@ -86,6 +88,12 @@ def generate(spec: ExperimentSpec, state: ResolvedState) -> World:
         raise ExprError(f"La taille d'échantillon doit être comprise entre 1 et {MAX_N}.")
     if not 1 <= repeat <= MAX_REPEAT:
         raise ExprError(f"Le nombre de répétitions doit être compris entre 1 et {MAX_REPEAT}.")
+    cells = sum(repeat if v.dims == "sample" else repeat * n for v in generator.variables.values())
+    if cells > MAX_CELLS:
+        raise ExprError(
+            f"L'expérience est trop lourde ({cells:,} valeurs à tirer, {MAX_CELLS:,} au plus) : "
+            "réduisez les répétitions, la taille d'échantillon ou le nombre de variables.".replace(",", " ")
+        )
 
     compiled = {name: compile_expr(var.expr) for name, var in generator.variables.items()}
     option_exprs = {

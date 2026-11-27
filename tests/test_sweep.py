@@ -108,3 +108,15 @@ def test_caps_axes_count_and_duplicates() -> None:
     assert _post("regression-lineaire", ["h.hetero", "p.n", "h.error_law"]).status_code == 422
     r = _post("regression-lineaire", ["h.hetero", "h.hetero"])
     assert r.status_code == 422 and "différents" in r.json()["detail"]
+
+
+def test_axis_values_stay_inside_range_when_step_does_not_divide_it() -> None:
+    from backend.api import registry
+    from backend.engine.sweep import axis_values
+
+    spec = registry.official()["regression-lineaire"]
+    hyp = spec.hypotheses["hetero"].model_copy(update={"range": (0.0, 0.5), "step": 0.3})
+    odd = spec.model_copy(update={"hypotheses": {**spec.hypotheses, "hetero": hyp}})
+    values, labels = axis_values(odd, "h.hetero")
+    assert len(values) == len(labels) and values == sorted(set(values))
+    assert all(0.0 <= v <= 0.5 for v in values) and values[0] == 0.0 and values[-1] == 0.5

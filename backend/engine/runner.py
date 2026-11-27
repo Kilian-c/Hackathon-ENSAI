@@ -152,7 +152,9 @@ def _eval_arg(value: Any, env: Env) -> Any:
         return value
     try:
         return compile_expr(value).evaluate(env)
-    except ExprError:
+    except ExprError as exc:
+        if value.strip().startswith(("p.", "h.", "m.", "s.", "base.")):  # référence mal écrite, pas un texte
+            raise RunError(f"Argument de méthode invalide « {value} » : {exc}") from exc
         return value
 
 

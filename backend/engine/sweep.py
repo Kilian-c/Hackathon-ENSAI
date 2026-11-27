@@ -49,8 +49,9 @@ def axis_values(spec: ExperimentSpec, target: str) -> tuple[list[float | bool | 
             return [False, True], [healthy_label, broken_label]
         lo, hi = hyp.range
         values = [round(float(v), 10) for v in np.linspace(lo, hi, DEFAULT_POINTS)]
-        if hyp.step:  # sur la grille du curseur, sans doublon
-            values = sorted({round(round(v / hyp.step) * hyp.step, 10) for v in values})
+        if hyp.step:  # sur la grille du curseur, sans doublon, jamais hors de range
+            snapped = (round(round(v / hyp.step) * hyp.step, 10) for v in values)
+            values = sorted({min(max(v, lo), hi) for v in snapped})
         return values, [_fmt(v) for v in values]
     if kind == "p":
         param = spec.params.get(name)
