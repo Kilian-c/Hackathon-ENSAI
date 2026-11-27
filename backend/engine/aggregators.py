@@ -175,7 +175,23 @@ def agg_summary(
     )
 
 
+def agg_kurtosis(values: Any) -> AggResult:
+    """Aplatissement (kurtosis en excès) des répétitions valides : 0 pour une loi normale, -1,2 pour une
+    loi uniforme. Pas d'erreur MC (CLAUDE.md, section 8 : seulement pour rate, mean et bias)."""
+    valid, n_total = _extract_valid(values)
+    n_valid = int(valid.size)
+    if n_valid < 4:
+        return AggResult(value=math.nan, mc_se=None, n_valid=n_valid, n_total=n_total)
+    centered = valid - valid.mean()
+    m2 = float(np.mean(centered**2))
+    if m2 == 0.0:
+        return AggResult(value=math.nan, mc_se=None, n_valid=n_valid, n_total=n_total)
+    val = float(np.mean(centered**4) / m2**2 - 3.0)
+    return AggResult(value=val, mc_se=None, n_valid=n_valid, n_total=n_total)
+
+
 AGGREGATORS: dict[str, Callable[..., AggResult]] = {
+    "kurtosis": agg_kurtosis,
     "rate": agg_rate,
     "mean": agg_mean,
     "bias": agg_bias,
