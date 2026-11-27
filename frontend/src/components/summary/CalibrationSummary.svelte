@@ -61,7 +61,8 @@
   const experiments = $derived(experimentStats(answers))
   const parts = $derived(murphy(answers))
 
-  const percent = (x: number | null) => (x === null ? '—' : `${frNumber(x * 100, 0)} %`)
+  // Espace insécable avant « % », comme lib/format.ts.
+  const percent = (x: number | null) => (x === null ? '—' : `${frNumber(x * 100, 0)} %`)
 
   onMount(() => {
     // Les titres sont un confort : sans le moteur, les identifiants s'affichent.
