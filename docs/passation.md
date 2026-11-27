@@ -1,5 +1,12 @@
 # Notes de passation (la plus récente en haut)
 
+## H5 (17 h) : Entraînement côté moteur, branche `r2/training` (pas une relève)
+- Fait par R2 (fichiers de R1, **à relire par R1 avant fusion**) : `backend/engine/training.py` et `POST /api/training/session` (`backend/api/routes.py`), empreinte des YAML dans `backend/api/registry.py` (`content_digest`). Tests : `tests/test_training.py`, tests d'API de la section 12 ajoutés à `tests/test_api.py`. 227 tests verts.
+- Règles : `misconception` une fois par série, chaque choix vérifié (`reveal_state` lancé, `verify`, 5 tirages au plus, sinon `dropped`) ; `diagnostic_auto` 2 fois au plus, pathologie cachée différente, libellés tirés des hypothèses (« <hypothèse> : <option ou broken_label> », plus « Hypothèses respectées ») ; `prediction` (P1) non servie.
+- Temps : série « toutes » 5,8 s (avec le pendule), une expérience 0,1 à 1,4 s.
+- **À décider (équipe)** : Student et le pendule sont toujours dans `experiments/`, donc dans la liste d'accueil et dans les séries « toutes ». Les exclure sans code propre à un théorème = sortir leurs fichiers de `experiments/` quand les tests ne s'en servent plus.
+- Pas fait : test 7 (pathologies distinguables, P1).
+
 ## H4 (16 h 15) : `r2/runner` fusionnée dans `r3/entrainement-et-cours` (pas une relève)
 Cette branche réunit le vrai moteur de R2, l'écran d'Entraînement et les nouvelles expériences : c'est elle qu'il faut fusionner dans `main`. Les 4 expériences ont été rejouées sur le vrai `run()` : mêmes valeurs de la mesure primaire qu'au mini-pipeline.
 
