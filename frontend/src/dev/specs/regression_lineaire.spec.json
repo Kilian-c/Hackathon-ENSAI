@@ -5,12 +5,12 @@
  "discipline": "statistique",
  "level": "3",
  "concepts": [
-  "mco",
-  "intervalle-de-confiance",
-  "residus",
-  "heteroscedasticite",
+  "MCO",
+  "intervalle de confiance",
+  "résidus",
+  "hétéroscédasticité",
   "levier",
-  "independance"
+  "indépendance"
  ],
  "theorem": {
   "name": "Intervalle de confiance d'un coefficient des MCO",
