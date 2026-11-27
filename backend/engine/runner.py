@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -60,7 +61,12 @@ class RunError(ValueError):
 
 
 def verdict(value: float, target: float, direction: str, ok_within: float, broken_beyond: float) -> str:
-    """CLAUDE.md, section 8 : écart selon la direction, puis ok / warning / broken."""
+    """CLAUDE.md, section 8 : écart selon la direction, puis ok / warning / broken.
+
+    Une valeur qui n'est pas un nombre fini (NaN, infini) est toujours `broken` : une seule règle pour
+    l'affichage, les défis, `verify` et le balayage."""
+    if not math.isfinite(value):
+        return "broken"
     if direction == "below":
         gap = max(target - value, 0.0)
     elif direction == "above":
@@ -89,6 +95,7 @@ class Computed:
 
 
 _CACHE: OrderedDict[tuple[str, str], Computed] = OrderedDict()
+_CACHE_LOCK = threading.Lock()  # les routes sont en `def` : FastAPI les exécute dans un pool de threads
 
 
 def spec_hash(spec: ExperimentSpec) -> str:
@@ -151,13 +158,17 @@ def _eval_arg(value: Any, env: Env) -> Any:
 
 def _compute(spec: ExperimentSpec, rs: ResolvedState, key: str) -> Computed:
     cache_key = (key, rs.hash())
-    if cache_key in _CACHE:
+    with _CACHE_LOCK:
+        cached = _CACHE.get(cache_key)
+        if cached is not None:
+            _CACHE.move_to_end(cache_key)
+            return cached
+    out = _compute_uncached(spec, rs)  # hors du verrou : un calcul en double est sans effet
+    with _CACHE_LOCK:
+        _CACHE[cache_key] = out
         _CACHE.move_to_end(cache_key)
-        return _CACHE[cache_key]
-    out = _compute_uncached(spec, rs)
-    _CACHE[cache_key] = out
-    while len(_CACHE) > _CACHE_SIZE:
-        _CACHE.popitem(last=False)
+        while len(_CACHE) > _CACHE_SIZE:
+            _CACHE.popitem(last=False)
     return out
 
 
@@ -180,7 +191,10 @@ def _compute_uncached(spec: ExperimentSpec, rs: ResolvedState) -> Computed:
     results: dict[str, MethodResult] = {}
     for m in spec.methods:
         kwargs = {k: _eval_arg(v, env) for k, v in m.args.items()}
-        results[m.id] = get_method(m.call).fn(**kwargs, rng=rng_for(rs.seed, f"method:{m.id}"))
+        try:
+            results[m.id] = get_method(m.call).fn(**kwargs, rng=rng_for(rs.seed, f"method:{m.id}"))
+        except (ValueError, KeyError, TypeError, ArithmeticError, np.linalg.LinAlgError) as exc:
+            raise RunError(f"La méthode « {m.label} » a échoué : {exc}") from exc
 
     funcs = {name: (lambda *a, _f=f: _f(*a)) for name, f in AGGREGATORS.items()}
     aggs: dict[str, dict[str, AggResult]] = {k: {} for k in spec.measures}
@@ -274,10 +288,7 @@ def _measure_results(spec: ExperimentSpec, comp: Computed, base: Computed) -> di
             block.ok_within, block.broken_beyond = ms.ok_within, ms.broken_beyond
             for mid, v in vals.items():
                 target = bvals[mid] if ms.target == "base" else float(ms.target)
-                if not math.isfinite(v):
-                    state = "broken"
-                else:
-                    state = verdict(v, target, ms.direction, ms.ok_within, ms.broken_beyond)  # type: ignore[arg-type]
+                state = verdict(v, target, ms.direction, ms.ok_within, ms.broken_beyond)  # type: ignore[arg-type]
                 block.states[mid] = state  # type: ignore[assignment]
                 if ms.texts is not None and math.isfinite(v):
                     block.texts[mid] = getattr(ms.texts, state).replace(

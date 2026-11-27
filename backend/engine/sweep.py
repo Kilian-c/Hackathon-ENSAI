@@ -140,12 +140,9 @@ def sweep(
                 target = bvals[m] if ms.target == "base" else float(ms.target)
                 if r == 0:
                     cell_targets[m].append(target)
-                if math.isfinite(vals[m]):
-                    row_states[m].append(
-                        verdict(vals[m], target, ms.direction, ms.ok_within, ms.broken_beyond)  # type: ignore[arg-type]
-                    )
-                else:
-                    row_states[m].append("broken")
+                row_states[m].append(
+                    verdict(vals[m], target, ms.direction, ms.ok_within, ms.broken_beyond)  # type: ignore[arg-type]
+                )
         for m in methods:
             values[m].append(row_vals[m])
             mc_se[m].append(row_se[m])

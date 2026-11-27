@@ -88,3 +88,23 @@ def test_errors_are_french_422() -> None:
         assert r.status_code == 422 and text in r.json()["detail"], axes
     assert _post("regression-lineaire", ["h.hetero"], measure="zzz").status_code == 422
     assert _post("nexiste-pas", ["h.hetero"]).status_code == 404
+
+
+def test_caps_points_and_cells(monkeypatch) -> None:
+    from backend.engine import sweep as sweep_module
+
+    def fake(n: int):
+        return lambda spec, target: (list(range(n)), [str(i) for i in range(n)])
+
+    monkeypatch.setattr(sweep_module, "axis_values", fake(22))  # 22 points > 21
+    r = _post("regression-lineaire", ["h.hetero"])
+    assert r.status_code == 422 and "21 points" in r.json()["detail"]
+    monkeypatch.setattr(sweep_module, "axis_values", fake(13))  # 13 x 13 = 169 cases > 144
+    r = _post("regression-lineaire", ["h.hetero", "p.n"])
+    assert r.status_code == 422 and "144 cases" in r.json()["detail"]
+
+
+def test_caps_axes_count_and_duplicates() -> None:
+    assert _post("regression-lineaire", ["h.hetero", "p.n", "h.error_law"]).status_code == 422
+    r = _post("regression-lineaire", ["h.hetero", "h.hetero"])
+    assert r.status_code == 422 and "différents" in r.json()["detail"]

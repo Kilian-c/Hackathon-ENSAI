@@ -93,8 +93,10 @@ def test_training_same_seed_same_series() -> None:
     a = _session(filter="regression-lineaire", seed=99)
     b = _session(filter="regression-lineaire", seed=99)
     assert a == b
-    c = _session(filter="regression-lineaire", seed=100)
-    assert [q["prompt"] for q in a["questions"]] != [q["prompt"] for q in c["questions"]] or a != c
+    # Une autre graine change la série (sur « toutes », assez de questions pour que l'ordre diffère).
+    d = _session(filter="toutes", seed=99)
+    e = _session(filter="toutes", seed=100)
+    assert [q["qid"] for q in d["questions"]] != [q["qid"] for q in e["questions"]]
 
 
 def test_training_unknown_filter_is_french_422() -> None:
@@ -137,3 +139,17 @@ def test_validate_reports_errors_with_line_numbers() -> None:
 def test_unknown_import_key_is_french_404() -> None:
     r = client.get("/api/experiments/import-0000000000000000")
     assert r.status_code == 404 and "validez" in r.json()["detail"]
+
+
+def test_caps_on_requests() -> None:
+    points = [{"x": float(i), "y": 0.0} for i in range(21)]  # 20 points ajoutés au plus
+    assert (
+        client.post(
+            "/api/run", json={"experiment_id": "regression-lineaire", "state": {"extra_points": points}}
+        ).status_code
+        == 422
+    )
+    big = "# " + "x" * (64 * 1024) + "\n"  # YAML > 64 Ko
+    assert client.post("/api/run", json={"raw_content": big}).status_code == 422
+    assert client.post("/api/validate", json={"raw_content": big}).status_code == 422
+    assert client.post("/api/training/session", json={"filter": "toutes", "count": 11}).status_code == 422
