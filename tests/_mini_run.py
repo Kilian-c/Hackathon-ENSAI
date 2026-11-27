@@ -16,9 +16,12 @@ from typing import Any
 import numpy as np
 from scipy.integrate import solve_ivp
 
-import backend.methods.integrate  # noqa: F401  (enregistrent les méthodes)
+import backend.methods.clt_mean  # noqa: F401  (enregistrent les méthodes)
+import backend.methods.integrate  # noqa: F401
 import backend.methods.ols_ci  # noqa: F401
+import backend.methods.ols_two  # noqa: F401
 import backend.methods.one_sample_test  # noqa: F401
+import backend.methods.pairwise_tests  # noqa: F401
 from backend.contracts import EngineState
 from backend.engine.aggregators import AGGREGATORS, AggResult
 from backend.engine.expr import Env, ExprError, Layered, compile_expr

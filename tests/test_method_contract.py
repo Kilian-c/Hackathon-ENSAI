@@ -288,6 +288,22 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         15,
     ),
+    "clt_mean": (
+        {"x": _X0, "sigma": 1.0, "rho": 0.0, "kind": "independance"},
+        20,
+        15,
+    ),
+    "ols_two": (
+        {"x1": _X0, "x2": _X0[::-1], "y": _X0 + _X0[::-1] + _X0[:, ::-1], "signal": _X0 + _X0[::-1],
+         "truth": 1.0, "alpha": 0.05, "kind": "complet"},
+        20,
+        15,
+    ),
+    "pairwise_tests": (
+        {"y": _X0, "groups": 4, "alpha": 0.05, "kind": "tukey"},
+        20,
+        15,
+    ),
     "ols_ci": (
         {"x": _X0, "y": 1.0 + 1.5 * _X0 + _X0[::-1], "truth": 1.5, "alpha": 0.05, "se_type": "HC3"},
         20,

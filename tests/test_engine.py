@@ -47,7 +47,7 @@ def test_unknown_schema_version():
 def test_unknown_repair_reports_line():
     issue = _first_issue(REGRESSION.replace("repairs: [hetero, relation]", "repairs: [hetero, fantome]"))
     assert issue.path == "methods[1].repairs[1]"
-    assert issue.line == 147
+    assert issue.line == 137
 
 
 def test_repeat_cap():

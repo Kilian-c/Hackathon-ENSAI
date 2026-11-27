@@ -1,5 +1,26 @@
 # Notes de passation (la plus récente en haut)
 
+## H4 (16 h) : changement des expériences (pas une relève)
+Décision de Kilian : ne montrer que des théorèmes vus en cours. P0 : régression (IC d'une pente), TCL, multicolinéarité, tests multiples. Student/Wilcoxon et pendule sont abandonnés. Aucun fichier de contrat modifié. Vérifié sur le mini-pipeline `tests/_mini_run.py` (graine 42, 500 répétitions), pas sur le moteur.
+
+**R2 (à relire avant fusion, ce sont vos fichiers)**
+- Nouveaux : `experiments/{theoreme_central_limite,multicolinearite,tests_multiples}.yaml`, `backend/methods/{clt_mean,ols_two,pairwise_tests}.py`, `tests/test_course_methods.py` ; `_mini_run.py` et `test_method_contract.py` complétés.
+- `regression_lineaire.yaml` : textes repris avec le vocabulaire du cours ; retirés : `nw`, les 2 contre-exemples d'Anscombe, `match_summary`.
+- Chiffres : TCL à n = 50, part dans ±1,96 : 95 % (sain), 67 % (Student 2 ddl), 30 % (Cauchy), 60 % (rho = 0,7 ; corrigé : 96 %). Colinéarité, n = 100 : X1 détecté 81 % (rho = 0), 38 % (0,8), 12 % (0,95) ; sans X2 : détecté, mais biais 0,28 à 0,95. Tests multiples, n = 120 : faux positif 4 % (2 groupes), 38 % (6), 62 % (10) ; Bonferroni 3 à 4 %.
+- TCL : une correction par la médiane a été essayée et retirée (fausse sous loi exponentielle). Rien ne répare la variance infinie : c'est voulu.
+
+**R1**
+- Importer dans le runner (ou `methods/__init__.py`) : `clt_mean`, `ols_two`, `pairwise_tests`, `ols_ci`.
+- Plus besoin du générateur `ode` en P0.
+- Balayage de `h.groupes` (continu de 2 à 10, pas 1) : prendre les valeurs entières de `range`, pas 11 points de 0 à 1. De même, `h.rho` va jusqu'à 0,9 (TCL) ou 0,99 (colinéarité).
+- Tukey : `studentized_range.ppf` prend près de 0,7 s au premier appel d'un couple (groupes, ddl), puis reste en cache ; à surveiller pour la limite de 2 s et le balayage.
+- Fixtures à refaire pour les 3 nouvelles ; numéro de ligne ajusté dans `tests/test_engine.py` (`test_unknown_repair_reports_line`).
+
+**R3**
+- Les 3 nouvelles expériences n'apparaissent pas encore dans l'interface : il faut le moteur, ou des specs et fixtures de repli. Spec de repli de la régression régénérée.
+
+**R4** : rien à changer, la galerie lit la liste du moteur.
+
 ## H3 (15 h) : vérification croisée du travail de R1, R2 et R3 (pas une relève)
 Vérifié au commit `82e7663` : YAML, générateur `random` et méthodes concordent (arguments, `bind`, formes). `run()` n'existant pas, les simulations ont été branchées à la main, à la graine 42.
 

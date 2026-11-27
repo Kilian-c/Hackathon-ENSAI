@@ -1,0 +1,213 @@
+schema_version: 1
+id: "multicolinearite"
+title: "Multicolinéarité : deux variables explicatives trop liées"
+discipline: "statistique"
+level: "2A"
+concepts: ["mco", "multicolinearite", "vif", "test-de-student", "prevision"]
+
+theorem:
+  name: "Variance des estimateurs des MCO et VIF"
+  statement: |
+    Si la matrice X est de rang plein, l'estimateur des MCO est sans biais et sa variance vaut
+    sigma^2 (X'X)^-1. Avec deux variables corrélées (corrélation rho), la variance de chaque
+    coefficient est multipliée par le VIF, égal à 1 / (1 - rho^2). Le cours fixe le seuil d'alerte à 5.
+
+equation:
+  tex: '\mathrm{Var}(\hat{\beta}_1) = {{var}}'
+  terms:
+    var:
+      ok: '\dfrac{\sigma^2}{n\,\widehat{\mathrm{Var}}(X_1)} \times \dfrac{1}{1 - \rho^2}'
+      corrected: '\dfrac{\sigma^2}{n\,\widehat{\mathrm{Var}}(X_1)}'
+
+params:
+  n:     { type: number, label: "Taille d'échantillon n", min: 30, max: 500, step: 10, default: 100,
+           sweep_values: [30, 100, 200, 500] }
+  beta1: { type: number, label: "Vrai coefficient de X1", min: 0.1, max: 1.0, step: 0.05, default: 0.3 }
+  beta2: { type: number, label: "Vrai coefficient de X2", min: 0.0, max: 1.0, step: 0.05, default: 0.3 }
+
+hypotheses:
+  rho:
+    type: continuous
+    range: [0, 0.99]
+    step: 0.01
+    healthy_value: 0.0
+    label: "Variables explicatives peu liées"
+    category: "colinearite"
+    ok_label: "Non corrélées"
+    broken_label: "Corrélées"
+    statement_tex: '\mathrm{VIF}_1 = \dfrac{1}{1 - \rho^2} \ \text{reste petit}'
+    why: "Pour mesurer l'effet propre de X1, il faut observer des cas où X1 varie sans que X2 varie de la même façon."
+    when_broken: "X1 et X2 racontent presque la même chose : le coefficient de X1 reste juste en moyenne, mais il devient si instable que le test de Student ne le détecte plus."
+    affects: [var]
+
+counterexamples:
+  - id: "presque-colineaires"
+    label: "Variables presque identiques"
+    explain: "Les intervalles de confiance du coefficient de X1 sont très larges : la plupart contiennent 0."
+    state: { hypotheses: { rho: 0.95 } }
+  - id: "grand-n-colineaire"
+    label: "Grand n, corrélation extrême"
+    explain: "Même avec 200 observations, une corrélation de 0,99 empêche de détecter l'effet de X1."
+    state: { params: { n: 200 }, hypotheses: { rho: 0.99 } }
+
+generator:
+  type: random
+  n: p.n
+  repeat: 500
+  variables:
+    x1:     { expr: "law('normal')" }
+    z:      { expr: "law('normal')" }
+    x2:     { expr: "h.rho * x1 + sqrt(1 - h.rho**2) * z" }
+    eps:    { expr: "law('normal')" }
+    signal: { expr: "1.0 + p.beta1 * x1 + p.beta2 * x2" }      # E(Y), connue car les données sont simulées
+    y:      { expr: "signal + eps" }
+
+methods:
+  - id: complet
+    role: method
+    call: ols_two
+    label: "MCO avec X1 et X2"
+    args: { x1: x1, x2: x2, y: y, signal: signal, truth: p.beta1, alpha: 0.05, kind: "complet" }
+  - id: reduit
+    role: correction
+    call: ols_two
+    label: "MCO sans X2"
+    explain: "En retirant X2, le coefficient redevient stable. Attention : il mesure alors l'effet de X1 et la part de X2 qui lui ressemble, il est donc biaisé."
+    repairs: [rho]
+    args: { x1: x1, x2: x2, y: y, signal: signal, truth: p.beta1, alpha: 0.05, kind: "reduit" }
+
+measures:
+  power:
+    agg: "rate(reps.reject)"
+    label: "Échantillons où X1 est détecté (test de Student)"
+    unit: "%"
+    scale: 100
+    decimals: 1
+    primary: true
+    target: base
+    direction: below
+    ok_within: 0.10
+    broken_beyond: 0.30
+    texts:
+      ok: "Effet de X1 détecté dans {value} des échantillons."
+      warning: "La détection recule : {value} des échantillons."
+      broken: "X1 n'est presque plus détecté : {value} des échantillons."
+  bias:
+    agg: "bias(reps.est, p.beta1)"
+    label: "Biais du coefficient de X1"
+    decimals: 3
+    target: 0.0
+    direction: both
+    ok_within: 0.08
+    broken_beyond: 0.15
+    texts:
+      ok: "Coefficient juste en moyenne (biais {value})."
+      warning: "Coefficient légèrement biaisé ({value})."
+      broken: "Coefficient biaisé ({value})."
+  sd:
+    agg: "sd(reps.est)"
+    label: "Instabilité : écart type du coefficient de X1"
+    decimals: 3
+  vif:
+    agg: "median(reps.vif)"
+    label: "VIF (seuil d'alerte du cours : 5)"
+    decimals: 1
+  pred_error:
+    agg: "mean(reps.pred_error)"
+    label: "Erreur de prévision"
+    decimals: 3
+
+challenges:
+  - id: "alerte-vif"
+    goal: "Réglez la corrélation pour dépasser le seuil d'alerte du cours : un VIF supérieur à 5."
+    when: "m.vif > 5"
+    unlock: "Le VIF grimpe très vite quand la corrélation approche de 1."
+  - id: "prevision-intacte"
+    goal: "Trouvez un réglage où X1 n'est plus détecté alors que la prévision reste aussi bonne qu'au départ."
+    when: "s.power == 'broken' and m.pred_error < 1.2 * base.pred_error"
+    unlock: "La multicolinéarité abîme l'interprétation des coefficients, pas la prévision."
+
+auto_sweep: [h.rho]
+
+views:
+  - id: variables
+    type: scatter
+    title: "X1 contre X2"
+    bind: { x: example.x1, y: example.x2 }
+    axes: { x: auto, y: auto }
+  - id: ic
+    type: repetitions
+    mode: intervals
+    title: "100 intervalles de confiance du coefficient de X1"
+    bind: { est: reps.est, low: reps.low, high: reps.high, hit: reps.hit, truth: p.beta1 }
+  - id: sens
+    type: sensitivity
+    title: "Détection selon la corrélation"
+    sweep: { axes: [h.rho] }
+
+questions:
+  - id: "col-q1-biais"
+    type: misconception
+    prompt: "X1 et X2 ont une corrélation de 0,95 (n = {n}). Que devient l'estimateur des MCO du coefficient de X1 ?"
+    hypothesis: "rho"
+    procedural_params:
+      n: { min: 60, max: 150, step: 30 }
+    choices:
+      - id: "a"
+        label: "Il devient biaisé."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.95 } }
+        verify: "s.bias == 'ok' and s.power == 'broken'"
+        focus_view: "ic"
+        explain: "Les intervalles restent centrés sur la vraie valeur : ils sont surtout beaucoup plus larges."
+      - id: "b"
+        label: "Il reste sans biais, mais sa variance explose."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.95 } }
+        verify: "s.bias == 'ok' and s.power == 'broken'"
+        focus_view: "ic"
+        explain: "Exact : la variance est multipliée par le VIF, ici environ 10."
+
+  - id: "col-q2-prevision"
+    type: misconception
+    prompt: "X1 et X2 ont une corrélation de 0,95 (n = {n}). Que devient la qualité de la prévision ?"
+    hypothesis: "rho"
+    procedural_params:
+      n: { min: 60, max: 150, step: 30 }
+    choices:
+      - id: "a"
+        label: "Elle s'effondre, comme la précision des coefficients."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.95 } }
+        verify: "m.pred_error < 1.2 * base.pred_error and s.power == 'broken'"
+        focus_view: "ic"
+        explain: "L'erreur de prévision ne bouge presque pas : comparez-la à celle de la Référence."
+      - id: "b"
+        label: "Elle reste à peu près la même."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.95 } }
+        verify: "m.pred_error < 1.2 * base.pred_error and s.power == 'broken'"
+        focus_view: "ic"
+        explain: "Exact : la projection de Y reste bien définie et stable, même si les coefficients ne le sont plus."
+
+  - id: "col-q3-retrait"
+    type: misconception
+    prompt: "La corrélation vaut 0,95 (n = {n}) et les deux coefficients sont non nuls. On retire X2 : que mesure le coefficient de X1 ?"
+    hypothesis: "rho"
+    procedural_params:
+      n: { min: 60, max: 150, step: 30 }
+    choices:
+      - id: "a"
+        label: "Toujours le seul effet de X1, avec plus de précision."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.95 } }
+        verify: "s.bias.reduit == 'broken' and s.power.reduit == 'ok'"
+        focus_view: "ic"
+        explain: "Affichez la correction : les intervalles se resserrent autour d'une autre valeur que la vraie."
+      - id: "b"
+        label: "L'effet de X1 mélangé à celui de X2 : il est biaisé."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.95 } }
+        verify: "s.bias.reduit == 'broken' and s.power.reduit == 'ok'"
+        focus_view: "ic"
+        explain: "Exact : il estime à peu près beta1 + rho x beta2."

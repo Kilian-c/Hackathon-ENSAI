@@ -1,0 +1,210 @@
+schema_version: 1
+id: "theoreme-central-limite"
+title: "Théorème central limite : quand la moyenne devient-elle gaussienne ?"
+discipline: "probabilites"
+level: "1A/2A"
+concepts: ["theoreme-central-limite", "independance", "variance-finie", "loi-de-cauchy"]
+
+theorem:
+  name: "Théorème central limite"
+  statement: |
+    Soit X1, ..., Xn des variables indépendantes, de même loi, d'espérance mu et de variance
+    sigma^2 finie. La moyenne centrée et normalisée, racine de n fois (moyenne - mu) / sigma,
+    converge en loi vers la normale N(0, 1). Pour n grand, elle tombe donc entre -1,96 et 1,96
+    environ 95 fois sur 100, quelle que soit la loi de départ.
+
+equation:
+  tex: '{{stat}} \;\xrightarrow{\ \mathcal{L}\ }\; \mathcal{N}(0, 1)'
+  terms:
+    stat:
+      ok: '\sqrt{n}\,\dfrac{\bar{X}_n - \mu}{\sigma}'
+      corrected: '\sqrt{n}\,\dfrac{\bar{X}_n - \mu}{\sigma\,\sqrt{(1 + \rho) / (1 - \rho)}}'
+
+params:
+  n: { type: number, label: "Taille d'échantillon n", min: 5, max: 500, step: 5, default: 50,
+       sweep_values: [5, 10, 30, 100, 500] }
+
+hypotheses:
+  loi:
+    type: choice
+    healthy_value: "normal"
+    label: "Variance finie (loi des observations)"
+    category: "moments"
+    options:
+      normal:      { label: "Normale", law: normal }
+      uniform:     { label: "Uniforme", law: uniform, robust_expected: true }
+      exponential: { label: "Exponentielle (asymétrique)", law: exponential, robust_expected: true }
+      student_2:   { label: "Student à 2 ddl (variance infinie)", law: student_2 }
+      cauchy:      { label: "Cauchy (sans espérance)", law: cauchy }
+    statement_tex: '\mathrm{Var}(X_i) = \sigma^2 < \infty'
+    why: "La normalisation divise par sigma : le théorème suppose que ce nombre existe."
+    when_broken: "Sans variance finie, quelques valeurs énormes dominent la somme : la moyenne normalisée ne ressemble plus à une normale N(0, 1), et un grand n n'y change rien."
+    affects: [stat]
+  rho:
+    type: continuous
+    range: [0, 0.9]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Indépendance des observations"
+    category: "independance"
+    ok_label: "Indépendantes"
+    broken_label: "Dépendantes (AR(1))"
+    statement_tex: 'X_1, \ldots, X_n \ \text{indépendantes}'
+    why: "La variance d'une somme est la somme des variances seulement si les variables ne sont pas corrélées."
+    when_broken: "Chaque observation répète en partie la précédente : la moyenne varie bien plus que prévu, et l'intervalle de -1,96 à 1,96 en contient beaucoup moins de 95 %."
+    affects: [stat]
+
+counterexamples:
+  - id: "cauchy"
+    label: "Loi de Cauchy"
+    explain: "L'histogramme des moyennes normalisées reste très étalé : le théorème ne s'applique pas."
+    state: { hypotheses: { loi: "cauchy" } }
+  - id: "cauchy-grand-n"
+    label: "Cauchy, n = 500"
+    explain: "Multiplier n par 10 aggrave la situation : la moyenne de variables de Cauchy ne se concentre jamais."
+    state: { params: { n: 500 }, hypotheses: { loi: "cauchy" } }
+  - id: "dependance-forte"
+    label: "Forte dépendance"
+    explain: "La variance est finie, mais les observations se répètent : diviser par sigma ne suffit plus."
+    state: { hypotheses: { rho: 0.7 } }
+
+generator:
+  type: random
+  n: p.n
+  repeat: 500
+  variables:
+    e: { expr: "@h.loi" }
+    x: { expr: "ar1(e, h.rho)" }      # rho = 0 : les observations restent indépendantes
+
+methods:
+  - id: moyenne
+    role: method
+    call: clt_mean
+    label: "Moyenne normalisée par sigma (TCL)"
+    args: { x: x, sigma: 1.0, rho: h.rho, kind: "independance" }
+  - id: variance_limite
+    role: correction
+    call: clt_mean
+    label: "Variance corrigée de la dépendance"
+    explain: "Pour un processus AR(1), on remplace sigma^2 par sigma^2 (1 + rho) / (1 - rho) : la moyenne normalisée redevient gaussienne."
+    repairs: [rho]
+    args: { x: x, sigma: 1.0, rho: h.rho, kind: "dependance" }
+
+measures:
+  inside:
+    agg: "rate(reps.inside)"
+    label: "Part entre -1,96 et 1,96 (théorie : 95 %)"
+    unit: "%"
+    scale: 100
+    decimals: 1
+    primary: true
+    target: 0.95
+    direction: both
+    ok_within: 0.03
+    broken_beyond: 0.08
+    texts:
+      ok: "Comportement gaussien : {value} entre -1,96 et 1,96."
+      warning: "Approximation médiocre : {value} au lieu de 95 %."
+      broken: "La loi normale ne convient plus : {value} au lieu de 95 %."
+  spread:
+    agg: "quantile(abs(reps.z), 0.95)"
+    label: "95 % des valeurs absolues sont sous (théorie : 1,96)"
+    decimals: 2
+
+challenges:
+  - id: "grand-n-inutile"
+    goal: "Montrez qu'un échantillon d'au moins 200 observations ne suffit pas toujours à rendre la moyenne gaussienne."
+    when: "p.n >= 200 and s.inside == 'broken'"
+    unlock: "Le théorème demande des hypothèses : la taille de l'échantillon ne les remplace pas."
+  - id: "asymetrie-petit-n"
+    goal: "Obtenez un comportement gaussien (verdict Fiable) avec une loi exponentielle."
+    when: "h.loi == 'exponential' and s.inside == 'ok'"
+    unlock: "La loi de départ n'a pas besoin d'être normale : une variance finie suffit."
+
+auto_sweep: [p.n]
+
+views:
+  - id: moyennes
+    type: distribution
+    title: "500 moyennes normalisées"
+    bind: { stat: reps.z }
+    ui: { x_range: [-5, 5] }
+  - id: echantillon
+    type: distribution
+    title: "Un échantillon"
+    bind: { stat: example.x }
+  - id: sens-loi
+    type: sensitivity
+    title: "Selon la loi"
+    sweep: { axes: [h.loi] }
+  - id: sens-rho
+    type: sensitivity
+    title: "Selon la dépendance"
+    sweep: { axes: [h.rho] }
+
+questions:
+  - id: "tcl-q1-cauchy"
+    type: misconception
+    prompt: "Les observations suivent une loi de Cauchy. Avec n = {n}, la moyenne normalisée est-elle proche d'une loi N(0, 1) ?"
+    hypothesis: "loi"
+    procedural_params:
+      n: { min: 200, max: 500, step: 50 }
+    choices:
+      - id: "a"
+        label: "Oui : n est grand, le théorème central limite s'applique."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "cauchy" } }
+        verify: "s.inside == 'broken'"
+        focus_view: "moyennes"
+        explain: "L'histogramme reste très étalé : sans espérance ni variance, un grand n ne suffit pas."
+      - id: "b"
+        label: "Non : cette loi n'a pas de variance, le théorème ne s'applique pas."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "cauchy" } }
+        verify: "s.inside == 'broken'"
+        focus_view: "moyennes"
+        explain: "Exact : l'hypothèse de variance finie est indispensable."
+
+  - id: "tcl-q2-exponentielle"
+    type: misconception
+    prompt: "Les observations suivent une loi exponentielle, très asymétrique. Avec n = {n}, que fait la moyenne normalisée ?"
+    hypothesis: "loi"
+    procedural_params:
+      n: { min: 50, max: 200, step: 50 }
+    choices:
+      - id: "a"
+        label: "Elle reste loin d'une normale : il faut des observations gaussiennes."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "exponential" } }
+        verify: "s.inside == 'ok'"
+        focus_view: "moyennes"
+        explain: "Regardez l'histogramme : il est déjà proche de la cloche de N(0, 1)."
+      - id: "b"
+        label: "Elle est déjà proche d'une normale : la variance est finie."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "exponential" } }
+        verify: "s.inside == 'ok'"
+        focus_view: "moyennes"
+        explain: "Exact : le théorème ne demande pas que les observations soient gaussiennes."
+
+  - id: "tcl-q3-dependance"
+    type: misconception
+    prompt: "Les observations sont fortement dépendantes (AR(1), rho = 0,8), de variance 1. Avec n = {n}, peut-on appliquer le théorème tel quel ?"
+    hypothesis: "rho"
+    procedural_params:
+      n: { min: 100, max: 400, step: 50 }
+    choices:
+      - id: "a"
+        label: "Oui : la variance est finie, cela suffit."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.8 } }
+        verify: "s.inside == 'broken' and s.inside.variance_limite != 'broken'"
+        focus_view: "moyennes"
+        explain: "L'histogramme est trois fois trop large : la variance de la moyenne n'est plus sigma^2 / n."
+      - id: "b"
+        label: "Non : la variance de la moyenne n'est plus sigma^2 / n."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.8 } }
+        verify: "s.inside == 'broken' and s.inside.variance_limite != 'broken'"
+        focus_view: "moyennes"
+        explain: "Exact : les corrélations s'ajoutent à la variance de la somme ; il faut la corriger."

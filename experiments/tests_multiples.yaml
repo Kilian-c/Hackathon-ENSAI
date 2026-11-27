@@ -1,0 +1,193 @@
+schema_version: 1
+id: "tests-multiples"
+title: "Tests multiples : les faux positifs s'accumulent"
+discipline: "statistique"
+level: "2A"
+concepts: ["tests-multiples", "faux-positifs", "bonferroni", "tukey", "anova"]
+
+theorem:
+  name: "Correction de Bonferroni"
+  statement: |
+    Un test au niveau 5 % rejette à tort une hypothèse vraie 5 fois sur 100. Avec m tests, la
+    probabilité d'au moins un faux positif est au plus la somme des m probabilités (inégalité
+    de l'union). En faisant chaque test au niveau 5 % / m, elle reste donc inférieure à 5 %.
+
+equation:
+  tex: '\mathbb{P}\Big(\bigcup_{k=1}^{m} A_k\Big) \le {{bound}}'
+  terms:
+    bound:
+      ok: '\sum_{k=1}^{m} \mathbb{P}(A_k) = m \times 5\,\%'
+      corrected: '\sum_{k=1}^{m} \dfrac{5\,\%}{m} = 5\,\%'
+
+params:
+  n: { type: number, label: "Nombre total d'observations", min: 60, max: 600, step: 20, default: 120,
+       sweep_values: [60, 120, 240, 600] }
+
+hypotheses:
+  groupes:
+    type: continuous
+    range: [2, 10]
+    step: 1
+    healthy_value: 2
+    label: "Un seul test (deux groupes)"
+    category: "tests-multiples"
+    ok_label: "Un test"
+    broken_label: "Plusieurs tests"
+    statement_tex: 'm = \dfrac{I(I-1)}{2} = 1'
+    why: "Le niveau de 5 % garantit le risque d'un test, pas celui de tous les tests pris ensemble."
+    when_broken: "Avec I groupes, on fait I(I-1)/2 comparaisons : la chance qu'au moins une paraisse différente par hasard grandit vite."
+    affects: [bound]
+
+counterexamples:
+  - id: "six-groupes"
+    label: "Six groupes, quinze tests"
+    explain: "Les six groupes ont exactement la même moyenne, et pourtant une différence est souvent annoncée."
+    state: { hypotheses: { groupes: 6 } }
+  - id: "dix-groupes"
+    label: "Dix groupes, 45 tests"
+    explain: "Avec 45 tests, annoncer au moins une différence qui n'existe pas devient le cas le plus fréquent."
+    state: { hypotheses: { groupes: 10 } }
+
+generator:
+  type: random
+  n: p.n
+  repeat: 500
+  variables:
+    y: { expr: "law('normal')" }      # toutes les moyennes sont égales : toute différence annoncée est fausse
+
+methods:
+  - id: naif
+    role: method
+    call: pairwise_tests
+    label: "Tests de Student, chacun à 5 %"
+    args: { y: y, groups: h.groupes, alpha: 0.05, kind: "aucune" }
+  - id: bonferroni
+    role: correction
+    call: pairwise_tests
+    label: "Correction de Bonferroni"
+    explain: "Chaque test est fait au niveau 5 % divisé par le nombre de tests."
+    repairs: [groupes]
+    args: { y: y, groups: h.groupes, alpha: 0.05, kind: "bonferroni" }
+  - id: tukey
+    role: alternative
+    call: pairwise_tests
+    label: "Test de Tukey"
+    explain: "Le seuil vient de la loi du plus grand écart entre les moyennes : il vise exactement 5 % pour des groupes de même taille."
+    repairs: [groupes]
+    args: { y: y, groups: h.groupes, alpha: 0.05, kind: "tukey" }
+
+measures:
+  false_alarm:
+    agg: "rate(reps.any_reject)"
+    label: "Probabilité d'au moins un faux positif"
+    unit: "%"
+    scale: 100
+    decimals: 1
+    primary: true
+    target: 0.05
+    direction: above
+    ok_within: 0.025
+    broken_beyond: 0.10
+    texts:
+      ok: "Risque global maîtrisé : {value}."
+      warning: "Risque global en hausse : {value} au lieu de 5 %."
+      broken: "Risque global hors de contrôle : {value} au lieu de 5 %."
+  false_count:
+    agg: "mean(reps.n_reject)"
+    label: "Nombre moyen de fausses différences par étude"
+    decimals: 2
+
+challenges:
+  - id: "une-sur-deux"
+    goal: "Faites en sorte qu'au moins une étude sur deux annonce une différence qui n'existe pas."
+    when: "m.false_alarm > 0.5"
+    unlock: "Multiplier les comparaisons finit presque toujours par produire un résultat « significatif »."
+  - id: "grand-n-inutile"
+    goal: "Montrez qu'avec au moins 500 observations, le risque global reste hors de contrôle."
+    when: "p.n >= 500 and s.false_alarm == 'broken'"
+    unlock: "Ajouter des données ne corrige pas la multiplication des tests."
+
+auto_sweep: [h.groupes]
+
+views:
+  - id: groupes
+    type: scatter
+    title: "Un jeu de données : toutes les moyennes sont égales"
+    bind: { x: example.group, y: example.y }
+    axes: { x: auto, y: auto }
+  - id: statistiques
+    type: distribution
+    title: "Plus grand écart observé (statistique |T|)"
+    bind: { stat: reps.max_stat }
+    ui: { x_range: [0, 6] }
+  - id: sens
+    type: sensitivity
+    title: "Risque global selon le nombre de groupes"
+    sweep: { axes: [h.groupes] }
+
+questions:
+  - id: "mul-q1-risque"
+    type: misconception
+    prompt: "Six groupes ont la même moyenne ({n} observations en tout). On fait les 15 comparaisons à 5 %. Quelle est la chance d'annoncer au moins une différence ?"
+    hypothesis: "groupes"
+    procedural_params:
+      n: { min: 120, max: 300, step: 60 }
+    choices:
+      - id: "a"
+        label: "Environ 5 %, le niveau choisi."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { groupes: 6 } }
+        verify: "s.false_alarm == 'broken'"
+        focus_view: "statistiques"
+        explain: "Les 5 % concernent un seul test. Observez la mesure : le risque global est bien plus grand."
+      - id: "b"
+        label: "Bien plus de 5 %."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { groupes: 6 } }
+        verify: "s.false_alarm == 'broken'"
+        focus_view: "statistiques"
+        explain: "Exact : chaque test ajoute une occasion de se tromper."
+
+  - id: "mul-q2-taille"
+    type: misconception
+    prompt: "Huit groupes ont la même moyenne. Passer à {n} observations en tout suffit-il à éviter les faux positifs ?"
+    hypothesis: "groupes"
+    procedural_params:
+      n: { min: 400, max: 600, step: 40 }
+    choices:
+      - id: "a"
+        label: "Oui : avec plus de données, les erreurs disparaissent."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { groupes: 8 } }
+        verify: "s.false_alarm == 'broken'"
+        focus_view: "statistiques"
+        explain: "Le niveau de chaque test reste 5 %, quelle que soit la taille des groupes."
+      - id: "b"
+        label: "Non : le risque dépend surtout du nombre de tests."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { groupes: 8 } }
+        verify: "s.false_alarm == 'broken'"
+        focus_view: "statistiques"
+        explain: "Exact : il faut corriger le niveau de chaque test, pas seulement ajouter des données."
+
+  - id: "mul-q3-bonferroni"
+    type: misconception
+    prompt: "On compare six groupes ({n} observations en tout), soit 15 tests. À quel niveau faire chaque test pour garder un risque global d'au plus 5 % ?"
+    hypothesis: "groupes"
+    procedural_params:
+      n: { min: 120, max: 300, step: 60 }
+    choices:
+      - id: "a"
+        label: "À 5 % : le niveau ne change pas."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { groupes: 6 } }
+        verify: "s.false_alarm == 'broken' and s.false_alarm.bonferroni == 'ok'"
+        focus_view: "statistiques"
+        explain: "À 5 % par test, le risque global dépasse largement 5 %."
+      - id: "b"
+        label: "À 5 % / 15, soit environ 0,33 %."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { groupes: 6 } }
+        verify: "s.false_alarm == 'broken' and s.false_alarm.bonferroni == 'ok'"
+        focus_view: "statistiques"
+        explain: "Exact : l'inégalité de l'union garantit alors un risque global d'au plus 5 %."
