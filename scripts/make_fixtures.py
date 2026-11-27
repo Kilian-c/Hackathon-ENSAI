@@ -320,8 +320,6 @@ PEN_MEASURES = {
                   "texts": {"ok": "Trajectoire fidèle : erreur de {value}.",
                             "warning": "La trajectoire dérive : erreur de {value}.",
                             "broken": "Trajectoire fausse : erreur de {value}."}},
-    "energy_drift": {"label": "Dérive de l'énergie", "unit": "%", "scale": 100, "decimals": 1},
-    "full_turn": {"label": "Le pendule fait le tour", "decimals": 0},
 }
 
 
@@ -366,8 +364,6 @@ def pendulum_run(pas: float, theta0: float = 1.2, t_end: float = 5.0):
     none = {m: None for m in ids}
     measures = {
         "err_angle": measure_block(PEN_MEASURES["err_angle"], vals["err"], none, base["err"], ids),
-        "energy_drift": measure_block(PEN_MEASURES["energy_drift"], vals["drift"], none, base["drift"], ids),
-        "full_turn": measure_block(PEN_MEASURES["full_turn"], vals["turn"], none, base["turn"], ids),
     }
     views = [
         {"id": "trajectoire", "type": "curves", "title": "Angle au cours du temps",
