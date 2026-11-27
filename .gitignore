@@ -229,6 +229,8 @@ frontend/dist/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+# Réglages VS Code propres à chaque poste (chemins différents selon Windows ou Linux)
+.vscode/
 # LaTeX
 docs/*.aux
 docs/*.log

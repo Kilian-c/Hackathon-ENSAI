@@ -124,6 +124,20 @@ export function currentOnAxes(state: EngineState, targets: readonly string[]): R
   return out
 }
 
+/**
+ * Titre de l'axe d'un balayage (« h.hetero », « p.n ») à partir des libellés du YAML. Une hypothèse
+ * continue ajoute « : h », la notation de son curseur. Cible inconnue : renvoyée telle quelle.
+ */
+export function axisTitle(spec: Pick<ExperimentSpec, 'hypotheses' | 'params'>, target: string): string {
+  const [kind, id] = target.split('.', 2)
+  if (kind === 'h') {
+    const h = spec.hypotheses[id]
+    if (h) return h.type === 'continuous' ? `${h.label} : h` : h.label
+  }
+  if (kind === 'p') return spec.params[id]?.label ?? target
+  return target
+}
+
 /** Libellés des méthodes, pour les légendes. */
 export function methodLabels(methods: readonly Pick<MethodInfo, 'id' | 'label'>[]): Record<string, string> {
   return Object.fromEntries(methods.map((m) => [m.id, m.label]))

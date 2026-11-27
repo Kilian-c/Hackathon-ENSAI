@@ -62,7 +62,13 @@
   {#each result.warnings as w (w.code)}
     <p class="warn">{w.text}</p>
   {/each}
-  <p class="foot">Calculé sur {result.repeat_used} répétitions · marge : ± 2 erreurs Monte Carlo.</p>
+  <p class="foot">
+    {#if result.repeat_used > 1}
+      Calculé sur {result.repeat_used} répétitions · marge : ± 2 erreurs Monte Carlo.
+    {:else}
+      Calcul sur une seule trajectoire : pas de marge Monte Carlo.
+    {/if}
+  </p>
 </section>
 
 <style>
@@ -101,11 +107,12 @@
   }
   li {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
     gap: var(--ct-space-1) var(--ct-space-3);
     align-items: baseline;
   }
   .who {
+    grid-column: 1 / -1;
     font-weight: 600;
     font-size: var(--ct-text-sm);
   }

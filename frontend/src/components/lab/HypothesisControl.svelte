@@ -81,16 +81,18 @@
 <style>
   .control {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ct-space-1);
   }
   .row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--ct-space-2);
   }
   input[type='range'] {
     flex: 1;
-    min-width: 6rem;
+    min-width: 4rem;
     accent-color: var(--ct-role-method);
   }
   .broken input[type='range'] {
@@ -98,6 +100,7 @@
   }
   .value {
     min-width: 4.5rem;
+    margin-left: auto;
     font-family: var(--ct-font-mono);
     font-size: var(--ct-text-sm);
     text-align: right;

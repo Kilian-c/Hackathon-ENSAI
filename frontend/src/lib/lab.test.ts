@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatControl, formatMargin, formatMeasure } from './format'
 import {
+  axisTitle,
   brokenValue,
   currentOnAxes,
   headlineVerdict,
@@ -94,5 +95,13 @@ describe('lab : actions sur les états', () => {
     expect(ra.state.hypotheses.hetero).toBe(0)
     expect(ra.axes).toEqual([{ target: 'h.hetero' }])
     expect(currentOnAxes(b, ['h.hetero'])).toEqual({ 'h.hetero': 0.9 })
+  })
+})
+
+describe('lab : titre de l’axe d’un balayage', () => {
+  it('libellés du YAML, jamais l’identifiant', () => {
+    expect(axisTitle(reg, 'h.hetero')).toBe(`${reg.hypotheses.hetero.label} : h`)
+    expect(axisTitle(reg, 'p.n')).toBe(reg.params.n.label)
+    expect(axisTitle(reg, 'h.inconnue')).toBe('h.inconnue')
   })
 })
