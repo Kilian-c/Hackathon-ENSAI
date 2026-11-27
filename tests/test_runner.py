@@ -11,10 +11,11 @@ from backend.engine import runner
 from backend.engine.loader import load_experiment_file
 
 EXP = Path(__file__).resolve().parent.parent / "experiments"
+ARCHIVES = EXP / "archives"  # Student et pendule : hors de l'accueil, gardés pour tester le moteur
 
 
-def _spec(name: str):
-    return load_experiment_file(EXP / f"{name}.yaml")
+def _spec(name: str, folder: Path = EXP):
+    return load_experiment_file(folder / f"{name}.yaml")
 
 
 def test_regression_result_matches_contract() -> None:
@@ -39,7 +40,7 @@ def test_healthy_state_has_no_violation() -> None:
 
 
 def test_student_target_base_and_draw_log() -> None:
-    res = runner.run(_spec("test_student"), EngineState(hypotheses={"loi": "cauchy"}))
+    res = runner.run(_spec("test_student", ARCHIVES), EngineState(hypotheses={"loi": "cauchy"}))
     power = res.measures["power"]
     assert power.target == "base" and power.baseline["student"] > power.values["student"]
     assert res.draw_log is not None
@@ -50,7 +51,7 @@ def test_student_target_base_and_draw_log() -> None:
 
 
 def test_pendulum_truth_and_time_axis() -> None:
-    res = runner.run(_spec("pendule_euler"), EngineState(hypotheses={"pas": 0.3}))
+    res = runner.run(_spec("pendule_euler", ARCHIVES), EngineState(hypotheses={"pas": 0.3}))
     view = next(v for v in res.views if v.id == "trajectoire")
     assert view.axes.x == [0.0, 5.0]
     assert any(s.role == "truth" for s in view.series)
@@ -59,7 +60,7 @@ def test_pendulum_truth_and_time_axis() -> None:
 
 @pytest.mark.parametrize("name", ["regression_lineaire", "test_student"])
 def test_same_state_same_result_byte_for_byte(name: str) -> None:
-    spec = _spec(name)
+    spec = _spec(name, ARCHIVES if name == "test_student" else EXP)
     a = runner.run(spec).model_dump(exclude={"compute_ms"})
     runner._CACHE.clear()
     b = runner.run(spec).model_dump(exclude={"compute_ms"})

@@ -80,8 +80,7 @@ Hackathon-ENSAI/
 │   └── notes/r1.md … r4.md         Notes personnelles, une par rôle                         chacun
 ├── experiments/                    Une expérience = un fichier YAML                          R2
 │   ├── regression_lineaire.yaml    P0, modèle du générateur random
-│   ├── test_student.yaml           P0, cible relative (puissance)
-│   └── pendule_euler.yaml          P0, modèle du générateur ode
+│   └── archives/                   test_student.yaml et pendule_euler.yaml (abandonnés, gardés pour les tests)
 ├── backend/
 │   ├── main.py                     Point d'entrée FastAPI                                    R1
 │   ├── contracts.py                [Contrat] Requêtes et réponses de l'API                   R1

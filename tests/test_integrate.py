@@ -1,4 +1,4 @@
-"""Tests de la méthode integrate (R2), pendule simple de pendule_euler.yaml."""
+"""Tests de la méthode integrate (R2), pendule simple de experiments/archives/pendule_euler.yaml."""
 
 from __future__ import annotations
 
