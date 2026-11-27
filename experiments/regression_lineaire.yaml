@@ -105,12 +105,12 @@ counterexamples:
     state: { hypotheses: { autocorr: true } }
   - id: "anscombe-courbe"
     label: "Anscombe : relation courbe"
-    explain: "Même pente et même R2 que le cas linéaire, mais des résidus en arc."
+    explain: "Même pente et même R2 que le cas linéaire : les chiffres ne voient rien. Regardez le nuage et les résidus : ils dessinent un arc, la droite ne convient pas. La couverture reste de 100 % ici parce que la pente est calée, pas parce que le modèle est bon."
     expect: same_summary            # test 4 : pente et R2 identiques, au lieu d'une rupture
     state: { params: { match_summary: true }, hypotheses: { relation: "quadratic" } }
   - id: "anscombe-levier"
     label: "Anscombe : un point levier"
-    explain: "Même pente et même R2, mais un seul point porte tout l'ajustement."
+    explain: "Même pente et même R2 que le cas sain : les chiffres ne voient rien. Regardez le nuage : un seul point isolé, loin des autres, tire la droite à lui. La couverture reste de 100 % ici parce que la pente est calée, pas parce que le modèle est bon."
     expect: same_summary
     state: { params: { match_summary: true }, hypotheses: { add_leverage: true } }
 
