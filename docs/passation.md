@@ -1,5 +1,9 @@
 # Notes de passation (la plus récente en haut)
 
+## H6,5 (18 h 30) : correctif moteur fait par R3, branche `r3/p1` (pas une relève)
+- **R1, à relire** (`backend/engine/runner.py`, ligne 168) : `_compute_uncached` rappelait `with_extra_points` alors que `generate()` ajoute déjà les points posés : chaque point comptait deux fois. Le runner prend maintenant `world.variables` tel quel. Test : `tests/test_runner.py::test_extra_points_added_once` (échoue sans le correctif : 152 points au lieu de 151).
+- Sur la même branche (interface) : niveaux en mots, `segments`, `h1` et seuil dans `distribution`, banc de méthodes, ajout de points par clic, faisceau de trajectoires (attend les `paths` du TCL, R2).
+
 ## H6,5 (18 h 30) : planning revu, on a de l'avance (pas une relève)
 - Décision de Kilian : le P0 est presque vert, donc **jalon P0 avancé à H9 (21 h)**, P1 ouvert tout de suite, priorités P1 : mécaniques visuelles puis Import + Supabase. Coupes appliquées au P1 à H17. Détail et tâches dans l'ordre : **CLAUDE.md, section 2**.
 - R3 (jusqu'à 21 h) : niveaux en mots, `segments` dans `plot.ts`, puis banc de méthodes, trajectoires du TCL, ajout de points par clic.
