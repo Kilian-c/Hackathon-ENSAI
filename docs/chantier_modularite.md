@@ -43,7 +43,12 @@ Quand une ligne est terminée et fusionnée sur `main`, rayez-la (`~~...~~`) : l
 
 ## Dépendances entre les deux listes
 
-- `heatmap` : R1 sert la vue (`runner.py`) et R3 la dessine (`plot.ts`). La forme des données doit être convenue **avant** de coder : `Series` de `contracts.py`, sans le modifier.
+- `heatmap` : R1 sert la vue (`runner.py`) et R3 la dessine (`plot.ts`, **fait**). Forme proposée par R3, à confirmer par R1, sans changer le contrat :
+  - **Données** : une `Series` par méthode (et une par Référence, `role: reference`). La matrice va dans `paths`, une liste par ligne (`paths[i][j]` = coefficient (i + 1, j + 1)). `NaN` et `inf` arrivent en `null`, ce qui donne une case vide. `slot` est libre (par exemple `matrix`), `id` = `<vue>.<emplacement>.<methode>`.
+  - **Taille** : 3 cartes au plus côte à côte. Au-delà de 12 × 12, les valeurs ne sont plus écrites dans les cases, seulement au survol.
+  - **`ui` facultatif** : `zmin`, `zmax` (bornes de couleur, communes à toutes les cartes), `decimals` (2 par défaut).
+  - Exemple de `bind` : `{ matrix: "curves.A" }`, où la méthode renvoie la matrice de la répétition 0 dans `curves`, de forme (d, d).
+- `ui.log_y` et `ui.log_x` (**faits**, `plot.ts`) : à `true`, l'axe passe en échelle logarithmique pour les vues `scatter`, `residuals`, `curves` et `sensitivity`. Les bornes du moteur restent en unités de données : l'interface les convertit, et passe en automatique si une borne est ≤ 0. Les valeurs ≤ 0 sont comptées sous la vue.
 - Catalogue : R1 écrit `gen_catalog.py`, puis R3 branche `importPrompt.ts` sur `catalog.gen.ts`.
 - Seuils proposés : R1 les ajoute à `/api/validate` sans toucher au contrat (dans les avertissements ou les résultats de tests déjà renvoyés), puis R3 les affiche.
 

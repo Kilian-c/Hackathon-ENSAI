@@ -274,3 +274,93 @@ describe('gridPosition', () => {
     expect(gridPosition(['normal', 'cauchy'], 'cauchy')).toBe(1)
   })
 })
+
+describe('échelle logarithmique (ui.log_y, ui.log_x)', () => {
+  const base = { layer: null, low: null, high: null, hit: null, value: null, paths: null }
+  const view = (ui: Record<string, unknown> | null, axes: Record<string, unknown> = {}) =>
+    ({
+      id: 'conv', type: 'curves', total: 0, shown: 0, axes, ui,
+      series: [
+        { ...base, id: 'conv.series.jacobi', slot: 'series', method: 'jacobi', role: 'method', label: 'Jacobi', x: [1, 2, 3], y: [1, 0.01, 0] },
+      ],
+    }) as unknown as ViewResult
+  const on = { methodsOn: new Set(['jacobi']), showReference: false }
+
+  it('log_y : axe logarithmique, bornes du moteur converties en log10', () => {
+    const fig = buildFigure(view({ log_y: true }, { y: [1e-6, 10] }), on)!
+    expect(fig.layout.yaxis).toMatchObject({ type: 'log', range: [-6, 1], autorange: false })
+    expect((fig.layout.xaxis as { type?: string }).type).toBeUndefined()
+  })
+  it('bornes non positives : automatique au lieu du log de 0', () => {
+    const fig = buildFigure(view({ log_y: true }, { y: [0, 10] }), on)!
+    expect(fig.layout.yaxis).toMatchObject({ type: 'log', autorange: true })
+  })
+  it('les valeurs ≤ 0 sont comptées en légende (Plotly les tait)', () => {
+    expect(buildFigure(view({ log_y: true }), on)!.caption).toContain(
+      '1 valeur négative ou nulle non affichée (échelle logarithmique)',
+    )
+  })
+  it('log_x agit sur l’axe horizontal ; sans ui, rien ne change', () => {
+    expect((buildFigure(view({ log_x: true }), on)!.layout.xaxis as { type: string }).type).toBe('log')
+    const plain = buildFigure(view(null), on)!
+    expect((plain.layout.yaxis as { type?: string }).type).toBeUndefined()
+    expect(plain.caption).toEqual([])
+  })
+  it('seul true active le réglage', () => {
+    expect((buildFigure(view({ log_y: 'oui' }), on)!.layout.yaxis as { type?: string }).type).toBeUndefined()
+  })
+})
+
+describe('matrices (vue heatmap)', () => {
+  const base = { layer: null, x: null, y: null, low: null, high: null, hit: null, value: null }
+  const matrix = (id: string, method: string, role: string, paths: (number | null)[][]) => ({
+    ...base, id: `mat.matrix.${id}`, slot: 'matrix', method, role, label: id, paths,
+  })
+  const view = (series: unknown[], ui: Record<string, unknown> | null = null) =>
+    ({ id: 'mat', type: 'heatmap', total: 0, shown: 0, axes: {}, ui, series }) as unknown as ViewResult
+  const A = matrix('gauss', 'gauss', 'method', [[2, -1], [-1, 2]])
+  const P = matrix('pivot', 'pivot', 'correction', [[1, 0], [0, 1]])
+  const R = matrix('ref', 'gauss', 'reference', [[0.5, 0], [0, null]])
+
+  it('une carte par méthode affichée, ligne 1 en haut, indices à partir de 1', () => {
+    const fig = buildFigure(view([A, P]), { methodsOn: new Set(['gauss', 'pivot']), showReference: false })!
+    expect(fig.data.map((t) => t.uid)).toEqual(['mat.matrix.gauss', 'mat.matrix.pivot'])
+    expect(fig.data[0]).toMatchObject({ type: 'heatmap', z: [[2, -1], [-1, 2]], x: [1, 2], y: [1, 2], xaxis: 'x', yaxis: 'y' })
+    expect(fig.data[1]).toMatchObject({ xaxis: 'x2', yaxis: 'y2' })
+    expect(fig.layout.yaxis).toMatchObject({ autorange: 'reversed', scaleanchor: 'x' })
+  })
+  it('signes mêlés : échelle commune, divergente et centrée sur 0', () => {
+    const fig = buildFigure(view([A, P]), { methodsOn: new Set(['gauss', 'pivot']), showReference: false })!
+    for (const t of fig.data) expect(t).toMatchObject({ zmin: -2, zmax: 2 })
+    expect((fig.data[0].colorscale as unknown[][])[1][0]).toBe(0.5)
+    expect(fig.data.map((t) => t.showscale)).toEqual([false, true])
+  })
+  it('valeurs écrites dans les cases (jamais la couleur seule), case vide pour null', () => {
+    const fig = buildFigure(view([R], { decimals: 1 }), { methodsOn: new Set(['gauss']), showReference: true })!
+    expect(fig.data[0].text).toEqual([['0,5', '0,0'], ['0,0', '']])
+    expect(fig.data[0].zmin).toBe(0)
+  })
+  it('la Référence suit son interrupteur et se place à droite', () => {
+    const o = (ref: boolean) => ({ methodsOn: new Set(['gauss']), showReference: ref })
+    expect(buildFigure(view([R, A]), o(true))!.data.map((t) => t.uid)).toEqual(['mat.matrix.gauss', 'mat.matrix.ref'])
+    expect(buildFigure(view([R, A]), o(false))!.data.map((t) => t.uid)).toEqual(['mat.matrix.gauss'])
+  })
+  it('bornes imposées par ui.zmin et ui.zmax', () => {
+    const fig = buildFigure(view([A], { zmin: -5, zmax: 5 }), { methodsOn: new Set(['gauss']), showReference: false })!
+    expect(fig.data[0]).toMatchObject({ zmin: -5, zmax: 5 })
+  })
+  it('grande matrice : valeurs au survol seulement ; au-delà de 3 cartes, le reste est compté', () => {
+    const big = matrix('big', 'gauss', 'method', Array.from({ length: 20 }, () => Array(20).fill(1)))
+    const fig = buildFigure(view([big]), { methodsOn: new Set(['gauss']), showReference: false })!
+    expect(fig.data[0].text).toBeUndefined()
+    expect(fig.caption).toContain('Valeurs au survol')
+    const many = ['a', 'b', 'c', 'd'].map((m) => matrix(m, m, 'method', [[1]]))
+    const fig4 = buildFigure(view(many), { methodsOn: new Set(['a', 'b', 'c', 'd']), showReference: false })!
+    expect(fig4.data).toHaveLength(3)
+    expect(fig4.caption).toContain('3 matrices affichées sur 4')
+  })
+  it('méthode masquée : message au lieu d’une figure vide', () => {
+    const fig = buildFigure(view([A]), { methodsOn: new Set(), showReference: false })!
+    expect(fig.caption).toEqual(['Aucune matrice à afficher pour les méthodes choisies'])
+  })
+})

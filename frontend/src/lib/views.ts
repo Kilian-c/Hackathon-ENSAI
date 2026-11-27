@@ -11,6 +11,7 @@
  * - distribution : x (valeurs à mettre en histogramme)
  * - valeur scalaire (vraie valeur, seuil) : value
  * - trajectoires (Répétitions, mode « paths ») : paths
+ * - matrice (vue heatmap) : paths, une liste par ligne (paths[i][j] = coefficient (i + 1, j + 1))
  */
 
 import type { MeasureResult, Series, SweepResult, ViewResult } from './types.gen'
