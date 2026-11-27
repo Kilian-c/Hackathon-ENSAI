@@ -4,10 +4,10 @@ Le générateur `ode` (R1) fournit `system`. Cette méthode lit dessus, par attr
 ou par clés (dict) :
 - `rhs(y)` : second membre, `y` est un tableau dans l'ordre des variables d'état,
   la valeur renvoyée a la même forme ;
-- `y0` : conditions initiales dans le même ordre (la première variable est l'angle) ;
+- `y0` : conditions initiales dans le même ordre (la première variable est suivie et tracée) ;
 - `t_end` : durée simulée ;
 - `t` (facultatif) : grille d'affichage, 400 points de 0 à t_end par défaut ;
-- `ref` (facultatif) : solution de référence de l'angle sur `t`. Absente, elle est
+- `ref` (facultatif) : solution de référence de la première variable sur `t`. Absente, elle est
   recalculée avec `solve_ivp` (tolérance 1e-10).
 """
 
@@ -63,7 +63,7 @@ def _derivatives(rhs: Any, ys: np.ndarray) -> np.ndarray:
     "integrate",
     provides={
         "curves": ["t", "theta"],
-        "summary": ["max_rel_error", "energy_drift", "full_turn"],
+        "summary": ["max_rel_error"],
     },
     cost="t_end / dt",
 )
@@ -76,9 +76,9 @@ def integrate(
 ) -> MethodResult:
     """Intègre `system` avec le pas `dt` (arrondi pour tomber pile sur t_end).
 
-    Renvoie l'angle interpolé sur la grille `t`, l'erreur maximale relative à
-    |theta0|, la dérive maximale de l'énergie du pendule (relative à l'énergie
-    initiale) et `full_turn` (1 si l'angle dépasse pi en valeur absolue).
+    Renvoie la première variable d'état interpolée sur la grille `t` (courbe nommée
+    `theta`) et l'erreur maximale relative à |y0[0]|. Aucune grandeur propre à un
+    système (énergie, tour complet...) n'est calculée ici.
     """
     if scheme not in _SCHEMES:
         raise ValueError(f"scheme doit valoir l'un de {_SCHEMES}, reçu {scheme!r}.")
@@ -118,19 +118,7 @@ def integrate(
         theta0 = abs(float(y0[0])) or 1.0
         max_rel_error = float(np.max(np.abs(theta - ref)) / theta0)
 
-        # Énergie du pendule : E = omega^2 / 2 + k (1 - cos theta), avec k = g / L
-        # déduit du second membre (omega' = -k sin theta en theta = pi / 2).
-        k = -float(rhs(np.array([math.pi / 2, 0.0]))[1])
-        energy = 0.5 * ys[:, 1] ** 2 + k * (1.0 - np.cos(ys[:, 0]))
-        e0 = float(energy[0])
-        drift = float(np.max(np.abs(energy - e0)) / e0) if e0 > 0 else 0.0
-        full_turn = float(np.max(np.abs(ys[:, 0])) > math.pi)
-
     return MethodResult(
         curves={"t": t, "theta": theta},
-        summary={
-            "max_rel_error": max_rel_error,
-            "energy_drift": drift,
-            "full_turn": full_turn,
-        },
+        summary={"max_rel_error": max_rel_error},
     )

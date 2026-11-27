@@ -25,15 +25,12 @@ def test_reference_figures() -> None:
     """Chiffres du cahier : theta0 = 1,2 rad, 5 s, dt = 10 ** (-3.5 + 2.5 h)."""
     assert _run(0.0, "euler")["max_rel_error"] == pytest.approx(0.012, abs=0.004)
     assert _run(0.6, "euler")["max_rel_error"] == pytest.approx(0.45, abs=0.03)
-    assert _run(0.8, "euler")["full_turn"] == 0
-    assert _run(0.9, "euler")["full_turn"] == 1
 
 
 def test_rk4_is_exact_everywhere() -> None:
     for h in (0.0, 0.5, 1.0):
         s = _run(h, "rk4")
         assert s["max_rel_error"] < 0.01
-        assert s["full_turn"] == 0
 
 
 def test_error_grows_with_step() -> None:
