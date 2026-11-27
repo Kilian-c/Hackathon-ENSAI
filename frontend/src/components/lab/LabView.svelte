@@ -13,6 +13,7 @@
   import { SvelteSet } from 'svelte/reactivity'
   import DynamicEquation from '../DynamicEquation.svelte'
   import PlotlyChart from '../PlotlyChart.svelte'
+  import AutoSweepPlayer from './AutoSweepPlayer.svelte'
   import ChallengesPanel from './ChallengesPanel.svelte'
   import CounterexampleBar from './CounterexampleBar.svelte'
   import MeasurePanel from './MeasurePanel.svelte'
@@ -75,6 +76,9 @@
   let sweepStatus = $state<'idle' | 'loading' | 'none' | 'error'>('idle')
   let copied = $state(false)
   let pointsFull = $state(false)
+  /** Balayage automatique sur un paramètre : bornes des vues figées sur la première image. */
+  let frozenAxes = $state<Record<string, RunResult['views'][number]['axes']> | null>(null)
+  let animating = $state<string | null>(null)
 
   let runner: Latest<EngineState, RunResult> | null = null
   let sweeper: Latest<SweepRequest, SweepResult | null> | null = null
@@ -155,7 +159,10 @@
     ...(spec && spec.challenges.length > 0 ? [{ id: CHALLENGES_TAB, title: 'Défis' }] : []),
   ])
   const activeTab = $derived(tabs.some((t) => t.id === ui.tab) ? (ui.tab as string) : (tabs[0]?.id ?? null))
-  const activeView = $derived(result?.views.find((v) => v.id === activeTab) ?? null)
+  const activeViewRaw = $derived(result?.views.find((v) => v.id === activeTab) ?? null)
+  const activeView = $derived(
+    activeViewRaw && frozenAxes?.[activeViewRaw.id] ? { ...activeViewRaw, axes: frozenAxes[activeViewRaw.id] } : activeViewRaw,
+  )
   const sweepTargets = $derived(
     activeView?.type === 'sensitivity' ? (spec?.views.find((v) => v.id === activeView.id)?.sweep?.axes ?? []) : [],
   )
@@ -249,6 +256,19 @@
     pointsFull = false
   }
 
+  // --- Balayage automatique (fiche F) ---
+  function sweepFrame(state: EngineState, res: RunResult, first: boolean): void {
+    engine = state
+    result = res
+    activeCounterexample = null
+    if (first && animating?.startsWith('p.')) frozenAxes = Object.fromEntries(res.views.map((v) => [v.id, v.axes]))
+  }
+
+  function sweepPlaying(target: string | null): void {
+    animating = target
+    if (target === null) frozenAxes = null
+  }
+
   function newDraw(): void {
     if (engine) engine = nextDraw(engine)
   }
@@ -339,6 +359,17 @@
               <ParamControl {id} param={p} value={engine.params[id]} onchange={(v) => changeParam(id, v)} />
             {/each}
           </section>
+        {/if}
+        {#if source}
+          <AutoSweepPlayer
+            {spec}
+            {engine}
+            {ui}
+            {source}
+            onframe={sweepFrame}
+            onfinish={(u) => (ui = u)}
+            onplaying={sweepPlaying}
+          />
         {/if}
       </aside>
 
