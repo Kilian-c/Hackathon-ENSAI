@@ -288,6 +288,11 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         15,
     ),
+    "ols_ci": (
+        {"x": _X0, "y": 1.0 + 1.5 * _X0 + _X0[::-1], "truth": 1.5, "alpha": 0.05, "se_type": "HC3"},
+        20,
+        15,
+    ),
     "integrate": (
         {
             "system": {
