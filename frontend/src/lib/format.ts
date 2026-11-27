@@ -46,3 +46,13 @@ export function levelLabel(level: string | number | null | undefined): string {
   const key = String(level ?? '').trim()
   return LEVELS[key] ?? key
 }
+
+/**
+ * Titre d'expérience coupé au premier « : » (« Régression linéaire : quand… ») : la tête s'affiche
+ * en gras, la suite en sous-titre. Sans « : », tout est dans la tête.
+ */
+export function splitTitle(title: string): { head: string; tail: string | null } {
+  const i = title.indexOf(' : ')
+  if (i <= 0) return { head: title, tail: null }
+  return { head: title.slice(0, i).trim(), tail: title.slice(i + 3).trim() || null }
+}

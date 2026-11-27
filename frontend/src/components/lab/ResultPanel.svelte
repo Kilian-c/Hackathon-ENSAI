@@ -58,130 +58,137 @@
 </script>
 
 <section class="result" aria-label="Résultat">
-  {#if m}
-    <div class="measure">
-      <p class="kicker">{m.label}</p>
-      <ul class="rows">
-        {#each shown as method, k (method.id)}
-          {@const verdict = m.states[method.id]}
-          {@const margin = formatMargin(m.mc_se[method.id], m)}
-          {@const g = domain ? gauge(m, method.id, domain) : null}
-          {@const color = roleColorVar(roles[method.id])}
-          <li>
-            <span class="who" style:color>
-              <span aria-hidden="true">{glyph(method.id)}</span>
-              {method.label}
-            </span>
-            <span class="val">
-              {formatMeasure(m.values[method.id], m)}
-              {#if margin}<span class="margin">{margin}</span>{/if}
-            </span>
-            {#if verdict}<VerdictBadge {verdict} />{/if}
-            {#if g}
-              <div class="full">
-                <MeasureGauge
-                  gauge={g}
-                  {color}
-                  {showReference}
-                  labels={k === 0}
-                  description="{method.label} : {formatMeasure(m.values[method.id], m)}{verdict ? `, ${verdictLabel(verdict)}` : ''}"
-                />
-              </div>
-            {/if}
-            {#if method.role === 'method' && m.texts[method.id]}
-              <p class="full text">{m.texts[method.id]}</p>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-      <p class="legend">
-        {#if principalTarget !== null && m.target !== 'base'}
-          <span><span class="tick" aria-hidden="true"></span> Cible : {formatMeasure(principalTarget, m)}</span>
-        {/if}
-        {#if showReference && principal && m.baseline[principal.id] != null}
-          <span><span class="ring" aria-hidden="true"></span> Référence (état sain) : {formatMeasure(m.baseline[principal.id], m)}{m.target === 'base' ? ', la cible' : ''}</span>
-        {/if}
-      </p>
-    </div>
-  {/if}
-
-  <div class="guide" style:--tone={guide.tone ? verdictColorVar(guide.tone) : 'var(--ct-border)'}>
-    <p class="kicker">Que se passe-t-il ?</p>
-    <p class="headline">
-      {#if guide.tone}<span class="icon" aria-hidden="true">{verdictIcon(guide.tone)}</span>{/if}
-      {guide.headline}
-    </p>
-    {#each guide.causes as c (c.id)}
-      <p class="cause">
-        <strong>{c.label}</strong> : {c.text}
-        <button type="button" class="link" onclick={() => onexplain(c.id)}>En savoir plus</button>
-      </p>
-    {/each}
-    {#if guide.moreCauses > 0}
-      <p class="cause">Et {guide.moreCauses} autre{guide.moreCauses > 1 ? 's' : ''} hypothèse{guide.moreCauses > 1 ? 's' : ''} relâchée{guide.moreCauses > 1 ? 's' : ''}.</p>
-    {/if}
-    {#if guide.context}<p class="cause">{guide.context}</p>{/if}
-    {#if guide.next}<p class="next"><span aria-hidden="true">→</span> {guide.next}</p>{/if}
-
-    {#if correction || alternatives.length > 0 || guide.action === 'heal'}
-      <div class="actions">
-        {#if correction}
-          {@const on = methodsOn.includes(correction.id)}
-          <button
-            type="button"
-            class="correction"
-            class:suggested={guide.action === 'correction'}
-            aria-pressed={on}
-            onclick={() => ontoggle(correction.id)}
-          >
-            <span aria-hidden="true">◆</span>
-            {on ? 'Masquer la correction' : 'Afficher la correction'}
-          </button>
-        {/if}
-        {#if guide.action === 'heal'}
-          <button type="button" class="secondary" onclick={onheal}>Tout rétablir</button>
-        {/if}
-        {#if alternatives.length > 0}
-          <span class="alts">
-            <span class="alt-title">Comparer aussi :</span>
-            {#each alternatives as alt (alt.id)}
-              <button
-                type="button"
-                class="alt"
-                aria-pressed={methodsOn.includes(alt.id)}
-                style:--role-color={roleColorVar(roles[alt.id])}
-                onclick={() => ontoggle(alt.id)}
-              >
-                <span aria-hidden="true">{glyph(alt.id)}</span>
-                {alt.label}
-              </button>
-            {/each}
-          </span>
-        {/if}
+  <div class="inner">
+    {#if m}
+      <div class="measure">
+        <p class="kicker">{m.label}</p>
+        <ul class="rows">
+          {#each shown as method, k (method.id)}
+            {@const verdict = m.states[method.id]}
+            {@const margin = formatMargin(m.mc_se[method.id], m)}
+            {@const g = domain ? gauge(m, method.id, domain) : null}
+            {@const color = roleColorVar(roles[method.id])}
+            <li>
+              <span class="who" style:color>
+                <span aria-hidden="true">{glyph(method.id)}</span>
+                {method.label}
+              </span>
+              <span class="val">
+                {formatMeasure(m.values[method.id], m)}
+                {#if margin}<span class="margin">{margin}</span>{/if}
+              </span>
+              {#if verdict}<VerdictBadge {verdict} />{/if}
+              {#if g}
+                <div class="full">
+                  <MeasureGauge
+                    gauge={g}
+                    {color}
+                    {showReference}
+                    labels={k === 0}
+                    description="{method.label} : {formatMeasure(m.values[method.id], m)}{verdict ? `, ${verdictLabel(verdict)}` : ''}"
+                  />
+                </div>
+              {/if}
+              {#if method.role === 'method' && m.texts[method.id]}
+                <p class="full text">{m.texts[method.id]}</p>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+        <p class="legend">
+          {#if principalTarget !== null && m.target !== 'base'}
+            <span><span class="tick" aria-hidden="true"></span> Cible : {formatMeasure(principalTarget, m)}</span>
+          {/if}
+          {#if showReference && principal && m.baseline[principal.id] != null}
+            <span><span class="ring" aria-hidden="true"></span> Référence (état sain) : {formatMeasure(m.baseline[principal.id], m)}{m.target === 'base' ? ', la cible' : ''}</span>
+          {/if}
+        </p>
       </div>
     {/if}
-    {#each explained as x (x.id)}
-      <p class="explain" style:--role-color={roleColorVar(roles[x.id])}>
-        <strong>{x.label}.</strong>
-        {x.explain}
+
+    <div class="guide" style:--tone={guide.tone ? verdictColorVar(guide.tone) : 'var(--ct-border)'}>
+      <p class="kicker">Que se passe-t-il ?</p>
+      <p class="headline">
+        {#if guide.tone}<span class="icon" aria-hidden="true">{verdictIcon(guide.tone)}</span>{/if}
+        {guide.headline}
       </p>
-    {/each}
+      {#each guide.causes as c (c.id)}
+        <p class="cause">
+          <strong>{c.label}</strong> : {c.text}
+          <button type="button" class="link" onclick={() => onexplain(c.id)}>En savoir plus</button>
+        </p>
+      {/each}
+      {#if guide.moreCauses > 0}
+        <p class="cause">Et {guide.moreCauses} autre{guide.moreCauses > 1 ? 's' : ''} hypothèse{guide.moreCauses > 1 ? 's' : ''} relâchée{guide.moreCauses > 1 ? 's' : ''}.</p>
+      {/if}
+      {#if guide.context}<p class="cause">{guide.context}</p>{/if}
+      {#if guide.next}<p class="next"><span aria-hidden="true">→</span> {guide.next}</p>{/if}
+
+      {#if correction || alternatives.length > 0 || guide.action === 'heal'}
+        <div class="actions">
+          {#if correction}
+            {@const on = methodsOn.includes(correction.id)}
+            <button
+              type="button"
+              class="correction"
+              class:suggested={guide.action === 'correction'}
+              aria-pressed={on}
+              onclick={() => ontoggle(correction.id)}
+            >
+              <span aria-hidden="true">◆</span>
+              {on ? 'Masquer la correction' : 'Afficher la correction'}
+            </button>
+          {/if}
+          {#if guide.action === 'heal'}
+            <button type="button" class="secondary" onclick={onheal}>Tout rétablir</button>
+          {/if}
+          {#if alternatives.length > 0}
+            <span class="alts">
+              <span class="alt-title">Comparer aussi :</span>
+              {#each alternatives as alt (alt.id)}
+                <button
+                  type="button"
+                  class="alt"
+                  aria-pressed={methodsOn.includes(alt.id)}
+                  style:--role-color={roleColorVar(roles[alt.id])}
+                  onclick={() => ontoggle(alt.id)}
+                >
+                  <span aria-hidden="true">{glyph(alt.id)}</span>
+                  {alt.label}
+                </button>
+              {/each}
+            </span>
+          {/if}
+        </div>
+      {/if}
+      {#each explained as x (x.id)}
+        <p class="explain" style:--role-color={roleColorVar(roles[x.id])}>
+          <strong>{x.label}.</strong>
+          {x.explain}
+        </p>
+      {/each}
+    </div>
   </div>
 </section>
 
 <style>
+  /* Mise en page selon la place reçue (colonne étroite à droite, ou bande au-dessus du graphique). */
   .result {
-    display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-    gap: var(--ct-space-4) var(--ct-space-8);
-    padding: var(--ct-space-4) var(--ct-space-6);
+    container-type: inline-size;
+    padding: var(--ct-space-4);
     background: var(--ct-surface);
     border: 1px solid var(--ct-border);
     border-radius: var(--ct-radius-lg);
   }
-  @media (max-width: 72rem) {
-    .result {
-      grid-template-columns: minmax(0, 1fr);
+  .inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ct-space-4);
+  }
+  @container (min-width: 40rem) {
+    .inner {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: var(--ct-space-4) var(--ct-space-8);
     }
   }
   .kicker {
@@ -203,14 +210,23 @@
   }
   .rows li {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 0 var(--ct-space-3);
   }
   .who {
+    grid-column: 1 / -1;
     font-size: var(--ct-text-sm);
     font-weight: 600;
     min-width: 0;
+  }
+  @container (min-width: 30rem) {
+    .rows li {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+    }
+    .who {
+      grid-column: auto;
+    }
   }
   .val {
     font-family: var(--ct-font-mono);
@@ -262,14 +278,14 @@
     display: grid;
     align-content: start;
     gap: var(--ct-space-2);
-    padding-left: var(--ct-space-6);
-    border-left: 3px solid var(--tone);
+    padding-top: var(--ct-space-4);
+    border-top: 3px solid var(--tone);
   }
-  @media (max-width: 72rem) {
+  @container (min-width: 40rem) {
     .guide {
-      padding: var(--ct-space-4) 0 0;
-      border-left: none;
-      border-top: 3px solid var(--tone);
+      padding: 0 0 0 var(--ct-space-6);
+      border-top: none;
+      border-left: 3px solid var(--tone);
     }
   }
   .guide p {
