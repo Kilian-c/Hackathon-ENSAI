@@ -1,0 +1,179 @@
+# yaml-language-server: $schema=./schema.json
+schema_version: 1
+id: "orthonormalisation"
+title: "Gram-Schmidt : Q reste-t-elle orthogonale quand les colonnes se ressemblent ?"
+discipline: "algèbre linéaire"
+level: "3"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé
+concepts: ["factorisation QR", "Gram-Schmidt", "conditionnement", "réflexions de Householder"]
+
+theorem:
+  name: "Stabilité de la factorisation QR"
+  statement: |
+    Toute matrice inversible A s'écrit A = Q R, avec Q orthogonale et R triangulaire. En arithmétique
+    exacte, Gram-Schmidt classique et Gram-Schmidt modifié donnent la même factorisation. En arithmétique
+    flottante, la perte d'orthogonalité ||Q^T Q - I|| vaut environ epsilon fois cond(A)^2 pour Gram-Schmidt
+    classique, epsilon fois cond(A) pour Gram-Schmidt modifié, et seulement epsilon pour les réflexions de
+    Householder, où epsilon = 1,1e-16 : seule cette dernière méthode ne dépend pas du conditionnement.
+
+equation:
+  tex: '\|Q^\top Q - I\| \;\approx\; {{perte}}'
+  terms:
+    perte:
+      ok: '\varepsilon\,\kappa(A)^2'
+      corrected: '\varepsilon'
+
+params:
+  d: { type: number, label: "Taille de la matrice d", min: 6, max: 24, step: 2, default: 12,
+       sweep_values: [6, 12, 18, 24] }
+
+hypotheses:
+  conditionnement:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Colonnes bien indépendantes"
+    category: "conditionnement"
+    ok_label: "Bien indépendantes"
+    broken_label: "Presque dépendantes"
+    statement_tex: '\kappa(A) = \dfrac{\sigma_{\max}}{\sigma_{\min}} \ \text{modéré}'
+    why: "Gram-Schmidt soustrait à chaque colonne ses projections sur les précédentes : si deux colonnes se ressemblent, il soustrait deux nombres presque égaux, et les chiffres exacts disparaissent."
+    when_broken: "Quand les colonnes sont presque dépendantes, le résultat de la soustraction est dominé par les erreurs d'arrondi : les colonnes de Q ne sont plus orthogonales, et la version classique est la plus touchée."
+    affects: [perte]
+
+counterexamples:
+  - id: "colonnes-presque-dependantes"
+    label: "Colonnes presque dépendantes"
+    explain: "Le conditionnement atteint 10^12 : Gram-Schmidt classique produit une matrice Q dont les colonnes ne sont plus du tout orthogonales."
+    state: { hypotheses: { conditionnement: 1.0 } }
+  - id: "conditionnement-eleve"
+    label: "Conditionnement élevé"
+    explain: "Autour de 10^7, la perte d'orthogonalité de Gram-Schmidt classique est déjà totale, alors que la version modifiée reste précise."
+    state: { hypotheses: { conditionnement: 0.55 } }
+
+generator:
+  type: random
+  n: p.d * p.d                    # une matrice d x d par répétition, rangée en d * d entrées
+  repeat: 100
+  variables:
+    a: { expr: "normal()" }
+
+methods:
+  - id: cgs
+    role: method
+    call: orthonormalize
+    label: "Gram-Schmidt classique"
+    args: { a: a, d: p.d, decades: "1 + 11 * h.conditionnement", kind: "cgs" }
+  - id: mgs
+    role: alternative
+    call: orthonormalize
+    label: "Gram-Schmidt modifié"
+    explain: "La version modifiée corrige chaque projection avec le vecteur déjà mis à jour : l'erreur croît comme epsilon fois cond(A) au lieu de cond(A)^2. C'est bien mieux, mais Q perd encore son orthogonalité quand les colonnes sont presque dépendantes."
+    args: { a: a, d: p.d, decades: "1 + 11 * h.conditionnement", kind: "mgs" }
+  - id: householder
+    role: correction
+    call: orthonormalize
+    label: "Réflexions de Householder"
+    explain: "Householder n'orthogonalise pas colonne par colonne : il applique à A une suite de réflexions, qui sont des matrices orthogonales à l'arrondi près. Q reste orthonormée quel que soit le conditionnement."
+    repairs: [conditionnement]
+    args: { a: a, d: p.d, decades: "1 + 11 * h.conditionnement", kind: "householder" }
+
+measures:
+  orthogonalite:
+    agg: "median(reps.log_ortho)"
+    label: "Perte d'orthogonalité de Q (puissance de 10)"
+    decimals: 1
+    primary: true
+    target: -10
+    direction: above
+    ok_within: 2
+    broken_beyond: 4.5
+    texts:
+      ok: "Q est orthonormée : ||QᵀQ - I|| de l'ordre de 10^{value}."
+      warning: "Q perd de son orthogonalité : ||QᵀQ - I|| de l'ordre de 10^{value}."
+      broken: "Q n'est plus orthogonale : ||QᵀQ - I|| de l'ordre de 10^{value} (0 : colonnes sans aucune orthogonalité)."
+  reconstruction:
+    agg: "median(reps.log_resid)"
+    label: "Erreur sur A = Q R (puissance de 10)"
+    decimals: 1
+
+challenges:
+  - id: "mgs-tient"
+    goal: "Rendez Gram-Schmidt classique Rompu alors que la version modifiée reste Fiable."
+    when: "s.orthogonalite == 'broken' and s.orthogonalite.mgs == 'ok'"
+    unlock: "Un conditionnement de l'ordre de 10^7 suffit : l'erreur du classique croît comme cond(A)^2, celle du modifié comme cond(A)."
+  - id: "classique-fiable"
+    goal: "Obtenez un verdict Fiable pour Gram-Schmidt classique avec des colonnes déjà un peu dépendantes."
+    when: "h.conditionnement >= 0.15 and s.orthogonalite == 'ok'"
+    unlock: "L'erreur croît avec cond(A)^2 mais part de très bas : jusqu'à un conditionnement de 10^3 environ, la méthode reste précise."
+
+auto_sweep: [h.conditionnement]
+
+views:
+  - id: gram
+    type: heatmap
+    title: "QᵀQ du premier tirage (l'identité si Q est orthonormée)"
+    bind: { matrix: curves.matrix }
+    ui: { decimals: 1 }
+  - id: pertes
+    type: distribution
+    title: "Perte d'orthogonalité sur 100 matrices"
+    bind: { stat: reps.log_ortho }
+    ui: { x_title: "Perte d'orthogonalité (puissance de 10)" }
+  - id: sens-conditionnement
+    type: sensitivity
+    title: "Selon le conditionnement"
+    sweep: { axes: [h.conditionnement] }
+  - id: sens-d
+    type: sensitivity
+    title: "Selon la taille de la matrice"
+    sweep: { axes: [p.d] }
+
+questions:
+  - id: "orth-q1-classique"
+    type: misconception
+    prompt: "Gram-Schmidt rend chaque colonne orthogonale aux précédentes. La matrice Q obtenue reste-t-elle orthonormée quand les colonnes de A sont presque dépendantes ?"
+    hypothesis: "conditionnement"
+    choices:
+      - id: "a"
+        label: "Oui : l'orthogonalité est garantie par la construction."
+        correct: false
+        reveal_state: { hypotheses: { conditionnement: 1.0 } }
+        verify: "s.orthogonalite == 'broken' and s.orthogonalite.householder == 'ok'"
+        focus_view: "gram"
+        explain: "La construction garantit l'orthogonalité en arithmétique exacte seulement. En flottant, la soustraction de deux colonnes presque égales est dominée par les arrondis : QᵀQ s'écarte de l'identité."
+      - id: "b"
+        label: "Non : l'orthogonalité se perd, et les réflexions de Householder s'en passent."
+        correct: true
+        reveal_state: { hypotheses: { conditionnement: 1.0 } }
+        verify: "s.orthogonalite == 'broken' and s.orthogonalite.householder == 'ok'"
+        focus_view: "gram"
+        explain: "Exact : la perte vaut environ epsilon fois cond(A)^2. Householder, fondé sur des matrices orthogonales, n'y est pas sensible."
+
+  - id: "orth-q2-modifie"
+    type: misconception
+    prompt: "La version « modifiée » de Gram-Schmidt est aussi précise que Householder, quel que soit le conditionnement. Est-ce vrai ?"
+    hypothesis: "conditionnement"
+    choices:
+      - id: "a"
+        label: "Oui : le Gram-Schmidt modifié règle complètement le problème."
+        correct: false
+        reveal_state: { hypotheses: { conditionnement: 1.0 } }
+        verify: "s.orthogonalite.mgs != 'ok' and s.orthogonalite.householder == 'ok'"
+        focus_view: "gram"
+        explain: "Il passe de epsilon fois cond(A)^2 à epsilon fois cond(A) : c'est mieux, mais pour un conditionnement de 10^12 la perte d'orthogonalité reste importante."
+      - id: "b"
+        label: "Non : il est meilleur que le classique, mais pas aussi précis que Householder."
+        correct: true
+        reveal_state: { hypotheses: { conditionnement: 1.0 } }
+        verify: "s.orthogonalite.mgs != 'ok' and s.orthogonalite.householder == 'ok'"
+        focus_view: "gram"
+        explain: "Exact : l'erreur croît encore avec le conditionnement. Seul Householder y échappe."
+
+  - id: "orth-q3-prediction"
+    type: prediction
+    prompt: "Les colonnes de A deviennent plus dépendantes : le réglage passe de {c} à {c} + 0,3 sur l'échelle de 0 à 1. Que devient la perte d'orthogonalité de Gram-Schmidt classique ?"
+    procedural_params:
+      c: { min: 0.2, max: 0.4, step: 0.1 }
+    sweep: { target: h.conditionnement, from: "{c}", to: "{c} + 0.3" }
+    measure: orthogonalite

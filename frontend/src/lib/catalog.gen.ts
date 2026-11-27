@@ -481,6 +481,44 @@ export const CATALOG: Catalog = {
       "doc": "Teste H0 : centre = 0 sur x0 (sous H0) et sur x1 (sous H1)."
     },
     {
+      "name": "orthonormalize",
+      "args": [
+        {
+          "name": "a",
+          "default": null
+        },
+        {
+          "name": "d",
+          "default": null
+        },
+        {
+          "name": "decades",
+          "default": "1.0"
+        },
+        {
+          "name": "kind",
+          "default": "'householder'"
+        }
+      ],
+      "kinds": [
+        "cgs",
+        "mgs",
+        "householder"
+      ],
+      "provides": {
+        "reps": [
+          "log_ortho",
+          "log_resid",
+          "failed"
+        ],
+        "curves": [
+          "matrix"
+        ]
+      },
+      "cost": "repeat * d**3",
+      "doc": "Factorise A = Q R et mesure ce que vaut Q."
+    },
+    {
       "name": "pairwise_tests",
       "args": [
         {

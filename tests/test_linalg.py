@@ -204,3 +204,59 @@ def test_eigen_experiment_power_fails_without_a_spike_but_the_direct_method_does
     assert healthy.measures["erreur"].states == {"puissance": "ok", "qr": "ok", "directe": "ok"}
     flat = runner.run(spec, EngineState(hypotheses={"separation": 1.0}))
     assert flat.measures["erreur"].states == {"puissance": "broken", "qr": "broken", "directe": "ok"}
+
+
+# --- orthonormalize ---------------------------------------------------------------------------------------
+
+
+def _ortho(kind: str, decades: float, r: int = 20, d: int = 8):
+    from backend.methods.linalg.orthonormalize import orthonormalize
+
+    a = np.random.default_rng(31).standard_normal((r, d * d))
+    return orthonormalize(a=a, d=d, decades=decades, kind=kind, rng=np.random.default_rng(0))
+
+
+def test_orthonormalize_all_methods_agree_when_well_conditioned() -> None:
+    for kind in ("cgs", "mgs", "householder"):
+        result = _ortho(kind, decades=0.0)
+        assert np.median(result.reps["log_ortho"]) < -14, kind
+        assert np.median(result.reps["log_resid"]) < -14, kind
+        assert np.allclose(result.curves["matrix"], np.eye(8), atol=1e-12), kind  # QᵀQ = I
+        assert not result.reps["failed"].any()
+
+
+def test_orthonormalize_loss_grows_like_cond_squared_then_cond_then_flat() -> None:
+    kinds = ("cgs", "mgs", "householder")
+    losses = {kind: np.median(_ortho(kind, decades=6.0).reps["log_ortho"]) for kind in kinds}
+    assert losses["householder"] < -14  # Householder : epsilon, quel que soit le conditionnement
+    assert -11 < losses["mgs"] < -8  # epsilon * cond : 1e-16 * 1e6 = 1e-10
+    assert losses["cgs"] > -6  # epsilon * cond^2 : 1e-16 * 1e12 = 1e-4
+    assert losses["householder"] < losses["mgs"] < losses["cgs"]
+
+
+def test_orthonormalize_factorisation_keeps_reproducing_a_even_when_q_is_not_orthogonal() -> None:
+    result = _ortho("cgs", decades=9.0)
+    assert np.median(result.reps["log_ortho"]) > -3  # Q n'est plus orthogonale
+    assert np.median(result.reps["log_resid"]) < -6  # mais A = Q R reste vrai
+
+
+def test_orthonormalize_bad_arguments_are_french_errors() -> None:
+    from backend.methods.linalg.orthonormalize import orthonormalize
+
+    rng = np.random.default_rng(0)
+    with pytest.raises(ValueError, match="kind doit valoir"):
+        orthonormalize(a=np.zeros((2, 4)), d=2, kind="qr", rng=rng)
+    with pytest.raises(ValueError, match="d \\* d"):
+        orthonormalize(a=np.zeros((2, 5)), d=2, rng=rng)
+    with pytest.raises(ValueError, match="decades"):
+        orthonormalize(a=np.zeros((2, 4)), d=2, decades=20.0, rng=rng)
+
+
+def test_orthonormalisation_experiment_classic_breaks_modified_resists_householder_never() -> None:
+    spec = load_experiment_file(WIGNER.parent / "orthonormalisation.yaml")
+    healthy = runner.run(spec, EngineState())
+    assert healthy.measures["orthogonalite"].states == {"cgs": "ok", "mgs": "ok", "householder": "ok"}
+    middle = runner.run(spec, EngineState(hypotheses={"conditionnement": 0.55}))
+    assert middle.measures["orthogonalite"].states == {"cgs": "broken", "mgs": "ok", "householder": "ok"}
+    gram = next(v for v in middle.views if v.id == "gram")
+    assert [s.role for s in gram.series] == ["method", "alternative_1", "correction", "reference"]
