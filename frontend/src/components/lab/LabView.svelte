@@ -350,6 +350,7 @@
               {#key activeView.id}
                 <PlotlyChart
                   view={activeView}
+                  {result}
                   methodsOn={methodsOnSet}
                   {showReference}
                   sweep={sweepShown}

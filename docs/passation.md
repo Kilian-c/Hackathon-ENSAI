@@ -13,6 +13,9 @@
 - **R3, interface (non fait, fichiers de Kilian)** : (1) `plot.ts` ne dessine pas encore les `segments` (séries sans `y` : ignorées sans erreur) ; (2) dans `distribution`, `h1` (rôle `truth`) sort en orange : à vérifier à l'œil ; (3) `theory` (courbe sur un histogramme) n'est pas servi : il serait dessiné comme un histogramme.
 - Convention de `level` : tranchée à 18 h 30 (note ci-dessus).
 
+## H5 (17 h) : écran Bilan fait par R3 (pas une relève)
+- **R4 : n'écrivez pas le Bilan, il est fait** et fusionné dans `main` à la demande de R3, **sans votre relecture : relisez après coup**, ce sont vos fichiers : `lib/calibration.ts`, `lib/calibration.test.ts`, `components/summary/CalibrationSummary.svelte`. Ouverture : `?bilan`. Votre galerie devra garder ce lien.
+
 ## H5 (17 h) : Entraînement côté moteur, branche `r2/training` (pas une relève)
 - Fusionné dans `main` à la demande de R2, **sans relecture de R1 : R1, relisez après coup** (les 4 vérifications de la section 4 étaient vertes). Fait par R2, dans des fichiers de R1 : `backend/engine/training.py` et `POST /api/training/session` (`backend/api/routes.py`), empreinte des YAML dans `backend/api/registry.py` (`content_digest`). Tests : `tests/test_training.py`, tests d'API de la section 12 ajoutés à `tests/test_api.py`. 227 tests verts.
 - Règles : `misconception` une fois par série, chaque choix vérifié (`reveal_state` lancé, `verify`, 5 tirages au plus, sinon `dropped`) ; `diagnostic_auto` 2 fois au plus, pathologie cachée différente, libellés tirés des hypothèses (« <hypothèse> : <option ou broken_label> », plus « Hypothèses respectées ») ; `prediction` (P1) non servie.

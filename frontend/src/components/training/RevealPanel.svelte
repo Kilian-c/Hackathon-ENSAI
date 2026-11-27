@@ -116,7 +116,7 @@
     </div>
     <div class="grid">
       {#if view}
-        <PlotlyChart {view} methodsOn={new Set(ui.methodsOn)} {showReference} height={380} />
+        <PlotlyChart {view} {result} methodsOn={new Set(ui.methodsOn)} {showReference} height={380} />
       {/if}
       <MeasurePanel {result} methodsOn={ui.methodsOn} {showReference} />
     </div>
