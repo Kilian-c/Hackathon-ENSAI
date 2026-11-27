@@ -6,7 +6,8 @@
  * `?source=fixtures` (développement) force les fixtures de dev/fixtureSource.ts, et l'interface le signale.
  */
 
-import { api, type CallOptions } from './executor'
+import { api, ApiError, type CallOptions } from './executor'
+import { importKey } from './share'
 import type {
   EngineState,
   ExperimentSpec,
@@ -15,6 +16,7 @@ import type {
   SweepRequest,
   SweepResult,
   TrainingSessionResponse,
+  ValidateResponse,
 } from './types.gen'
 
 export interface LabSource {
@@ -65,4 +67,48 @@ export async function openSession(
 export async function listExperiments(): Promise<{ items: ExperimentSummary[]; kind: LabSource['kind'] }> {
   if (!forcedFixtures()) return { items: await api.experiments(), kind: 'api' }
   return { items: await (await fixtures()).fixtureExperiments(), kind: 'fixtures' }
+}
+
+// ---------------------------------------------------------------------------
+// Expérience importée (P1) : YAML brut, collé dans l'écran Import ou partagé par Supabase
+// ---------------------------------------------------------------------------
+
+/** Erreur de schéma d'un YAML importé : le Laboratoire la montre avec les lignes en cause. */
+export class ImportError extends Error {
+  readonly report: ValidateResponse
+  constructor(report: ValidateResponse) {
+    super("Ce fichier d'expérience contient des erreurs : corrigez-le dans l'écran Import.")
+    this.name = 'ImportError'
+    this.report = report
+  }
+}
+
+/**
+ * Ouvre un YAML importé. /api/validate retient le fichier côté moteur sous sa clé `import-<hash>` :
+ * la spécification se lit alors par GET /api/experiments/{clé}, et /api/sweep prend cette clé.
+ * /api/run reçoit toujours le YAML lui-même (raw_content). Si le moteur a redémarré et oublié la clé
+ * (404), le fichier est validé de nouveau, puis l'appel relancé une fois.
+ */
+export async function openImported(
+  content: string,
+): Promise<{ spec: ExperimentSpec; source: LabSource; report: ValidateResponse }> {
+  const report = await api.validate({ raw_content: content })
+  if (report.errors.length > 0) throw new ImportError(report)
+  const key = await importKey(content)
+  const spec = await api.experiment(key)
+  const again = async <T>(call: () => Promise<T>): Promise<T> => {
+    try {
+      return await call()
+    } catch (err) {
+      if (!(err instanceof ApiError) || err.status !== 404) throw err
+      await api.validate({ raw_content: content })
+      return call()
+    }
+  }
+  const source: LabSource = {
+    kind: 'api',
+    run: (_spec, state, opts) => api.run({ experiment_id: null, raw_content: content, state }, opts),
+    sweep: (req, opts) => again(() => api.sweep({ ...req, experiment_id: key }, opts)),
+  }
+  return { spec, source, report }
 }

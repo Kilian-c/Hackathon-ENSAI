@@ -2,8 +2,10 @@
   // Navigation par l'URL (lib/state.ts, parseLink) : ?exp=... ouvre le Laboratoire, ?train=... l'Entraînement.
   // Sans paramètre : l'accueil (components/home/HomeView.svelte).
   // ?labo ouvre la galerie du Laboratoire (LabGallery.svelte).
+  // ?import ouvre l'écran Import (P1) ; ?share=<id> et ?brouillon ouvrent une expérience importée.
   // ?bilan ouvre l'écran Bilan ; ?dev=charts ouvre le banc d'essai des graphiques et la palette.
   import HomeView from './components/home/HomeView.svelte'
+  import ImportView from './components/ImportView.svelte'
   import LabGallery from './components/home/LabGallery.svelte'
   import LabView from './components/lab/LabView.svelte'
   import CalibrationSummary from './components/summary/CalibrationSummary.svelte'
@@ -35,6 +37,8 @@
   </main>
 {:else if link.kind === 'training'}
   <TrainingView {link} />
+{:else if link.kind === 'import'}
+  <ImportView />
 {:else}
   <HomeView />
 {/if}

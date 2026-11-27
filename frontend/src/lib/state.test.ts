@@ -142,3 +142,26 @@ describe('lien de partage', () => {
     expect(parseLink('')).toEqual({ kind: 'home' })
   })
 })
+
+describe('expériences importées (P1)', () => {
+  it('lit ?share=<id> et ?brouillon comme un Laboratoire importé', () => {
+    const shared = parseLink('?share=Ab3_-xYz9QwE&v=1&seed=7')
+    expect(shared.kind).toBe('lab')
+    if (shared.kind === 'lab') {
+      expect(shared.origin).toEqual({ kind: 'share', id: 'Ab3_-xYz9QwE' })
+      expect(shared.seed).toBe(7)
+    }
+    const draft = parseLink('?brouillon&v=1')
+    expect(draft.kind === 'lab' && draft.origin).toEqual({ kind: 'draft' })
+    expect(parseLink('?import').kind).toBe('import')
+    expect(parseLink('?share=abc&v=9').kind).toBe('error')
+  })
+
+  it('réécrit le lien avec son origine, sans exp=', () => {
+    const ui = defaultUi(spec)
+    expect(labLink(spec, defaultState(spec), ui, { kind: 'share', id: 'Ab3_-xYz9QwE' })).toBe(
+      '?share=Ab3_-xYz9QwE&v=1&seed=42',
+    )
+    expect(labLink(spec, defaultState(spec), ui, { kind: 'draft' })).toBe('?brouillon=&v=1&seed=42')
+  })
+})

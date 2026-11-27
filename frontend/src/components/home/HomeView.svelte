@@ -69,6 +69,10 @@
         </div>
       </article>
     </section>
+
+    <p class="import-link">
+      Vous avez écrit votre propre expérience ? <a href="?import">Importer un fichier YAML</a>
+    </p>
   </main>
 </div>
 
@@ -120,6 +124,16 @@
     margin: var(--ct-space-3) auto 0;
     font-size: 1.1rem;
     color: var(--ct-muted);
+  }
+
+  .import-link {
+    margin: var(--ct-space-6) 0 0;
+    text-align: center;
+    font-size: var(--ct-text-sm);
+    color: var(--ct-muted);
+  }
+  .import-link a {
+    color: var(--ct-role-method);
   }
 
   /* --- Les deux modes --- */

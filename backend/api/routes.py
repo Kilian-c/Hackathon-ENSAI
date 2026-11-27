@@ -17,6 +17,8 @@ from backend.contracts import (
     SweepResult,
     TrainingRequest,
     TrainingSessionResponse,
+    ValidateRequest,
+    ValidateResponse,
 )
 from backend.engine.loader import ExperimentError
 from backend.engine.runner import RunError, run
@@ -24,13 +26,17 @@ from backend.engine.schema import ExperimentSpec
 from backend.engine.state import StateError
 from backend.engine.sweep import sweep
 from backend.engine.training import SEED_RANGE, build_session
+from backend.engine.validate import validate
 
 router = APIRouter(prefix="/api")
 
 
 def _get_spec(experiment_id: str) -> ExperimentSpec:
-    spec = registry.official().get(experiment_id)
+    spec = registry.official().get(experiment_id) or registry.imported(experiment_id)
     if spec is None:
+        if experiment_id.startswith(registry.IMPORT_PREFIX):
+            message = "Expérience importée inconnue du serveur : validez de nouveau son fichier."
+            raise HTTPException(404, message)
         raise HTTPException(404, f"Expérience inconnue : « {experiment_id} ».")
     return spec
 
@@ -83,7 +89,7 @@ def post_run(request: RunRequest) -> RunResult:
             raise HTTPException(422, {"message": "Fichier d'expérience invalide.", "issues": detail}) from exc
     try:
         return run(spec, request.state)
-    except (StateError, RunError) as exc:
+    except (StateError, RunError, ValueError) as exc:
         raise HTTPException(422, str(exc)) from exc
 
 
@@ -92,7 +98,7 @@ def post_sweep(request: SweepRequest) -> SweepResult:
     spec = _get_spec(request.experiment_id)
     try:
         return sweep(spec, request.state, [a.target for a in request.axes], request.measure)
-    except (StateError, RunError) as exc:
+    except (StateError, RunError, ValueError) as exc:
         raise HTTPException(422, str(exc)) from exc
 
 
@@ -106,3 +112,13 @@ def post_training_session(request: TrainingRequest) -> TrainingSessionResponse:
         )
     except RunError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/validate", response_model=ValidateResponse)
+def post_validate(request: ValidateRequest) -> ValidateResponse:
+    """Erreurs par ligne, puis tests 1, 3, 4 et 10 (200 répétitions). Un schéma valide est retenu
+    sous la clé `import-<hash16>` (voir `registry.register_import`)."""
+    result = validate(request.raw_content)
+    if not result.errors:
+        registry.register_import(request.raw_content)
+    return result

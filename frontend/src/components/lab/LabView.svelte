@@ -42,7 +42,8 @@
     toggleMethod,
     viewPoints,
   } from '../../lib/lab'
-  import { openExperiment, type LabSource } from '../../lib/labSource'
+  import { ImportError, openExperiment, openImported, type LabSource } from '../../lib/labSource'
+  import { loadDraft, loadShared } from '../../lib/share'
   import { displayRoles } from '../../lib/roles'
   import {
     applyPreset,
@@ -51,6 +52,7 @@
     MAX_EXTRA_POINTS,
     nextDraw,
     resolveLabLink,
+    type LabOrigin,
     type Link,
     type UiState,
   } from '../../lib/state'
@@ -98,11 +100,20 @@
   let runner: Latest<EngineState, RunResult> | null = null
   let sweeper: Latest<SweepRequest, SweepResult | null> | null = null
 
-  // --- Chargement de l'expérience ---
+  // --- Chargement de l'expérience (officielle, partagée ou brouillon de l'écran Import) ---
+  const origin: LabOrigin = $derived(link.origin ?? { kind: 'official' })
+  const imported = $derived(origin.kind !== 'official')
+
+  async function open(): Promise<{ spec: ExperimentSpec; source: LabSource }> {
+    if (origin.kind === 'official') return openExperiment(link.experimentId)
+    const content = origin.kind === 'share' ? await loadShared(origin.id) : loadDraft()
+    if (!content) throw new Error("Aucun brouillon d'expérience dans ce navigateur. Ouvrez l'écran Import pour en coller un.")
+    return openImported(content)
+  }
+
   $effect(() => {
-    const id = link.experimentId
     let cancelled = false
-    openExperiment(id).then(
+    open().then(
       (opened) => {
         if (cancelled) return
         const resolved = resolveLabLink(opened.spec, link)
@@ -133,6 +144,10 @@
   })
 
   function messageOf(err: unknown): string {
+    if (err instanceof ImportError) {
+      const first = err.report.errors[0]
+      return `${err.message} (${first?.line ? `ligne ${first.line} : ` : ''}${first?.message ?? ''})`
+    }
     if (err instanceof ApiError || err instanceof Error) return err.message
     return 'Une erreur inattendue est survenue.'
   }
@@ -170,7 +185,7 @@
   // --- Lien de partage : recopié dans l'URL (sans nouvelle entrée d'historique) ---
   $effect(() => {
     if (!spec || !engine) return
-    history.replaceState(null, '', labLink(spec, engine, ui))
+    history.replaceState(null, '', labLink(spec, engine, ui, origin))
   })
 
   // --- Onglets du graphique : les vues renvoyées par le moteur ---
@@ -330,7 +345,7 @@
 
   async function copyLink(): Promise<void> {
     if (!spec || !engine) return
-    const url = `${location.origin}${location.pathname}${labLink(spec, engine, ui)}`
+    const url = `${location.origin}${location.pathname}${labLink(spec, engine, ui, origin)}`
     try {
       await navigator.clipboard.writeText(url)
       copied = true
@@ -345,7 +360,7 @@
   <div class="state-msg error" role="alert">
     <p>{error}</p>
     <p><button type="button" onclick={() => location.reload()}>Réessayer</button></p>
-    <p><a href="?">Revenir à l'accueil</a></p>
+    <p><a href="?">Revenir à l'accueil</a>{#if imported} · <a href="?import">Ouvrir l'écran Import</a>{/if}</p>
   </div>
 {:else if !spec || !engine}
   <p class="state-msg">Chargement de l'expérience…</p>
@@ -353,9 +368,16 @@
   <div class="lab">
     <header class="top">
       <div class="titles">
-        <a class="back" href="?labo">← Expériences</a>
+        {#if imported}
+          <a class="back" href="?import">← Import</a>
+        {:else}
+          <a class="back" href="?labo">← Expériences</a>
+        {/if}
         <h1>{spec.title}</h1>
-        <p class="meta">{disciplineLabel(spec.discipline)} · {levelLabel(spec.level)}</p>
+        <p class="meta">
+          {disciplineLabel(spec.discipline)} · {levelLabel(spec.level)}
+          {#if origin.kind === 'share'} · Expérience partagée{:else if origin.kind === 'draft'} · Brouillon importé{/if}
+        </p>
       </div>
       <div class="actions">
         {#if loading}<span class="busy" aria-live="polite">Calcul…</span>{/if}
@@ -363,7 +385,9 @@
         <button type="button" class="ghost" onclick={newDraw} title="Tirer de nouveaux échantillons (graine {engine.seed})">
           ↻ Nouveau tirage
         </button>
-        <button type="button" class="ghost" onclick={copyLink}>{copied ? '✓ Lien copié' : 'Copier le lien'}</button>
+        {#if origin.kind !== 'draft'}
+          <button type="button" class="ghost" onclick={copyLink}>{copied ? '✓ Lien copié' : 'Copier le lien'}</button>
+        {/if}
       </div>
     </header>
 
