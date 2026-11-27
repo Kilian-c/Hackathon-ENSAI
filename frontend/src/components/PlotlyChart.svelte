@@ -7,30 +7,31 @@
   - afficher le titre, la légende du bas (« 100 affichés sur 500 calculés ») et la vue de secours.
 
   Usage :
-    <PlotlyChart {view} roles={displayRoles(result.methods)} methodsOn={ui.methodsOn} />
+    <PlotlyChart view={result.views[0]} methodsOn={ui.methodsOn} />
+    Vue Sensibilité : ajouter sweep, measure, roles={displayRoles(result.methods)} et methodLabels.
 -->
 <script lang="ts">
   import Plotly from 'plotly.js-dist-min'
   import { onMount } from 'svelte'
   import { buildFigure, type ChartOptions } from '../lib/plot'
   import type { DisplayRole } from '../lib/roles'
-  import type { MeasureFormat, SweepData, ViewData } from '../lib/views'
+  import type { MeasureFormat, SweepResult, ViewResult } from '../lib/views'
 
   interface Props {
-    view: ViewData
-    roles: Readonly<Record<string, DisplayRole>>
+    view: ViewResult
     methodsOn: ReadonlySet<string>
     showReference?: boolean
-    /** Vue Sensibilité : résultat du balayage et mise en forme de la mesure. */
-    sweep?: SweepData | null
+    /** Vue Sensibilité : résultat du balayage, mesure, rôles et libellés des méthodes. */
+    sweep?: SweepResult | null
     measure?: MeasureFormat | null
+    roles?: Readonly<Record<string, DisplayRole>>
     methodLabels?: Readonly<Record<string, string>>
     height?: number
   }
 
   let {
     view,
-    roles,
+    roles = {},
     methodsOn,
     showReference = true,
     sweep = null,
