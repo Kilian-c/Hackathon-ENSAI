@@ -88,12 +88,18 @@ async function request<T>(
   }
   const text = await res.text()
   let parsed: unknown = null
+  let isJson = true
   try {
     parsed = text ? JSON.parse(text) : null
   } catch {
     parsed = text
+    isJson = false
   }
   if (!res.ok) throw new ApiError(errorMessage(res.status, parsed), res.status, parsed)
+  // En ligne, sans VITE_API_URL, l'hébergeur de l'interface répond sa page HTML avec un code 200.
+  if (!isJson) {
+    throw new ApiError("La réponse reçue ne vient pas du moteur. Vérifiez l'adresse du moteur.", res.status, parsed)
+  }
   return parsed as T
 }
 

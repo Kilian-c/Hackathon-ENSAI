@@ -1,9 +1,9 @@
 /**
  * labSource.ts : d'où le Laboratoire tire ses données (R3).
  *
- * Par défaut, le moteur (lib/executor.ts). Si le moteur ne sait pas encore servir l'expérience
- * (route absente, moteur arrêté), on bascule UNE FOIS, au chargement, sur les fixtures de
- * dev/fixtureSource.ts, et l'interface le signale. `?source=fixtures` force les fixtures.
+ * Toujours le moteur (lib/executor.ts) : s'il échoue, l'erreur remonte à l'écran. Aucun repli
+ * automatique, pour ne jamais montrer des données de démonstration à la place d'un vrai résultat.
+ * `?source=fixtures` (développement) force les fixtures de dev/fixtureSource.ts, et l'interface le signale.
  */
 
 import { api, type CallOptions } from './executor'
@@ -43,44 +43,26 @@ async function fixtureSource(): Promise<LabSource> {
   return { kind: 'fixtures', run: (spec, state) => f.fixtureRun(spec, state), sweep: (req) => f.fixtureSweep(req) }
 }
 
-/** Charge la spécification et choisit la source (moteur, ou fixtures en repli). */
+/** Charge la spécification et choisit la source (moteur, ou fixtures si elles sont demandées). */
 export async function openExperiment(id: string): Promise<{ spec: ExperimentSpec; source: LabSource }> {
-  if (!forcedFixtures()) {
-    try {
-      return { spec: await api.experiment(id), source: apiSource }
-    } catch (err) {
-      console.warn('Moteur indisponible pour cette expérience : bascule sur les fixtures.', err)
-    }
-  }
+  if (!forcedFixtures()) return { spec: await api.experiment(id), source: apiSource }
   const f = await fixtures()
   return { spec: await f.fixtureSpec(id), source: await fixtureSource() }
 }
 
-/**
- * Série d'Entraînement (moteur, ou série de démonstration en repli). `seed` null : le moteur en tire une.
- */
+/** Série d'Entraînement (ou série de démonstration si demandée). `seed` null : le moteur en tire une. */
 export async function openSession(
   filter: string,
   seed: number | null,
 ): Promise<{ session: TrainingSessionResponse; kind: LabSource['kind'] }> {
   if (!forcedFixtures()) {
-    try {
-      return { session: await api.trainingSession({ filter, count: 10, seed }), kind: 'api' }
-    } catch (err) {
-      console.warn('Moteur indisponible pour l’Entraînement : bascule sur les fixtures.', err)
-    }
+    return { session: await api.trainingSession({ filter, count: 10, seed }), kind: 'api' }
   }
   return { session: await (await fixtures()).fixtureSession(filter), kind: 'fixtures' }
 }
 
-/** Liste des expériences (moteur, ou fixtures en repli). */
+/** Liste des expériences (moteur, ou fixtures si elles sont demandées). */
 export async function listExperiments(): Promise<{ items: ExperimentSummary[]; kind: LabSource['kind'] }> {
-  if (!forcedFixtures()) {
-    try {
-      return { items: await api.experiments(), kind: 'api' }
-    } catch {
-      /* repli ci-dessous */
-    }
-  }
+  if (!forcedFixtures()) return { items: await api.experiments(), kind: 'api' }
   return { items: await (await fixtures()).fixtureExperiments(), kind: 'fixtures' }
 }

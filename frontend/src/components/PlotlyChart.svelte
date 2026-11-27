@@ -14,6 +14,7 @@
   import Plotly from 'plotly.js-dist-min'
   import { onMount } from 'svelte'
   import { buildFigure, type ChartOptions } from '../lib/plot'
+  import { PLOTLY_FR } from '../lib/plotlyLocale'
   import type { DisplayRole } from '../lib/roles'
   import type { MeasureFormat, SweepResult, ViewResult } from '../lib/views'
 
@@ -49,10 +50,11 @@
     return buildFigure(view, opts)
   })
 
-  const config: Partial<Plotly.Config> = {
+  const config: Partial<Plotly.Config> & { locales: typeof PLOTLY_FR } = {
     displaylogo: false,
     responsive: true,
     locale: 'fr',
+    locales: PLOTLY_FR,
     modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
   }
 
