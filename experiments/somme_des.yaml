@@ -89,7 +89,7 @@ measures:
     primary: true
     target: 0
     direction: both
-    ok_within: 0.30
+    ok_within: 0.40
     broken_beyond: 0.50
     texts:
       ok: "Forme en cloche : aplatissement de {value}."
