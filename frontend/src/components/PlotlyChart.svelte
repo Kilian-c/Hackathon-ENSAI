@@ -18,7 +18,7 @@
   import Plotly from 'plotly.js-dist-min'
   import { onMount } from 'svelte'
   import MeasuresTable from './MeasuresTable.svelte'
-  import { buildFigure, INJECTED_SUFFIX, type ChartOptions } from '../lib/plot'
+  import { buildFigure, DOMAIN_SUFFIX, INJECTED_SUFFIX, type ChartOptions } from '../lib/plot'
   import { PLOTLY_FR } from '../lib/plotlyLocale'
   import type { DisplayRole } from '../lib/roles'
   import type { RunResult } from '../lib/types.gen'
@@ -41,6 +41,9 @@
     injected?: ReadonlyArray<{ x: number; y?: number | null }>
     onaddpoint?: (point: { x: number; y: number }) => void
     onremovepoint?: (index: number) => void
+    /** Domaine de validité : titres des deux axes, et clic sur une case (indices sur l'axe 1 et l'axe 2). */
+    axisLabels?: readonly [string, string]
+    onpickcell?: (i: number, j: number) => void
   }
 
   let {
@@ -57,12 +60,14 @@
     injected = [],
     onaddpoint,
     onremovepoint,
+    axisLabels,
+    onpickcell,
   }: Props = $props()
 
   let el: HTMLDivElement | undefined = $state()
 
   const figure = $derived.by(() => {
-    const opts: ChartOptions = { roles, methodsOn, showReference, sweep, measure, methodLabels, axisLabel, injected }
+    const opts: ChartOptions = { roles, methodsOn, showReference, sweep, measure, methodLabels, axisLabel, injected, axisLabels }
     return buildFigure(view, opts)
   })
 
@@ -86,7 +91,7 @@
   interface PlotAxis { _offset: number; _length: number; p2d: (px: number) => number }
   type PlotDiv = HTMLDivElement & {
     _fullLayout?: { xaxis?: PlotAxis; yaxis?: PlotAxis }
-    on?: (event: string, cb: (e: { points?: { data?: { uid?: string }; customdata?: unknown }[] }) => void) => void
+    on?: (event: string, cb: (e: { points?: { data?: { uid?: string }; customdata?: unknown; x?: unknown; y?: unknown }[] }) => void) => void
   }
 
   let downAt: { x: number; y: number } | null = null
@@ -126,6 +131,11 @@
     listening = true
     div.on('plotly_click', (ev) => {
       const pt = ev.points?.[0]
+      const uid = String(pt?.data?.uid ?? '')
+      if (pt && uid.endsWith(DOMAIN_SUFFIX) && typeof pt.x === 'number' && typeof pt.y === 'number') {
+        onpickcell?.(pt.x, pt.y)
+        return
+      }
       if (pt && String(pt.data?.uid ?? '').endsWith(INJECTED_SUFFIX) && typeof pt.customdata === 'number') {
         removedJustNow = true
         onremovepoint?.(pt.customdata)
