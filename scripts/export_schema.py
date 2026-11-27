@@ -1,5 +1,6 @@
 """Exporte le JSON Schema des contrats (contracts.py) et du schéma YAML (ExperimentSpec), pour
-scripts/gen_types.sh qui en tire frontend/src/lib/types.gen.ts (R3).
+scripts/gen_types.sh qui en tire frontend/src/lib/types.gen.ts (R3). Avec `--yaml`, écrit aussi
+experiments/schema.json, le schéma d'un fichier d'expérience pour l'éditeur (voir yaml_schema).
 
 Mode « serialization » : le schéma décrit ce que le serveur ENVOIE. Pydantic envoie toujours tous les
 champs, même ceux qui ont une valeur par défaut : on les marque donc tous comme requis, pour que
@@ -65,7 +66,42 @@ def strip_titles(node: object) -> None:
             strip_titles(value)
 
 
+YAML_SCHEMA = Path(__file__).resolve().parent.parent / "experiments" / "schema.json"
+
+
+def yaml_schema() -> str:
+    """Schéma JSON d'un fichier d'expérience, pour l'éditeur (autocomplétion et erreurs dans VS Code).
+
+    Mode « validation » : il décrit ce qu'un auteur peut ÉCRIRE (champs facultatifs non requis, clés
+    inconnues refusées comme par le chargeur). Les règles croisées (une seule mesure primaire, une
+    seule méthode principale, chemins des `bind`...) restent vérifiées par le chargeur et
+    `/api/validate`, pas par ce schéma.
+    """
+    schema = ExperimentSpec.model_json_schema(mode="validation")
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Expérience Crash-Test",
+        "description": (
+            "Fichier de experiments/ (schema_version 1). Généré par scripts/export_schema.py --yaml."
+        ),
+        **{k: v for k, v in schema.items() if k != "title"},
+    }
+    return json.dumps(schema, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
 def main() -> None:
+    # `--yaml` : écrit experiments/schema.json ; `--yaml --check` : échoue s'il n'est plus à jour.
+    if sys.argv[1:2] == ["--yaml"]:
+        text = yaml_schema()
+        if "--check" in sys.argv[2:]:
+            if not YAML_SCHEMA.exists() or YAML_SCHEMA.read_text(encoding="utf-8") != text:
+                command = "bash scripts/gen_types.sh"
+                message = f"experiments/schema.json n'est plus à jour : lancez « {command} ».\n"
+                sys.stderr.buffer.write(message.encode())
+                sys.exit(1)
+            return
+        YAML_SCHEMA.write_text(text, encoding="utf-8", newline="\n")
+        return
     models = [*contract_models(), ExperimentSpec]
     _, schema = models_json_schema([(m, "serialization") for m in models])
     for name, definition in schema["$defs"].items():

@@ -295,6 +295,11 @@ describe('échelle logarithmique (ui.log_y, ui.log_x)', () => {
     const fig = buildFigure(view({ log_y: true }, { y: [0, 10] }), on)!
     expect(fig.layout.yaxis).toMatchObject({ type: 'log', autorange: true })
   })
+  it('une valeur ≤ 0 est retirée de la ligne (sinon elle plonge jusqu’au bord)', () => {
+    const fig = buildFigure(view({ log_y: true }), on)!
+    expect(fig.data[0]).toMatchObject({ x: [1, 2], y: [1, 0.01] })
+    expect(buildFigure(view(null), on)!.data[0]).toMatchObject({ x: [1, 2, 3], y: [1, 0.01, 0] })
+  })
   it('les valeurs ≤ 0 sont comptées en légende (Plotly les tait)', () => {
     expect(buildFigure(view({ log_y: true }), on)!.caption).toContain(
       '1 valeur négative ou nulle non affichée (échelle logarithmique)',
@@ -334,6 +339,13 @@ describe('matrices (vue heatmap)', () => {
     for (const t of fig.data) expect(t).toMatchObject({ zmin: -2, zmax: 2 })
     expect((fig.data[0].colorscale as unknown[][])[1][0]).toBe(0.5)
     expect(fig.data.map((t) => t.showscale)).toEqual([false, true])
+    // Une seule barre de couleur ; pas de bloc legend (Plotly.validate plantait dessus).
+    expect(fig.data.map((t) => t.colorbar === undefined)).toEqual([true, false])
+    expect(fig.layout.legend).toBeUndefined()
+  })
+  it('cases carrées sans élargir les bornes : constrain domain sur les deux axes', () => {
+    const fig = buildFigure(view([A, P]), { methodsOn: new Set(['gauss', 'pivot']), showReference: false })!
+    for (const k of ['xaxis', 'yaxis', 'xaxis2', 'yaxis2']) expect(fig.layout[k]).toMatchObject({ constrain: 'domain' })
   })
   it('valeurs écrites dans les cases (jamais la couleur seule), case vide pour null', () => {
     const fig = buildFigure(view([R], { decimals: 1 }), { methodsOn: new Set(['gauss']), showReference: true })!
@@ -362,5 +374,98 @@ describe('matrices (vue heatmap)', () => {
   it('méthode masquée : message au lieu d’une figure vide', () => {
     const fig = buildFigure(view([A]), { methodsOn: new Set(), showReference: false })!
     expect(fig.caption).toEqual(['Aucune matrice à afficher pour les méthodes choisies'])
+  })
+})
+
+describe('repère orthonormé et cercle unité (ui.aspect, ui.unit_circle)', () => {
+  const base = { layer: null, low: null, high: null, hit: null, value: null, paths: null }
+  const view = (ui: Record<string, unknown> | null) =>
+    ({
+      id: 'plan', type: 'scatter', total: 0, shown: 0, axes: { x: [-2, 2], y: [-2, 2] }, ui,
+      series: [
+        { ...base, id: 'plan.points.qr', slot: 'points', method: 'qr', role: 'method', label: 'λ', x: [0.5, -0.3], y: [0.2, 0.9] },
+      ],
+    }) as unknown as ViewResult
+  const on = { methodsOn: new Set(['qr']), showReference: false }
+  const shapes = (ui: Record<string, unknown> | null) => buildFigure(view(ui), on)!.layout.shapes as Record<string, unknown>[]
+
+  it('aspect equal : une unité a la même longueur sur les deux axes, bornes gardées', () => {
+    const y = buildFigure(view({ aspect: 'equal' }), on)!.layout.yaxis
+    expect(y).toMatchObject({ scaleanchor: 'x', scaleratio: 1, constrain: 'domain', range: [-2, 2] })
+    // Sans constrain sur x, Plotly élargit les bornes de x au lieu de resserrer la zone (vu à l'œil).
+    expect(buildFigure(view({ aspect: 'equal' }), on)!.layout.xaxis).toMatchObject({ constrain: 'domain', range: [-2, 2] })
+  })
+  it('sans aspect : aucun ancrage', () => {
+    expect((buildFigure(view(null), on)!.layout.yaxis as { scaleanchor?: string }).scaleanchor).toBeUndefined()
+  })
+  it('unit_circle : cercle de rayon 1 centré en 0, sous les données', () => {
+    expect(shapes({ unit_circle: true })).toContainEqual(
+      expect.objectContaining({ type: 'circle', x0: -1, y0: -1, x1: 1, y1: 1, layer: 'below' }),
+    )
+  })
+  it('unit_circle à un nombre : rayon donné ; valeur invalide : pas de cercle', () => {
+    expect(shapes({ unit_circle: 2 })).toContainEqual(expect.objectContaining({ type: 'circle', x1: 2 }))
+    expect(shapes({ unit_circle: -1 }).some((s) => s.type === 'circle')).toBe(false)
+    expect(shapes({ unit_circle: 'oui' }).some((s) => s.type === 'circle')).toBe(false)
+    expect(shapes(null)).toEqual([])
+  })
+})
+
+describe('Sensibilité en échelle logarithmique', () => {
+  const view = { id: 'sens', type: 'sensitivity', series: [], axes: null, ui: { log_y: true } } as unknown as ViewResult
+  const sweep = {
+    axes: [{ target: 'p.seuil', values: [0, 0.5, 1], labels: ['0', '0,5', '1'] }],
+    measure: 'exces',
+    values: { main: [0.001, 0.01, 0] },
+    mc_se: { main: [0.0006, 0.002, 0.001] },
+    states: { main: ['ok', 'warning', 'ok'] },
+    critical: { main: { warning_at: 0.4, broken_at: null } },
+    target: 0, ok_within: 0.005, broken_beyond: 0.02, direction: 'above',
+    current: { 'p.seuil': 0.5 }, repeat_used: 500, reduced: false, compute_ms: 1,
+  } as unknown as SweepResult
+  const fig = buildFigure(view, {
+    methodsOn: new Set(['main']), showReference: false, sweep, roles: { main: 'method' },
+    measure: { label: 'Erreurs en trop', unit: '%', scale: 100, decimals: 1 },
+  })!
+  const shapes = fig.layout.shapes as Record<string, number | string>[]
+  const annotations = fig.layout.annotations as Record<string, number | string>[]
+
+  it('bornes tirées des seules valeurs > 0, marge multiplicative, en log10', () => {
+    // Plus petite valeur > 0 : 0,001 - 2 × 0,0006 < 0 est écarté, reste 0,001 (× 100 = 0,1) ; plus grande : 2 (limite de rupture).
+    const y = fig.layout.yaxis as { type: string; range: number[] }
+    expect(y.type).toBe('log')
+    expect(y.range[0]).toBeCloseTo(Math.log10(0.1 / 1.5), 9)
+    expect(y.range[1]).toBeCloseTo(Math.log10(2 * 1.5), 9)
+  })
+  it('formes en unités de données, annotations en log10 (règles de Plotly 4, vérifiées dans le navigateur)', () => {
+    const rupture = annotations.find((a) => a.text === 'Rompu au-delà')!
+    expect(rupture.y).toBeCloseTo(Math.log10(2), 9)
+    const line = shapes.find((s) => s.type === 'line' && s.yref === 'y')!
+    expect(line.y0).toBeCloseTo(2, 9)
+    const rect = shapes.find((s) => s.type === 'rect')!
+    expect(rect.y1).toBeCloseTo(0.5, 9)
+    expect(rect.y0).toBeCloseTo(0.1 / 1.5, 9) // bord ≤ 0 ramené au bas de l'axe
+  })
+  it('la cible à 0 n’a pas de place sur une échelle log : ni ligne ni annotation', () => {
+    expect(annotations.some((a) => a.text === 'Cible')).toBe(false)
+    expect(shapes.filter((s) => s.type === 'line' && s.yref === 'y')).toHaveLength(1)
+  })
+  it('le bas de la bande d’erreur ne passe jamais sous 0', () => {
+    const low = fig.data.find((t) => String(t.uid).startsWith('sens.bande-bas'))!.y as (number | null)[]
+    for (const v of low) if (v !== null) expect(v).toBeGreaterThan(0)
+  })
+  it('les valeurs ≤ 0 sont comptées sous la vue', () => {
+    expect(fig.caption).toEqual(['1 valeur négative ou nulle non affichée (échelle logarithmique)'])
+  })
+  it('lignes verticales (seuil critique, état actuel) inchangées sans log_x', () => {
+    expect(shapes.filter((s) => s.xref === 'x').map((s) => s.x0)).toEqual([0.4, 0.5])
+  })
+  it('résidus en échelle log : pas de ligne 0', () => {
+    const base = { layer: null, low: null, high: null, hit: null, value: null, paths: null }
+    const res = {
+      id: 'res', type: 'residuals', total: 0, shown: 0, axes: {}, ui: { log_y: true },
+      series: [{ ...base, id: 'res.points.m', slot: 'points', method: 'm', role: 'method', label: 'r', x: [1], y: [1] }],
+    } as unknown as ViewResult
+    expect(buildFigure(res, { methodsOn: new Set(['m']), showReference: false })!.layout.shapes).toEqual([])
   })
 })

@@ -1,26 +1,44 @@
 /**
- * FICHIER GÉNÉRÉ par scripts/gen_catalog.py depuis les registres du moteur (backend/).
- * Ne pas modifier à la main : modifiez le registre, puis relancez
- * « uv run python scripts/gen_catalog.py » et commitez le résultat.
+ * FICHIER GÉNÉRÉ par scripts/gen_catalog.py depuis les registres du moteur (méthodes, lois,
+ * agrégateurs, fonctions des expressions). Ne pas modifier à la main : relancez
+ * « uv run python scripts/gen_catalog.py » après avoir ajouté une méthode, une loi ou une fonction.
  */
+
+export interface CatalogArg {
+  name: string
+  /** Valeur par défaut (texte), null si l'argument est obligatoire. */
+  default: string | null
+}
 
 export interface CatalogMethod {
   name: string
-  args: string[]
+  args: CatalogArg[]
+  /** Valeurs possibles de l'argument `kind` ; vide si la méthode n'en a pas (ou ne les déclare pas). */
+  kinds: string[]
   provides: Record<string, string[]>
   cost: string
   doc: string
 }
 
+export interface CatalogLaw {
+  name: string
+  has_mean: boolean
+  has_variance: boolean
+}
+
+export interface CatalogFunction {
+  name: string
+  signature: string
+  doc: string
+}
+
 export interface Catalog {
   methods: CatalogMethod[]
-  laws: { name: string; has_mean: boolean; has_variance: boolean }[]
-  functions: { name: string; doc: string }[]
+  laws: CatalogLaw[]
+  aggregators: CatalogFunction[]
+  functions: string[]
+  generator_functions: CatalogFunction[]
   constants: string[]
-  names: { name: string; doc: string }[]
-  keywords: string[]
-  aggregators: string[]
-  views: { type: string; doc: string }[]
 }
 
 export const CATALOG: Catalog = {
@@ -28,10 +46,25 @@ export const CATALOG: Catalog = {
     {
       "name": "classifier",
       "args": [
-        "score",
-        "label",
-        "threshold",
-        "kind"
+        {
+          "name": "score",
+          "default": null
+        },
+        {
+          "name": "label",
+          "default": null
+        },
+        {
+          "name": "threshold",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "default": "'seuil'"
+        }
+      ],
+      "kinds": [
+        "seuil"
       ],
       "provides": {
         "reps": [
@@ -58,11 +91,30 @@ export const CATALOG: Catalog = {
     {
       "name": "clt_mean",
       "args": [
-        "x",
-        "sigma",
-        "rho",
-        "kind",
-        "alpha"
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "sigma",
+          "default": null
+        },
+        {
+          "name": "rho",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "default": null
+        },
+        {
+          "name": "alpha",
+          "default": "0.05"
+        }
+      ],
+      "kinds": [
+        "independance",
+        "dependance"
       ],
       "provides": {
         "reps": [
@@ -83,9 +135,16 @@ export const CATALOG: Catalog = {
     {
       "name": "formula_estimate",
       "args": [
-        "est",
-        "truth"
+        {
+          "name": "est",
+          "default": null
+        },
+        {
+          "name": "truth",
+          "default": "None"
+        }
       ],
+      "kinds": [],
       "provides": {
         "reps": [
           "est",
@@ -98,11 +157,24 @@ export const CATALOG: Catalog = {
     {
       "name": "formula_interval",
       "args": [
-        "est",
-        "low",
-        "high",
-        "truth"
+        {
+          "name": "est",
+          "default": null
+        },
+        {
+          "name": "low",
+          "default": null
+        },
+        {
+          "name": "high",
+          "default": null
+        },
+        {
+          "name": "truth",
+          "default": null
+        }
       ],
+      "kinds": [],
       "provides": {
         "reps": [
           "est",
@@ -118,11 +190,24 @@ export const CATALOG: Catalog = {
     {
       "name": "formula_test",
       "args": [
-        "stat",
-        "pvalue",
-        "critical",
-        "alpha"
+        {
+          "name": "stat",
+          "default": "None"
+        },
+        {
+          "name": "pvalue",
+          "default": "None"
+        },
+        {
+          "name": "critical",
+          "default": "None"
+        },
+        {
+          "name": "alpha",
+          "default": "0.05"
+        }
       ],
+      "kinds": [],
       "provides": {
         "reps": [
           "stat",
@@ -136,10 +221,20 @@ export const CATALOG: Catalog = {
     {
       "name": "integrate",
       "args": [
-        "system",
-        "dt",
-        "scheme"
+        {
+          "name": "system",
+          "default": null
+        },
+        {
+          "name": "dt",
+          "default": null
+        },
+        {
+          "name": "scheme",
+          "default": null
+        }
       ],
+      "kinds": [],
       "provides": {
         "curves": [
           "t",
@@ -155,12 +250,28 @@ export const CATALOG: Catalog = {
     {
       "name": "ols_ci",
       "args": [
-        "x",
-        "y",
-        "truth",
-        "alpha",
-        "se_type"
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "y",
+          "default": null
+        },
+        {
+          "name": "truth",
+          "default": null
+        },
+        {
+          "name": "alpha",
+          "default": null
+        },
+        {
+          "name": "se_type",
+          "default": null
+        }
       ],
+      "kinds": [],
       "provides": {
         "reps": [
           "est",
@@ -186,13 +297,38 @@ export const CATALOG: Catalog = {
     {
       "name": "ols_two",
       "args": [
-        "x1",
-        "x2",
-        "y",
-        "signal",
-        "truth",
-        "alpha",
-        "kind"
+        {
+          "name": "x1",
+          "default": null
+        },
+        {
+          "name": "x2",
+          "default": null
+        },
+        {
+          "name": "y",
+          "default": null
+        },
+        {
+          "name": "signal",
+          "default": null
+        },
+        {
+          "name": "truth",
+          "default": null
+        },
+        {
+          "name": "alpha",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "default": null
+        }
+      ],
+      "kinds": [
+        "complet",
+        "reduit"
       ],
       "provides": {
         "reps": [
@@ -219,10 +355,26 @@ export const CATALOG: Catalog = {
     {
       "name": "one_sample_test",
       "args": [
-        "x0",
-        "x1",
-        "alpha",
-        "kind"
+        {
+          "name": "x0",
+          "default": null
+        },
+        {
+          "name": "x1",
+          "default": null
+        },
+        {
+          "name": "alpha",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "default": null
+        }
+      ],
+      "kinds": [
+        "student",
+        "wilcoxon"
       ],
       "provides": {
         "reps": [
@@ -241,10 +393,27 @@ export const CATALOG: Catalog = {
     {
       "name": "pairwise_tests",
       "args": [
-        "y",
-        "groups",
-        "alpha",
-        "kind"
+        {
+          "name": "y",
+          "default": null
+        },
+        {
+          "name": "groups",
+          "default": null
+        },
+        {
+          "name": "alpha",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "default": null
+        }
+      ],
+      "kinds": [
+        "aucune",
+        "bonferroni",
+        "tukey"
       ],
       "provides": {
         "reps": [
@@ -264,10 +433,26 @@ export const CATALOG: Catalog = {
     {
       "name": "regressor",
       "args": [
-        "x",
-        "y",
-        "kind",
-        "slope"
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "y",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "default": null
+        },
+        {
+          "name": "slope",
+          "default": "None"
+        }
+      ],
+      "kinds": [
+        "ols",
+        "manuelle"
       ],
       "provides": {
         "reps": [
@@ -287,9 +472,25 @@ export const CATALOG: Catalog = {
     {
       "name": "statistic",
       "args": [
-        "x",
-        "kind",
-        "continuity"
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "default": null
+        },
+        {
+          "name": "continuity",
+          "default": "False"
+        }
+      ],
+      "kinds": [
+        "sum",
+        "mean",
+        "max",
+        "min",
+        "median"
       ],
       "provides": {
         "reps": [
@@ -335,242 +536,138 @@ export const CATALOG: Catalog = {
       "has_variance": true
     }
   ],
-  "functions": [
+  "aggregators": [
     {
-      "name": "abs",
-      "doc": ""
+      "name": "bias",
+      "signature": "bias(f, truth)",
+      "doc": "Biais : moyenne de `values` moins la vraie valeur `truth`. Erreur MC : sd / sqrt(n)."
     },
     {
-      "name": "ar1",
-      "doc": ""
+      "name": "first",
+      "signature": "first(f)",
+      "doc": "Valeur sur la répétition 0 (l'échantillon affiché dans les vues)."
     },
     {
-      "name": "arccos",
-      "doc": ""
-    },
-    {
-      "name": "arcsin",
-      "doc": ""
-    },
-    {
-      "name": "arctan",
-      "doc": ""
-    },
-    {
-      "name": "arctan2",
-      "doc": ""
-    },
-    {
-      "name": "ceil",
-      "doc": ""
-    },
-    {
-      "name": "clip",
-      "doc": ""
-    },
-    {
-      "name": "cos",
-      "doc": ""
-    },
-    {
-      "name": "cosh",
-      "doc": ""
-    },
-    {
-      "name": "cumprod",
-      "doc": ""
-    },
-    {
-      "name": "cumsum",
-      "doc": ""
-    },
-    {
-      "name": "exp",
-      "doc": ""
-    },
-    {
-      "name": "floor",
-      "doc": ""
-    },
-    {
-      "name": "isfinite",
-      "doc": ""
-    },
-    {
-      "name": "isnan",
-      "doc": ""
-    },
-    {
-      "name": "log",
-      "doc": ""
-    },
-    {
-      "name": "log10",
-      "doc": ""
-    },
-    {
-      "name": "log2",
-      "doc": ""
-    },
-    {
-      "name": "max",
-      "doc": ""
-    },
-    {
-      "name": "maximum",
-      "doc": ""
+      "name": "kurtosis",
+      "signature": "kurtosis(f)",
+      "doc": "Aplatissement (kurtosis en excès) des répétitions valides : 0 pour une loi normale, -1,2 pour une loi uniforme. Pas d'erreur MC (CLAUDE.md, section 8 : seulement pour rate, mean et bias)."
     },
     {
       "name": "mean",
-      "doc": ""
+      "signature": "mean(f)",
+      "doc": "Moyenne des répétitions valides. Erreur MC : écart type / sqrt(n)."
     },
     {
       "name": "median",
-      "doc": ""
-    },
-    {
-      "name": "min",
-      "doc": ""
-    },
-    {
-      "name": "minimum",
-      "doc": ""
-    },
-    {
-      "name": "ols_match",
-      "doc": ""
+      "signature": "median(f)",
+      "doc": "Médiane des répétitions valides."
     },
     {
       "name": "quantile",
-      "doc": ""
+      "signature": "quantile(f, q)",
+      "doc": "Quantile d'ordre `q` (dans [0, 1]) des répétitions valides."
     },
     {
-      "name": "round",
-      "doc": ""
+      "name": "rate",
+      "signature": "rate(f)",
+      "doc": "Part des répétitions où `values` est vrai (non nul). Erreur MC : sqrt(p(1-p)/n)."
     },
     {
-      "name": "sign",
-      "doc": ""
+      "name": "rmse",
+      "signature": "rmse(f, truth)",
+      "doc": "Racine de l'erreur quadratique moyenne par rapport à `truth`."
     },
     {
-      "name": "sin",
-      "doc": ""
+      "name": "sd",
+      "signature": "sd(f)",
+      "doc": "Écart type empirique corrigé (ddof=1) des répétitions valides."
     },
     {
-      "name": "sinh",
-      "doc": ""
-    },
-    {
-      "name": "sort",
-      "doc": ""
-    },
-    {
-      "name": "sqrt",
-      "doc": ""
-    },
-    {
-      "name": "std",
-      "doc": ""
-    },
-    {
-      "name": "sum",
-      "doc": ""
-    },
-    {
-      "name": "tan",
-      "doc": ""
-    },
-    {
-      "name": "tanh",
-      "doc": ""
+      "name": "summary",
+      "signature": "summary(k)",
+      "doc": "Lit une grandeur globale renvoyée dans `MethodResult.summary`."
     },
     {
       "name": "var",
-      "doc": ""
-    },
-    {
-      "name": "where",
-      "doc": ""
-    },
+      "signature": "var(f)",
+      "doc": "Variance empirique corrigée (ddof=1) des répétitions valides."
+    }
+  ],
+  "functions": [
+    "abs",
+    "ar1",
+    "arccos",
+    "arcsin",
+    "arctan",
+    "arctan2",
+    "ceil",
+    "clip",
+    "cos",
+    "cosh",
+    "cumprod",
+    "cumsum",
+    "exp",
+    "floor",
+    "isfinite",
+    "isnan",
+    "log",
+    "log10",
+    "log2",
+    "max",
+    "maximum",
+    "mean",
+    "median",
+    "min",
+    "minimum",
+    "ols_match",
+    "quantile",
+    "round",
+    "sign",
+    "sin",
+    "sinh",
+    "sort",
+    "sqrt",
+    "std",
+    "sum",
+    "tan",
+    "tanh",
+    "var",
+    "where"
+  ],
+  "generator_functions": [
     {
       "name": "law",
-      "doc": "law('nom') : un tirage de la loi du registre (standardisée)"
+      "signature": "law('<loi>')",
+      "doc": "tirage dans une loi du registre (voir laws)"
     },
     {
       "name": "normal",
-      "doc": "normal() : un tirage de la loi normale standard"
+      "signature": "normal()",
+      "doc": "loi normale centrée réduite"
     },
     {
       "name": "uniform",
-      "doc": "uniform() : un tirage de la loi uniforme standardisée"
+      "signature": "uniform()",
+      "doc": "loi uniforme standardisée (moyenne 0, variance 1)"
     },
     {
       "name": "bernoulli",
-      "doc": "bernoulli(p) : un tirage de Bernoulli de paramètre p"
+      "signature": "bernoulli(p)",
+      "doc": "booléen vrai avec la probabilité p"
+    },
+    {
+      "name": "idx",
+      "signature": "idx",
+      "doc": "indice de l'observation, de 0 à n - 1"
+    },
+    {
+      "name": "@h.<id>",
+      "signature": "@h.<id>",
+      "doc": "loi ou expression de l'option choisie"
     }
   ],
   "constants": [
     "e",
     "pi"
-  ],
-  "names": [
-    {
-      "name": "idx",
-      "doc": "indice d'observation (0, 1, ..., n - 1)"
-    }
-  ],
-  "keywords": [
-    "axis"
-  ],
-  "aggregators": [
-    "bias",
-    "first",
-    "kurtosis",
-    "mean",
-    "median",
-    "quantile",
-    "rate",
-    "rmse",
-    "sd",
-    "summary",
-    "var"
-  ],
-  "views": [
-    {
-      "type": "scatter",
-      "doc": "nuage de points (données et droite ajustée)"
-    },
-    {
-      "type": "residuals",
-      "doc": "résidus en fonction des valeurs ajustées"
-    },
-    {
-      "type": "curves",
-      "doc": "courbes y(x) ou y(t) par méthode"
-    },
-    {
-      "type": "repetitions",
-      "doc": "une grandeur sur les répétitions (mode `intervals`, ou `paths` pour des trajectoires)"
-    },
-    {
-      "type": "distribution",
-      "doc": "distribution d'une grandeur sur les répétitions"
-    },
-    {
-      "type": "sensitivity",
-      "doc": "mesure primaire en fonction d'un axe (hypothèse ou paramètre), calculée par /api/sweep"
-    },
-    {
-      "type": "validity_domain",
-      "doc": "carte des verdicts sur deux axes, calculée par /api/sweep"
-    },
-    {
-      "type": "heatmap",
-      "doc": "matrices en cartes de couleur (série `matrix`, `paths[i][j]` = coefficient (i + 1, j + 1))"
-    },
-    {
-      "type": "measures_table",
-      "doc": "tableau des mesures (vue de secours)"
-    }
   ]
 }

@@ -32,8 +32,11 @@ if [[ "${1:-}" == "--check" ]]; then
     echo "types.gen.ts n'est plus à jour : lancez « bash scripts/gen_types.sh » et commitez le résultat." >&2
     exit 1
   fi
-  echo "types.gen.ts est à jour."
+  (cd "$ROOT" && uv run --quiet python scripts/export_schema.py --yaml --check)
+  echo "types.gen.ts et experiments/schema.json sont à jour."
 else
   cp "$TMP/types.gen.ts" "$OUT"
-  echo "Généré : frontend/src/lib/types.gen.ts"
+  # Schéma d'un fichier d'expérience pour l'éditeur (autocomplétion du YAML dans VS Code).
+  (cd "$ROOT" && uv run --quiet python scripts/export_schema.py --yaml)
+  echo "Généré : frontend/src/lib/types.gen.ts et experiments/schema.json"
 fi
