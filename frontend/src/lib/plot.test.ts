@@ -2,11 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { pendulumFixture, regressionFixture, regressionMethods, regressionSweep } from '../dev/fakeViews'
 import { buildFigure, clampPoints, isVisible, withAlpha, type ChartOptions } from './plot'
 import { displayRoles } from './roles'
-import type { ViewData, ViewSeries } from './views'
+import type { RunResult, SweepResult } from './types.gen'
+import type { Series, ViewResult } from './views'
+
+// Vraies fixtures du moteur (R1, scripts/make_fixtures.py).
+const runFixtures = import.meta.glob<RunResult>('../fixtures/*.run.json', { eager: true, import: 'default' })
+const sweepFixture = Object.values(
+  import.meta.glob<SweepResult>('../fixtures/*.sweep.json', { eager: true, import: 'default' }),
+)[0]
 
 const roles = displayRoles(regressionMethods)
 const opts = (on: string[], showReference = true): ChartOptions => ({ roles, methodsOn: new Set(on), showReference })
-const uids = (view: ViewData, o: ChartOptions) => buildFigure(view, o)!.data.map((t) => t.uid)
+const uids = (view: ViewResult, o: ChartOptions) => buildFigure(view, o)!.data.map((t) => t.uid)
 
 describe('clampPoints', () => {
   it('ramène au bord les points hors cadre, avec un triangle orienté', () => {
@@ -23,8 +30,11 @@ describe('clampPoints', () => {
 })
 
 describe('isVisible', () => {
-  const s = (role: ViewSeries['role'], method: string | null): ViewSeries => ({ id: 'v', slot: 'fit', method, role, label: '' })
-  it('les données et la vraie valeur sont toujours visibles', () => {
+  const s = (role: Series['role'], method: string | null): Series => ({
+    id: 'v.fit.m', slot: 'fit', method, role, label: '', layer: null,
+    x: null, y: null, low: null, high: null, hit: null, value: null, paths: null,
+  })
+  it('les données du générateur et la vraie valeur sont toujours visibles', () => {
     expect(isVisible(s('data', null), opts([]))).toBe(true)
     expect(isVisible(s('truth', null), opts([]))).toBe(true)
   })
@@ -50,7 +60,7 @@ describe('buildFigure', () => {
 
   it('les axes viennent de la vue, et la mise en page garde la caméra (uirevision)', () => {
     const fig = buildFigure(reg.views.nuage, opts(['ols']))!
-    expect((fig.layout.xaxis as { range: number[] }).range).toEqual(reg.views.nuage.axes.x)
+    expect((fig.layout.xaxis as { range: number[] }).range).toEqual(reg.views.nuage.axes?.x)
     expect(fig.layout.uirevision).toBe('keep')
   })
 
@@ -64,14 +74,17 @@ describe('buildFigure', () => {
 
   it('sensibilité : une courbe par méthode affichée, et le seuil critique', () => {
     const sweep = regressionSweep(0.8, 42, 100)
-    const view: ViewData = { id: 'sens', type: 'sensitivity', title: '', axes: {}, shown: 11, total: 11, clipped: 0, series: [] }
+    const view: ViewResult = {
+      id: 'sens', type: 'sensitivity', title: '', mode: null, axes: { x: null, y: null },
+      shown: 11, total: 11, clipped: 0, ui: null, series: [],
+    }
     const fig = buildFigure(view, { ...opts(['ols', 'hc3']), sweep, measure: { label: 'Couverture', scale: 100, unit: '%' } })!
     expect(fig.data.filter((t) => String(t.uid).startsWith('sens.mesure.'))).toHaveLength(2)
     expect((fig.layout.annotations as { text: string }[]).map((a) => a.text)).toContain('Seuil critique')
   })
 
   it('courbes du pendule : une trace par série', () => {
-    expect(uids(pendulumFixture(0.6).view, { roles: { euler: 'method', rk4: 'correction' }, methodsOn: new Set(['euler']), showReference: true })).toEqual([
+    expect(uids(pendulumFixture(0.6).view, { methodsOn: new Set(['euler']), showReference: true })).toEqual([
       'trajectoire.truth.gen',
       'trajectoire.series.euler',
     ])
@@ -94,5 +107,37 @@ describe('withAlpha', () => {
   it('convertit un hexadécimal en rgba', () => {
     expect(withAlpha('#3fb950', 0.5)).toBe('rgba(63, 185, 80, 0.5)')
     expect(withAlpha('var(--x)', 0.5)).toBe('var(--x)')
+  })
+})
+
+describe('vraies fixtures du moteur (R1)', () => {
+  const entries = Object.entries(runFixtures)
+
+  it('il y a des fixtures à tester', () => {
+    expect(entries.length).toBeGreaterThan(0)
+  })
+
+  it.each(entries)('%s : chaque vue se construit, Correction affichée ou non', (_name, run) => {
+    const ids = run.methods.map((m) => m.id)
+    const principal = run.methods.filter((m) => m.role === 'method').map((m) => m.id)
+    for (const view of run.views) {
+      for (const on of [principal, ids]) {
+        const o: ChartOptions = {
+          methodsOn: new Set(on), showReference: true, roles: displayRoles(run.methods),
+          sweep: view.type === 'sensitivity' ? sweepFixture : null,
+        }
+        const fig = buildFigure(view, o)
+        if (fig === null) continue // type non encore dessiné : vue de secours
+        if (view.type !== 'sensitivity') expect(fig.data.length).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('régression hétéroscédastique : le nuage a ses observations neutres et sa Référence', () => {
+    const run = Object.entries(runFixtures).find(([n]) => n.includes('regression_hetero'))![1]
+    const nuage = run.views.find((v) => v.type === 'scatter')!
+    const ids = uids(nuage, { methodsOn: new Set(['ols']), showReference: true })
+    expect(ids.some((u) => String(u).includes('.ref'))).toBe(true)
+    expect(nuage.series.some((s) => s.role === 'data')).toBe(true)
   })
 })

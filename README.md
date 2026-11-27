@@ -84,7 +84,7 @@ Hackathon-ENSAI/
 │   └── pendule_euler.yaml          P0, modèle du générateur ode
 ├── backend/
 │   ├── main.py                     Point d'entrée FastAPI                                    R1
-│   ├── contracts.py                [Contrat] Requêtes et réponses de l'API (à venir)         R1
+│   ├── contracts.py                [Contrat] Requêtes et réponses de l'API                   R1
 │   ├── api/                        Routes /api/run, /api/sweep, /api/training/session        R1
 │   ├── engine/
 │   │   ├── schema.py               [Contrat] Schéma YAML v1                                  R1
@@ -97,7 +97,8 @@ Hackathon-ENSAI/
 ├── tests/                          test_engine, test_loader (R4), test_experiments (R2)…
 ├── scripts/
 │   ├── pack.mjs                    Contexte pour LLM de discussion                           R3
-│   ├── gen_types.sh                contracts.py vers types.gen.ts (à venir)                  R3
+│   ├── gen_types.sh                contracts.py + schema.py vers types.gen.ts (--check)     R3
+│   ├── export_schema.py            JSON Schema des contrats, lu par gen_types.sh             R3
 │   └── make_fixtures.py            Vrais résultats vers frontend/src/fixtures (à venir)      R1
 └── frontend/                       Vite + Svelte 5 + TypeScript                              R3
     ├── scripts/test.mjs            Lanceur de Vitest (corrige c: en C: sous Windows)
@@ -109,7 +110,7 @@ Hackathon-ENSAI/
         │   ├── equation.ts         Règle de couleur des termes de l'équation
         │   ├── views.ts            Format des vues attendu du moteur
         │   ├── plot.ts             Construction des graphiques Plotly
-        │   ├── types.gen.ts        Généré depuis contracts.py, jamais à la main (à venir)
+        │   ├── types.gen.ts        Généré depuis contracts.py et schema.py, jamais à la main
         │   ├── executor.ts, state.ts, share.ts  Client API, état et URL (à venir)
         │   └── calibration.ts      Crans de confiance, score de Brier (à venir)            R4
         ├── components/
