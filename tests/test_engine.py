@@ -225,3 +225,133 @@ def test_fixtures_respect_contracts(path):
     kind = path.stem.rsplit(".", 1)[-1]
     model = {"run": RunResult, "sweep": SweepResult}.get(kind, TrainingSessionResponse)
     model.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+# --- Évaluateur d'expressions (expr.py) --------------------------------------------------------------------
+
+import numpy as np  # noqa: E402
+
+from backend.engine.expr import Env, ExprError, Layered, ar1, compile_expr, evaluate, ols_match  # noqa: E402
+
+ENV = Env(
+    variables={"x": np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), "idx": np.arange(3)},
+    namespaces={
+        "p": {"n": 25, "beta1": 1.5, "flag": True},
+        "h": {"hetero": 0.5, "loi": "cauchy", "add_leverage": True},
+        "m": {"power": Layered({"student": 0.1, "wilcoxon": 0.4}, default=0.1)},
+        "s": {"power": Layered({"student": "broken"}, default="broken")},
+    },
+    option=lambda hid: f"option:{hid}",
+)
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("p.n * 2 + 1", 51),
+        ("10 ** (-3.5 + 2.5 * h.hetero)", 10 ** (-3.5 + 2.5 * 0.5)),
+        ("h.loi == 'cauchy' and p.n >= 5", True),
+        ("m.power < 0.5 and s.power == 'broken'", True),
+        ("m.power.wilcoxon > m.power.student", True),
+        ("where(p.flag, 1.0, 2.0)", 1.0),
+        ("sqrt(16) + abs(-2) + pi * 0", 6.0),
+        ("@h.relation", "option:relation"),
+        ("-p.n if h.add_leverage else 0", -25),
+    ],
+)
+def test_expr_scalars(source, expected):
+    assert evaluate(source, ENV) == pytest.approx(expected)
+
+
+def test_expr_arrays():
+    lev = evaluate("h.add_leverage & (idx == 0)", ENV)
+    assert lev.tolist() == [True, False, False]
+    assert evaluate("where(idx == 0, 6.0, x)", ENV).shape == (2, 3)
+    assert evaluate("x > 2 and x < 6", ENV).tolist() == [[False, False, True], [True, True, False]]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "__import__('os')",
+        "x.__class__",
+        "p._secret",
+        "[i for i in x]",
+        "lambda: 1",
+        "open('f')",
+        "x[0]",
+        "(1).real",
+        "p.n.real",
+        "exec('1')",
+        "a if b else c; d",
+        "f'{p.n}'",
+        "p",
+        "x @ x",
+        "sqrt(x, out=x)",
+        "2 ** 101",
+        "10 ** (p.n * 5)",
+        "a" * 301,
+        "",
+    ],
+)
+def test_expr_rejects_dangerous_or_invalid(source):
+    with pytest.raises(ExprError):
+        evaluate(source, ENV)
+
+
+def test_expr_names_are_collected():
+    c = compile_expr("where(h.autocorr, ar1(x_raw, 0.7), x_raw) + @h.relation + p.n + law('normal')")
+    assert c.names == {"x_raw"}
+    assert ("h", "autocorr") in c.refs and ("p", "n") in c.refs
+    assert c.options == {"relation"}
+    assert c.calls == {"where", "ar1", "law"}
+    assert c.strings == [("law", "normal")]
+
+
+def test_expr_unknown_name_and_division():
+    with pytest.raises(ExprError, match="inconnu"):
+        evaluate("p.absent", ENV)
+    with pytest.raises(ExprError, match="Division par zéro"):
+        evaluate("1 / 0", ENV)
+
+
+def test_ar1_is_stationary_and_keeps_first_value():
+    base = np.random.default_rng(0).standard_normal((2000, 200))
+    z = ar1(base, 0.7)
+    assert np.allclose(z[:, 0], base[:, 0])
+    assert z[:, 50:].var() == pytest.approx(1.0, abs=0.05)
+    assert np.corrcoef(z[:, 100], z[:, 101])[0, 1] == pytest.approx(0.7, abs=0.05)
+    with pytest.raises(ExprError):
+        ar1(base, 1.0)
+
+
+def test_ols_match_gives_exact_summary():
+    rng = np.random.default_rng(1)
+    x = rng.standard_normal((5, 80))
+    y = 3 * x**2 + rng.standard_normal((5, 80))
+    out = ols_match(x, y, 1.0, 1.5, 0.67)
+    for xi, yi in zip(x, out, strict=True):
+        slope, intercept = np.polyfit(xi, yi, 1)
+        assert slope == pytest.approx(1.5, abs=1e-9)
+        assert intercept == pytest.approx(1.0, abs=1e-9)
+        assert np.corrcoef(xi, yi)[0, 1] ** 2 == pytest.approx(0.67, abs=1e-9)
+
+
+# --- Vérification des expressions au chargement ----------------------------------------------------
+
+
+def test_expression_checks_report_lines():
+    typo = REGRESSION.replace("ar1(x_raw, 0.7), x_raw)\"", "ar1(x_rw, 0.7), x_raw)\"")
+    issue = _first_issue(typo)
+    assert "x_rw" in issue.message and issue.path == "generator.variables.x_base.expr"
+    issue = _first_issue(REGRESSION.replace("law('normal')", "law('gamma')"))
+    assert "Loi inconnue" in issue.message
+    issue = _first_issue(REGRESSION.replace("m.bp_pvalue > 0.05", "m.nope > 0.05"))
+    assert issue.path == "challenges[0].when"
+    issue = _first_issue(REGRESSION.replace('"@h.error_law"', '"eval(1)"'))
+    assert "eval" in issue.message
+
+
+def test_variable_cycle_is_refused():
+    issue = _first_issue(REGRESSION.replace("law('normal')\" }", "x + 1\" }", 1))
+    assert "Cycle" in issue.message
