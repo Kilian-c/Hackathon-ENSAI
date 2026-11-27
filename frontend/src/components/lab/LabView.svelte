@@ -2,7 +2,9 @@
   LabView.svelte : le Laboratoire (R3). Cahier, sections 2.2, 3.1 et 3.2 ; CLAUDE.md, section 10.
 
   Une seule expérience à l'écran, entièrement décrite par son YAML (ExperimentSpec) : aucun code
-  propre à un théorème. Deux états :
+  propre à un théorème. Trois étapes, une seule visible à la fois, pour alléger l'écran (parcours du
+  cahier, section 2.2) : Comprendre (lecture), Expérimenter (contrôles, mesure principale, graphique),
+  Défis. Deux états :
   - engine (EngineState) : part au moteur à chaque changement (regroupé à 100 ms, ancien appel annulé) ;
   - ui (UiState) et showReference : affichage seul, aucun appel.
   Les deux sont recopiés dans l'URL (lien de partage) à chaque changement.
@@ -15,11 +17,12 @@
   import PlotlyChart from '../PlotlyChart.svelte'
   import AutoSweepPlayer from './AutoSweepPlayer.svelte'
   import ChallengesPanel from './ChallengesPanel.svelte'
+  import ControlsPanel from './ControlsPanel.svelte'
   import CounterexampleBar from './CounterexampleBar.svelte'
   import MeasurePanel from './MeasurePanel.svelte'
+  import MeasureStrip from './MeasureStrip.svelte'
   import MethodBench from './MethodBench.svelte'
-  import ParamControl from './ParamControl.svelte'
-  import UnderstandPanel from './UnderstandPanel.svelte'
+  import UnderstandStage from './UnderstandStage.svelte'
   import VerdictBadge from './VerdictBadge.svelte'
   import { ApiError, createLatest, type Latest } from '../../lib/executor'
   import {
@@ -51,8 +54,9 @@
     type Link,
     type UiState,
   } from '../../lib/state'
-  import type { Counterexample, EngineState, ExperimentSpec, RunResult, SweepRequest, SweepResult } from '../../lib/types.gen'
+  import type { Challenge, Counterexample, EngineState, ExperimentSpec, RunResult, SweepRequest, SweepResult } from '../../lib/types.gen'
   import { levelLabel } from '../../lib/format'
+  import { disciplineLabel } from '../home/experiments'
 
   interface Props {
     link: Extract<Link, { kind: 'lab' }>
@@ -60,7 +64,18 @@
 
   let { link }: Props = $props()
 
+  /** Ancien onglet « Défis » (liens partagés avant les étapes) : ouvre l'étape Défis. */
   const CHALLENGES_TAB = 'defis'
+
+  type Stage = 'comprendre' | 'experimenter' | 'defis'
+  const STAGES: { id: Stage; title: string }[] = [
+    { id: 'comprendre', title: 'Comprendre' },
+    { id: 'experimenter', title: 'Expérimenter' },
+    { id: 'defis', title: 'Défis' },
+  ]
+  let stage = $state<Stage>('experimenter')
+  /** Défi réussi pendant la visite, annoncé dans l'étape Expérimenter. */
+  let justWon = $state<Challenge | null>(null)
 
   let spec = $state<ExperimentSpec | null>(null)
   let source = $state<LabSource | null>(null)
@@ -99,6 +114,7 @@
         source = opened.source
         engine = resolved.engine
         ui = resolved.ui
+        if (resolved.ui.tab === CHALLENGES_TAB) stage = 'defis'
         // Lien avec une hypothèse déjà cassée (partage, Entraînement) : Comprendre s'ouvre dessus.
         openHyp = brokenHypotheses(opened.spec, resolved.engine)[0] ?? null
       },
@@ -144,7 +160,11 @@
   const wonChallenges = new SvelteSet<string>()
 
   $effect(() => {
-    for (const c of result?.challenges ?? []) if (c.passed) wonChallenges.add(c.id)
+    for (const c of result?.challenges ?? []) {
+      if (!c.passed || wonChallenges.has(c.id)) continue
+      wonChallenges.add(c.id)
+      justWon = spec?.challenges.find((x) => x.id === c.id) ?? null
+    }
   })
 
   // --- Lien de partage : recopié dans l'URL (sans nouvelle entrée d'historique) ---
@@ -153,11 +173,8 @@
     history.replaceState(null, '', labLink(spec, engine, ui))
   })
 
-  // --- Onglets : les vues renvoyées par le moteur, puis les Défis ---
-  const tabs = $derived([
-    ...(result?.views ?? []).map((v) => ({ id: v.id, title: v.title })),
-    ...(spec && spec.challenges.length > 0 ? [{ id: CHALLENGES_TAB, title: 'Défis' }] : []),
-  ])
+  // --- Onglets du graphique : les vues renvoyées par le moteur ---
+  const tabs = $derived((result?.views ?? []).map((v) => ({ id: v.id, title: v.title })))
   const activeTab = $derived(tabs.some((t) => t.id === ui.tab) ? (ui.tab as string) : (tabs[0]?.id ?? null))
   const activeViewRaw = $derived(result?.views.find((v) => v.id === activeTab) ?? null)
   const activeView = $derived(
@@ -207,7 +224,6 @@
   const primaryId = $derived(result ? primaryMeasureId(result) : null)
   const sweptMeasure = $derived(result ? (result.measures[sweep?.measure ?? primaryId ?? ''] ?? null) : null)
   const verdict = $derived(result ? headlineVerdict(result) : null)
-  const anyBroken = $derived(spec && engine ? brokenHypotheses(spec, engine).length > 0 : false)
   const pointsHere = $derived(spec ? allowsPoints(spec, activeView?.id ?? null) : false)
   const placed = $derived(spec && engine ? viewPoints(spec, engine) : [])
 
@@ -224,8 +240,18 @@
     activeCounterexample = null
   }
 
-  function breakHypothesis(id: string): void {
-    if (spec) changeHypothesis(id, brokenValue(spec.hypotheses[id]))
+  /** Depuis Comprendre : casser l'hypothèse (si elle est saine) et passer à l'expérience. */
+  function tryHypothesis(id: string): void {
+    if (!spec || !engine) return
+    if (!brokenHypotheses(spec, engine).includes(id)) changeHypothesis(id, brokenValue(spec.hypotheses[id]))
+    openHyp = id
+    stage = 'experimenter'
+  }
+
+  /** Depuis Expérimenter : l'explication complète de l'hypothèse, dans Comprendre. */
+  function explainHypothesis(id: string): void {
+    openHyp = id
+    stage = 'comprendre'
   }
 
   function pickCounterexample(c: Counterexample): void {
@@ -234,6 +260,7 @@
     activeCounterexample = c
     pointsFull = false
     openHyp = Object.keys(c.state.hypotheses)[0] ?? openHyp
+    stage = 'experimenter'
   }
 
   function heal(): void {
@@ -326,19 +353,31 @@
   <div class="lab">
     <header class="top">
       <div class="titles">
-        <a class="back" href="?">← Expériences</a>
+        <a class="back" href="?labo">← Expériences</a>
         <h1>{spec.title}</h1>
-        <p class="meta">{spec.discipline} · {levelLabel(spec.level)}</p>
+        <p class="meta">{disciplineLabel(spec.discipline)} · {levelLabel(spec.level)}</p>
       </div>
       <div class="actions">
-        {#if verdict}<VerdictBadge {verdict} large />{/if}
         {#if loading}<span class="busy" aria-live="polite">Calcul…</span>{/if}
-        <button type="button" onclick={newDraw} title="Tirer de nouveaux échantillons (graine {engine.seed})">
-          Nouveau tirage
+        {#if verdict}<VerdictBadge {verdict} large />{/if}
+        <button type="button" class="ghost" onclick={newDraw} title="Tirer de nouveaux échantillons (graine {engine.seed})">
+          ↻ Nouveau tirage
         </button>
-        <button type="button" onclick={copyLink}>{copied ? 'Lien copié' : 'Copier le lien'}</button>
+        <button type="button" class="ghost" onclick={copyLink}>{copied ? '✓ Lien copié' : 'Copier le lien'}</button>
       </div>
     </header>
+
+    <nav class="stages" aria-label="Étapes">
+      {#each STAGES as st, k (st.id)}
+        <button type="button" aria-current={stage === st.id ? 'step' : undefined} onclick={() => (stage = st.id)}>
+          <span class="num">{k + 1}</span>
+          {st.title}
+          {#if st.id === 'defis' && spec.challenges.length > 0}
+            <span class="count">{wonChallenges.size} / {spec.challenges.length}</span>
+          {/if}
+        </button>
+      {/each}
+    </nav>
 
     {#if source?.kind === 'fixtures'}
       <p class="banner fixtures">
@@ -346,145 +385,176 @@
         exactement les curseurs.
       </p>
     {/if}
-
-    <CounterexampleBar counterexamples={spec.counterexamples} active={activeCounterexample?.id ?? null} onpick={pickCounterexample} />
-    {#if activeCounterexample}
-      <p class="banner counter">
-        <strong>{activeCounterexample.label}.</strong>
-        {activeCounterexample.explain}
-        <button type="button" class="link" onclick={() => (activeCounterexample = null)}>Fermer</button>
-      </p>
-    {/if}
     {#if error}
       <p class="banner error" role="alert">{error}</p>
     {/if}
 
-    <div class="grid">
-      <aside class="left">
-        <UnderstandPanel
-          {spec}
-          state={engine}
-          open={openHyp}
-          onopen={(id) => (openHyp = id)}
-          onchange={changeHypothesis}
-          onbreak={breakHypothesis}
-        />
-        {#if anyBroken}
-          <button type="button" class="heal" onclick={heal}>Rétablir toutes les hypothèses</button>
-        {/if}
-        {#if Object.keys(spec.params).length > 0}
-          <section class="params" aria-labelledby="params-titre">
-            <h3 id="params-titre">Paramètres</h3>
-            {#each Object.entries(spec.params) as [id, p] (id)}
-              <ParamControl {id} param={p} value={engine.params[id]} onchange={(v) => changeParam(id, v)} />
-            {/each}
-          </section>
-        {/if}
-        {#if source}
-          <AutoSweepPlayer
+    {#if stage === 'comprendre'}
+      <UnderstandStage
+        {spec}
+        {engine}
+        {result}
+        methodsOn={ui.methodsOn}
+        focus={openHyp}
+        ontry={tryHypothesis}
+        onpreset={pickCounterexample}
+        onstart={() => (stage = 'experimenter')}
+      />
+    {:else if stage === 'defis'}
+      <section class="challenges-stage">
+        <p class="muted">
+          Chaque défi se valide tout seul pendant que vous manipulez les contrôles de l'étape
+          Expérimenter.
+        </p>
+        <ChallengesPanel challenges={spec.challenges} results={result?.challenges ?? []} won={wonChallenges} />
+        <button type="button" class="primary" onclick={() => (stage = 'experimenter')}>Expérimenter →</button>
+      </section>
+    {:else}
+      <div class="workspace">
+        <aside class="side">
+          <ControlsPanel
             {spec}
             {engine}
-            {ui}
-            {source}
-            onframe={sweepFrame}
-            onfinish={(u) => (ui = u)}
-            onplaying={sweepPlaying}
+            onhypothesis={changeHypothesis}
+            onparam={changeParam}
+            onexplain={explainHypothesis}
+            onheal={heal}
           />
-        {/if}
-      </aside>
-
-      <main class="center">
-        {#if result}
-          <DynamicEquation equation={spec.equation} {result} hypotheses={spec.hypotheses} methodsOn={ui.methodsOn} />
-        {/if}
-
-        <!-- Banc de méthodes : la Correction et les alternatives, sans appel au moteur. -->
-        <MethodBench methods={spec.methods} {roles} methodsOn={ui.methodsOn} ontoggle={toggle} />
-        <div class="toolbar">
-          <label class="ref">
-            <input type="checkbox" bind:checked={showReference} />
-            <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
-          </label>
-        </div>
-
-        <div class="tabs" role="tablist" aria-label="Vues">
-          {#each tabs as t (t.id)}
-            <button type="button" role="tab" aria-selected={t.id === activeTab} onclick={() => selectTab(t.id)}>
-              {t.title}
-            </button>
-          {/each}
-        </div>
-
-        <div class="view" role="tabpanel">
-          {#if activeTab === CHALLENGES_TAB}
-            <ChallengesPanel challenges={spec.challenges} results={result?.challenges ?? []} won={wonChallenges} />
-          {:else if activeView}
-            {#if (activeView.type === 'sensitivity' || activeView.type === 'validity_domain') && !sweepShown}
-              <p class="muted">
-                {sweepStatus === 'loading'
-                  ? 'Balayage en cours…'
-                  : sweepStatus === 'error'
-                    ? 'Le balayage a échoué. Réessayez dans un instant.'
-                    : 'Aucun balayage disponible pour cette vue.'}
-              </p>
-            {:else}
-              {#if pointsHere}
-                <div class="points-bar">
-                  <span>
-                    Cliquez dans le graphique pour poser un point, sur une étoile pour la retirer ·
-                    <strong>{placed.length} / {MAX_EXTRA_POINTS} points</strong>
-                  </span>
-                  {#if placed.length > 0}
-                    <button type="button" class="link" onclick={clearAllPoints}>Retirer tous les points</button>
-                  {/if}
-                </div>
-                {#if pointsFull}
-                  <p class="banner error" role="alert">
-                    Vous avez posé {MAX_EXTRA_POINTS} points, le maximum. Retirez-en un pour en poser un autre.
-                  </p>
-                {/if}
-              {/if}
-              <!-- Un graphique par vue : le zoom d'une vue ne passe pas à la suivante. -->
-              {#key activeView.id}
-                <PlotlyChart
-                  view={activeView}
-                  {result}
-                  methodsOn={methodsOnSet}
-                  {showReference}
-                  sweep={sweepShown}
-                  measure={sweptMeasure}
-                  {roles}
-                  methodLabels={labels}
-                  axisLabel={sweepShown ? axisTitle(spec, sweepShown.axes[0].target) : undefined}
-                  height={420}
-                  injected={pointsHere ? placed : []}
-                  onaddpoint={pointsHere ? placePoint : undefined}
-                  onremovepoint={pointsHere ? unplacePoint : undefined}
-                  axisLabels={sweepShown && sweepShown.axes.length >= 2
-                    ? [axisTitle(spec, sweepShown.axes[0].target), axisTitle(spec, sweepShown.axes[1].target)]
-                    : undefined}
-                  onpickcell={activeView.type === 'validity_domain' ? pickCell : undefined}
-                />
-              {/key}
-            {/if}
-          {:else if !result}
-            <p class="muted">Calcul en cours…</p>
+          {#if spec.counterexamples.length > 0}
+            <div class="side-block">
+              <CounterexampleBar counterexamples={spec.counterexamples} active={activeCounterexample?.id ?? null} onpick={pickCounterexample} />
+            </div>
           {/if}
-        </div>
-      </main>
+          {#if source}
+            <details class="side-block more">
+              <summary>Animer un contrôle</summary>
+              <AutoSweepPlayer
+                {spec}
+                {engine}
+                {ui}
+                {source}
+                onframe={sweepFrame}
+                onfinish={(u) => (ui = u)}
+                onplaying={sweepPlaying}
+              />
+            </details>
+          {/if}
+        </aside>
 
-      <aside class="right">
-        {#if result}
-          <MeasurePanel {result} methodsOn={ui.methodsOn} {showReference} />
-        {/if}
-      </aside>
-    </div>
+        <section class="main">
+          {#if justWon}
+            <p class="banner won" role="status">
+              <strong>✓ Défi réussi.</strong>
+              {justWon.goal}
+              <button type="button" class="link" onclick={() => (stage = 'defis')}>Voir les défis</button>
+              <button type="button" class="link" onclick={() => (justWon = null)}>Fermer</button>
+            </p>
+          {/if}
+          {#if activeCounterexample}
+            <p class="banner counter">
+              <strong>{activeCounterexample.label}.</strong>
+              {activeCounterexample.explain}
+              <button type="button" class="link" onclick={() => (activeCounterexample = null)}>Fermer</button>
+            </p>
+          {/if}
+
+          {#if result}
+            <div class="panel summary">
+              <MeasureStrip {result} methodsOn={ui.methodsOn} {showReference} />
+              <div class="summary-side">
+                <MethodBench methods={spec.methods} {roles} methodsOn={ui.methodsOn} ontoggle={toggle} />
+                <label class="ref">
+                  <input type="checkbox" bind:checked={showReference} />
+                  <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
+                </label>
+              </div>
+            </div>
+
+            <div class="panel equation">
+              <DynamicEquation equation={spec.equation} {result} hypotheses={spec.hypotheses} methodsOn={ui.methodsOn} />
+            </div>
+          {/if}
+
+          <div class="panel chart">
+            <div class="tabs" role="tablist" aria-label="Vues">
+              {#each tabs as t (t.id)}
+                <button type="button" role="tab" aria-selected={t.id === activeTab} onclick={() => selectTab(t.id)}>
+                  {t.title}
+                </button>
+              {/each}
+            </div>
+
+            <div class="view" role="tabpanel">
+              {#if activeView}
+                {#if (activeView.type === 'sensitivity' || activeView.type === 'validity_domain') && !sweepShown}
+                  <p class="muted">
+                    {sweepStatus === 'loading'
+                      ? 'Balayage en cours…'
+                      : sweepStatus === 'error'
+                        ? 'Le balayage a échoué. Réessayez dans un instant.'
+                        : 'Aucun balayage disponible pour cette vue.'}
+                  </p>
+                {:else}
+                  {#if pointsHere}
+                    <div class="points-bar">
+                      <span>
+                        Cliquez dans le graphique pour poser un point, sur une étoile pour la retirer ·
+                        <strong>{placed.length} / {MAX_EXTRA_POINTS} points</strong>
+                      </span>
+                      {#if placed.length > 0}
+                        <button type="button" class="link" onclick={clearAllPoints}>Retirer tous les points</button>
+                      {/if}
+                    </div>
+                    {#if pointsFull}
+                      <p class="banner error" role="alert">
+                        Vous avez posé {MAX_EXTRA_POINTS} points, le maximum. Retirez-en un pour en poser un autre.
+                      </p>
+                    {/if}
+                  {/if}
+                  <!-- Un graphique par vue : le zoom d'une vue ne passe pas à la suivante. -->
+                  {#key activeView.id}
+                    <PlotlyChart
+                      view={activeView}
+                      {result}
+                      methodsOn={methodsOnSet}
+                      {showReference}
+                      sweep={sweepShown}
+                      measure={sweptMeasure}
+                      {roles}
+                      methodLabels={labels}
+                      axisLabel={sweepShown ? axisTitle(spec, sweepShown.axes[0].target) : undefined}
+                      height={440}
+                      injected={pointsHere ? placed : []}
+                      onaddpoint={pointsHere ? placePoint : undefined}
+                      onremovepoint={pointsHere ? unplacePoint : undefined}
+                      axisLabels={sweepShown && sweepShown.axes.length >= 2
+                        ? [axisTitle(spec, sweepShown.axes[0].target), axisTitle(spec, sweepShown.axes[1].target)]
+                        : undefined}
+                      onpickcell={activeView.type === 'validity_domain' ? pickCell : undefined}
+                    />
+                  {/key}
+                {/if}
+              {:else}
+                <p class="muted">Calcul en cours…</p>
+              {/if}
+            </div>
+          </div>
+
+          {#if result}
+            <details class="panel more">
+              <summary>Toutes les mesures</summary>
+              <MeasurePanel {result} methodsOn={ui.methodsOn} {showReference} />
+            </details>
+          {/if}
+        </section>
+      </div>
+    {/if}
   </div>
 {/if}
 
 <style>
   .lab {
-    max-width: 96rem;
+    max-width: 90rem;
     margin: 0 auto;
     padding: var(--ct-space-4) var(--ct-space-6) var(--ct-space-8);
     display: grid;
@@ -499,8 +569,9 @@
     flex-wrap: wrap;
   }
   h1 {
-    margin: 0;
+    margin: var(--ct-space-1) 0 0;
     font-size: var(--ct-text-xl);
+    letter-spacing: -0.01em;
   }
   .back,
   .meta {
@@ -509,6 +580,9 @@
   }
   .back {
     text-decoration: none;
+  }
+  .back:hover {
+    color: var(--ct-text);
   }
   .meta {
     margin: 0;
@@ -527,15 +601,77 @@
     font: inherit;
     font-size: var(--ct-text-sm);
     color: var(--ct-text);
-    background: var(--ct-surface-2);
+    cursor: pointer;
+  }
+  .ghost {
+    background: var(--ct-surface);
     border: 1px solid var(--ct-border);
     border-radius: var(--ct-radius);
     padding: var(--ct-space-1) var(--ct-space-3);
-    cursor: pointer;
   }
-  button:hover {
-    border-color: var(--ct-muted);
+  .ghost:hover {
+    background: var(--ct-surface-2);
   }
+  .primary {
+    justify-self: start;
+    padding: 0.5rem 1.1rem;
+    border: none;
+    border-radius: var(--ct-radius);
+    background: var(--ct-role-method);
+    color: var(--ct-bg);
+    font-weight: 600;
+  }
+
+  /* --- Étapes --- */
+  .stages {
+    display: flex;
+    gap: var(--ct-space-1);
+    padding: var(--ct-space-1);
+    border: 1px solid var(--ct-border);
+    border-radius: 999px;
+    background: var(--ct-surface);
+    justify-self: start;
+  }
+  .stages button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ct-space-2);
+    padding: 0.4rem 1rem;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--ct-muted);
+    font-weight: 600;
+  }
+  .stages button:hover {
+    color: var(--ct-text);
+  }
+  .stages button[aria-current='step'] {
+    background: var(--ct-surface-2);
+    color: var(--ct-text);
+    box-shadow: inset 0 0 0 1px var(--ct-border);
+  }
+  .num {
+    display: grid;
+    place-items: center;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    font-size: 0.75rem;
+  }
+  [aria-current='step'] .num {
+    background: var(--ct-role-method);
+    border-color: var(--ct-role-method);
+    color: var(--ct-bg);
+  }
+  .count {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--ct-muted);
+  }
+
+  /* --- Bandeaux --- */
   .banner {
     margin: 0;
     padding: var(--ct-space-2) var(--ct-space-4);
@@ -550,6 +686,12 @@
   .banner.counter {
     border-color: var(--ct-role-truth);
   }
+  .banner.won {
+    border-color: var(--ct-verdict-ok);
+  }
+  .banner.won strong {
+    color: var(--ct-verdict-ok);
+  }
   .banner.error {
     border-color: var(--ct-role-rupture);
     color: var(--ct-role-rupture);
@@ -561,67 +703,102 @@
     text-decoration: underline;
     padding: 0 var(--ct-space-1);
   }
-  .grid {
+
+  /* --- Étape Expérimenter --- */
+  .workspace {
     display: grid;
-    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr) minmax(16rem, 20rem);
-    gap: var(--ct-space-4);
+    grid-template-columns: minmax(17rem, 21rem) minmax(0, 1fr);
+    gap: var(--ct-space-6);
     align-items: start;
   }
-  @media (max-width: 75rem) {
-    .grid {
-      grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
-    }
-    .right {
-      grid-column: 1 / -1;
-    }
-  }
-  @media (max-width: 50rem) {
-    .grid {
+  @media (max-width: 56rem) {
+    .workspace {
       grid-template-columns: minmax(0, 1fr);
     }
   }
-  .left,
-  .center,
-  .right {
+  .side {
+    position: sticky;
+    top: var(--ct-space-4);
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--ct-space-3);
-    min-width: 0;
-  }
-  .left {
-    padding: var(--ct-space-4);
+    gap: var(--ct-space-6);
+    padding: var(--ct-space-4) var(--ct-space-4) var(--ct-space-6);
     background: var(--ct-surface);
     border: 1px solid var(--ct-border);
     border-radius: var(--ct-radius-lg);
+    max-height: calc(100vh - 2 * var(--ct-space-4));
+    overflow-y: auto;
+    box-sizing: border-box;
   }
-  .params {
+  .side-block {
+    padding-top: var(--ct-space-4);
+    border-top: 1px solid var(--ct-border);
+  }
+  .main {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--ct-space-3);
+    gap: var(--ct-space-4);
+    min-width: 0;
   }
-  .params h3 {
-    margin: var(--ct-space-2) 0 0;
-    font-size: var(--ct-text-md);
-    color: var(--ct-muted);
+  .panel {
+    padding: var(--ct-space-4) var(--ct-space-6);
+    background: var(--ct-surface);
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-lg);
+    min-width: 0;
   }
-  .heal {
-    justify-self: start;
-  }
-  .toolbar {
+  .summary {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--ct-space-4);
-    align-items: center;
+    justify-content: space-between;
+    gap: var(--ct-space-4) var(--ct-space-8);
+  }
+  .summary-side {
+    display: grid;
+    gap: var(--ct-space-2);
+    align-content: start;
+    max-width: 28rem;
+  }
+  .equation {
+    padding-top: var(--ct-space-3);
+    padding-bottom: var(--ct-space-3);
+    overflow-x: auto;
   }
   .ref {
     display: flex;
     align-items: center;
     gap: var(--ct-space-2);
     font-size: var(--ct-text-sm);
+    color: var(--ct-muted);
   }
   .ref-mark {
     color: var(--ct-role-reference);
     font-weight: 700;
+  }
+  .chart {
+    padding-top: 0;
+  }
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ct-space-1);
+    margin: 0 calc(-1 * var(--ct-space-2)) var(--ct-space-3);
+    border-bottom: 1px solid var(--ct-border);
+  }
+  .tabs button {
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    padding: var(--ct-space-3) var(--ct-space-2);
+    color: var(--ct-muted);
+  }
+  .tabs button:hover {
+    color: var(--ct-text);
+  }
+  .tabs button[aria-selected='true'] {
+    color: var(--ct-text);
+    border-bottom-color: var(--ct-role-method);
+    font-weight: 600;
   }
   .points-bar {
     display: flex;
@@ -635,25 +812,29 @@
   .view .banner {
     margin-bottom: var(--ct-space-2);
   }
-  .tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--ct-space-1);
-    border-bottom: 1px solid var(--ct-border);
-  }
-  .tabs button {
-    border: none;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    background: none;
-    padding: var(--ct-space-2) var(--ct-space-3);
+  details.more > summary {
+    cursor: pointer;
+    font-size: var(--ct-text-sm);
+    font-weight: 600;
     color: var(--ct-muted);
   }
-  .tabs button[aria-selected='true'] {
+  details.more > summary:hover {
     color: var(--ct-text);
-    border-bottom-color: var(--ct-role-method);
-    font-weight: 600;
   }
+  details.more[open] > summary {
+    margin-bottom: var(--ct-space-3);
+  }
+
+  /* --- Étape Défis --- */
+  .challenges-stage {
+    max-width: 52rem;
+    display: grid;
+    gap: var(--ct-space-4);
+  }
+  .challenges-stage > p {
+    margin: 0;
+  }
+
   .muted {
     color: var(--ct-muted);
   }
