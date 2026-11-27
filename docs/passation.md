@@ -23,6 +23,8 @@ Vérifié au commit `82e7663` : YAML, générateur `random` et méthodes concord
 **R3 (interface)**
 - Corrigé : défis réussis retenus d'un onglet à l'autre, clés des avertissements, specs de repli régénérées, `CLAUDE.md` (section 9) et arborescence du README.
 - Reste : zoom qui pourrait passer d'une vue à l'autre (à vérifier au navigateur) ; repli sur les fixtures à désactiver avant la démo.
+- 15 h 30 : Entraînement minimal fait (`components/training/`), testé dans un navigateur sur la série de démonstration ; il passera sur le vrai moteur dès que `POST /api/training/session` et `/api/run` répondent.
+- TODO(passation), R4 : le Bilan lit l'historique avec `loadHistory(browserStore())` (`lib/training.ts` : par série, chaque réponse a `correct`, `level`, `p`, `at`) ; ajouter le lien vers le Bilan sur l'écran de fin (`TrainingView.svelte`).
 
 ## H0 (12 h) : décisions de départ
 - Rôles : R3 = Kilian (interface), qui pourra aider R1 ; R4 pourra reprendre une partie de l'interface de R3.

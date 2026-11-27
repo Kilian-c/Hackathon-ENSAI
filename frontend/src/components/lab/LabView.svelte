@@ -79,6 +79,8 @@
         source = opened.source
         engine = resolved.engine
         ui = resolved.ui
+        // Lien avec une hypothèse déjà cassée (partage, Entraînement) : Comprendre s'ouvre dessus.
+        openHyp = brokenHypotheses(opened.spec, resolved.engine)[0] ?? null
       },
       (err) => {
         if (!cancelled) error = messageOf(err)

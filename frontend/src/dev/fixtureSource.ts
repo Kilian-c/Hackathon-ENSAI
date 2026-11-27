@@ -13,7 +13,15 @@
 
 import { headlineVerdict } from '../lib/lab'
 import { brokenHypotheses } from '../lib/state'
-import type { EngineState, ExperimentSpec, ExperimentSummary, RunResult, SweepRequest, SweepResult } from '../lib/types.gen'
+import type {
+  EngineState,
+  ExperimentSpec,
+  ExperimentSummary,
+  RunResult,
+  SweepRequest,
+  SweepResult,
+  TrainingSessionResponse,
+} from '../lib/types.gen'
 
 const specFiles = import.meta.glob<ExperimentSpec>('./specs/*.spec.json', { import: 'default' })
 const runFiles = import.meta.glob<RunResult>('../fixtures/*.run.json', { import: 'default' })
@@ -43,6 +51,23 @@ export async function fixtureSpec(id: string): Promise<ExperimentSpec> {
   const hit = await findSpec(id)
   if (!hit) throw new Error(`Aucune spécification de démonstration pour « ${id} ».`)
   return hit.spec
+}
+
+/** La série de démonstration de R1, restreinte au filtre demandé. */
+export async function fixtureSession(filter: string): Promise<TrainingSessionResponse> {
+  const session = (await import('../fixtures/training_session.json')).default as unknown as TrainingSessionResponse
+  if (filter === 'toutes') return session
+  const kept = new Set(
+    (await allSpecs())
+      .filter(({ spec }) => spec.id === filter || `discipline:${spec.discipline}` === filter)
+      .map(({ spec }) => spec.id),
+  )
+  return {
+    ...session,
+    id: `${filter}~${session.seed}`,
+    filter,
+    questions: session.questions.filter((q) => kept.has(q.experiment_id)),
+  }
 }
 
 export async function fixtureRun(spec: ExperimentSpec, state: EngineState): Promise<RunResult> {

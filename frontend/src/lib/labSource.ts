@@ -7,7 +7,15 @@
  */
 
 import { api, type CallOptions } from './executor'
-import type { EngineState, ExperimentSpec, ExperimentSummary, RunResult, SweepRequest, SweepResult } from './types.gen'
+import type {
+  EngineState,
+  ExperimentSpec,
+  ExperimentSummary,
+  RunResult,
+  SweepRequest,
+  SweepResult,
+  TrainingSessionResponse,
+} from './types.gen'
 
 export interface LabSource {
   kind: 'api' | 'fixtures'
@@ -46,6 +54,23 @@ export async function openExperiment(id: string): Promise<{ spec: ExperimentSpec
   }
   const f = await fixtures()
   return { spec: await f.fixtureSpec(id), source: await fixtureSource() }
+}
+
+/**
+ * Série d'Entraînement (moteur, ou série de démonstration en repli). `seed` null : le moteur en tire une.
+ */
+export async function openSession(
+  filter: string,
+  seed: number | null,
+): Promise<{ session: TrainingSessionResponse; kind: LabSource['kind'] }> {
+  if (!forcedFixtures()) {
+    try {
+      return { session: await api.trainingSession({ filter, count: 10, seed }), kind: 'api' }
+    } catch (err) {
+      console.warn('Moteur indisponible pour l’Entraînement : bascule sur les fixtures.', err)
+    }
+  }
+  return { session: await (await fixtures()).fixtureSession(filter), kind: 'fixtures' }
 }
 
 /** Liste des expériences (moteur, ou fixtures en repli). */

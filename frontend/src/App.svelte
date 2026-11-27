@@ -3,6 +3,7 @@
   // L'accueil ci-dessous est PROVISOIRE (une liste simple) : la galerie de R4 (components/home/) le remplacera.
   // ?dev=charts ouvre le banc d'essai des graphiques et la palette.
   import LabView from './components/lab/LabView.svelte'
+  import TrainingView from './components/training/TrainingView.svelte'
   import { listExperiments } from './lib/labSource'
   import { LINK_VERSION, parseLink } from './lib/state'
   import type { ExperimentSummary } from './lib/types.gen'
@@ -38,15 +39,12 @@
     <p><a href="?">Revenir à l'accueil</a></p>
   </main>
 {:else if link.kind === 'training'}
-  <main class="page">
-    <h1>Entraînement</h1>
-    <p class="muted">L'écran d'Entraînement arrive bientôt.</p>
-    <p><a href="?">Revenir à l'accueil</a></p>
-  </main>
+  <TrainingView {link} />
 {:else}
   <main class="page">
     <h1>Crash-Test</h1>
     <p>Cassez une hypothèse, mesurez ce qui cède, puis réparez.</p>
+    <p><a href="?train=toutes&v={LINK_VERSION}">S'entraîner avec des questions →</a></p>
     {#if experiments === null}
       <p class="muted">Chargement des expériences…</p>
     {:else if experiments.length === 0}
