@@ -11,6 +11,7 @@
     verdictLabel,
     type Verdict,
   } from './lib/roles'
+  import DevCharts from './dev/DevCharts.svelte'
 
   const apiUrl = import.meta.env.VITE_API_URL ?? ''
   const verdicts: Verdict[] = ['ok', 'warning', 'broken']
@@ -66,11 +67,13 @@
       {/each}
     </div>
   </section>
+
+  <DevCharts />
 </main>
 
 <style>
   main {
-    max-width: 60rem;
+    max-width: 80rem;
     margin: var(--ct-space-8) auto;
     padding: 0 var(--ct-space-6);
   }
