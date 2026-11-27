@@ -1,8 +1,7 @@
 """Tests de contenu des expériences (R2, section 4.10 du cahier). P0 : 1, 3, 4, 8, 10.
 
 Les tests de contenu lisent le YAML. Les tests qui calculent (1, 2, 3, 4, 6, 8) passent par
-`run_state`, branché pour l'instant sur le mini-pipeline `tests/_mini_run.py` (le vrai `run()` de R1,
-backend/engine/runner.py, n'existe pas encore). TODO(passation) : brancher `run_state` sur `run()`.
+`run_state`, branché sur le vrai `run()` (backend/engine/runner.py).
 """
 
 from __future__ import annotations
@@ -13,9 +12,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from backend.contracts import EngineState
+from backend.engine import runner
+from backend.engine.generators.random_world import generate
 from backend.engine.loader import load_experiment_file
-from tests import _mini_run
-from tests._mini_run import check_verify, mini_run
+from backend.engine.state import resolve_state
 
 EXPERIMENTS_DIR = Path(__file__).resolve().parent.parent / "experiments"
 P0_FILES = sorted(EXPERIMENTS_DIR.glob("*.yaml"))
@@ -82,9 +83,31 @@ def test_texts_are_in_french_without_tutoiement(experiment) -> None:
 # --- Tests qui calculent -------------------------------------------------------------------------------
 
 
-def run_state(experiment, state: dict | None = None):
-    """Point d'entrée unique des tests : à brancher sur run() de R1 quand il existera."""
-    return mini_run(experiment, state)
+class _Res:
+    """Vue des résultats de `run()` sous la forme dont les tests ont besoin."""
+
+    def __init__(self, experiment, state: dict | None):
+        self._experiment, self._state = experiment, EngineState(**(state or {}))
+        rr = runner.run(experiment, self._state)
+        self.primary_method = next(m.id for m in experiment.methods if m.role == "method")
+        self.primary_measure = next(k for k, m in experiment.measures.items() if m.primary)
+        self.values = {k: m.values for k, m in rr.measures.items()}
+        self.states = {k: m.states for k, m in rr.measures.items()}
+        self.challenges = {c.id: c.passed for c in rr.challenges}
+
+    @property
+    def world(self):
+        """Monde `random` de cet état (variables par répétition), pour le test 4."""
+        return generate(self._experiment, resolve_state(self._experiment, self._state))
+
+
+def run_state(experiment, state: dict | None = None) -> _Res:
+    """Point d'entrée unique des tests : le vrai `run()`."""
+    return _Res(experiment, state)
+
+
+def check_verify(experiment, state: dict, expr: str) -> bool:
+    return runner.check_condition(experiment, state, expr)
 
 
 def _broken_values(hyp) -> list:
@@ -180,7 +203,7 @@ def test_8_same_state_same_result(experiment) -> None:
     state = {"hypotheses": {next(iter(experiment.hypotheses)): _broken_values(
         next(iter(experiment.hypotheses.values())))[0]}}
     a = run_state(experiment, state)
-    _mini_run._CACHE.clear()
+    runner._CACHE.clear()
     b = run_state(experiment, state)
     assert repr(a.values) == repr(b.values) and a.states == b.states and a.challenges == b.challenges
 
