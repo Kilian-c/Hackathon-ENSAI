@@ -37,6 +37,7 @@
   import { displayRoles } from '../../lib/roles'
   import { applyPreset, brokenHypotheses, labLink, nextDraw, resolveLabLink, type Link, type UiState } from '../../lib/state'
   import type { Counterexample, EngineState, ExperimentSpec, RunResult, SweepRequest, SweepResult } from '../../lib/types.gen'
+  import { levelLabel } from '../../lib/format'
 
   interface Props {
     link: Extract<Link, { kind: 'lab' }>
@@ -251,7 +252,7 @@
       <div class="titles">
         <a class="back" href="?">← Expériences</a>
         <h1>{spec.title}</h1>
-        <p class="meta">{spec.discipline} · {spec.level}</p>
+        <p class="meta">{spec.discipline} · {levelLabel(spec.level)}</p>
       </div>
       <div class="actions">
         {#if verdict}<VerdictBadge {verdict} large />{/if}

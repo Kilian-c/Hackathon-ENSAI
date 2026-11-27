@@ -142,3 +142,42 @@ describe('vraies fixtures du moteur (R1)', () => {
     expect(nuage.series.some((s) => s.role === 'data')).toBe(true)
   })
 })
+
+describe('segments', () => {
+  const seg: Series = {
+    id: 'nuage.segments-0.mco', slot: 'segments', method: 'mco', role: 'method', label: 'Résidus', layer: null,
+    x: [1, 2, null], y: null, low: [0, 1, 2], high: [1, 3, 4], hit: null, value: null, paths: null,
+  }
+  const view = { id: 'nuage', type: 'scatter', series: [seg] } as unknown as ViewResult
+  it('dessine un trait vertical par point, séparés par null', () => {
+    const fig = buildFigure(view, { methodsOn: new Set(['mco']), showReference: false })!
+    expect(fig.data).toHaveLength(1)
+    expect(fig.data[0].x).toEqual([1, 1, null, 2, 2, null])
+    expect(fig.data[0].y).toEqual([0, 1, null, 1, 3, null])
+  })
+  it('suit l’affichage de sa méthode', () => {
+    const fig = buildFigure(view, { methodsOn: new Set(), showReference: false })!
+    expect(fig.data).toHaveLength(0)
+  })
+})
+
+describe('distribution', () => {
+  const base = { layer: null, y: null, low: null, high: null, hit: null, paths: null }
+  const view = {
+    id: 'scores', type: 'distribution', axes: { x: [-3, 3], y: null },
+    series: [
+      { ...base, id: 'scores.h1.m', slot: 'h1', method: 'm', role: 'truth', label: 'Malades', x: [0, 1], value: null },
+      { ...base, id: 'scores.threshold.m', slot: 'threshold', method: 'm', role: 'rupture', label: 'Seuil', x: null, value: 0.5 },
+    ],
+  } as unknown as ViewResult
+  const fig = buildFigure(view, { methodsOn: new Set(['m']), showReference: false })!
+  it('un histogramme de rôle truth reçoit une couleur et un motif', () => {
+    const h = fig.data[0] as { marker: { line: { color: unknown }; pattern: { shape: string } } }
+    expect(h.marker.line.color).toBeTruthy()
+    expect(h.marker.pattern.shape).toBe('-')
+  })
+  it('le seuil est une ligne verticale en tirets', () => {
+    const shapes = fig.layout.shapes as { line: { dash: string } }[]
+    expect(shapes[0].line.dash).toBe('dash')
+  })
+})

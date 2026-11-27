@@ -12,7 +12,7 @@
  * - identifiants de traces stables (uid = id de la série) pour que Plotly anime proprement.
  */
 
-import { cssVar, plotlyStyle, verdictColor, type DisplayRole } from './roles'
+import { cssVar, plotlyStyle, roleColor, verdictColor, type DisplayRole } from './roles'
 import {
   axisRange,
   bools,
@@ -59,6 +59,7 @@ const LINE_SLOTS = new Set(['fit', 'trend', 'series', 'truth', 'paths'])
 
 /** Motif de remplissage par rôle (histogrammes, barres) : la couleur n'est jamais le seul indice. */
 const PATTERN: Partial<Record<DisplayRole, string>> = {
+  truth: '-',
   method: '',
   correction: '/',
   alternative_1: 'x',
@@ -93,8 +94,9 @@ export function withAlpha(color: string, alpha: number): string {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
 }
 
+/** Couleur d'un rôle, y compris ceux qui n'ont pas de marqueur (vraie valeur). */
 function markerColor(role: DisplayRole): string {
-  return (plotlyStyle(role, 'markers').marker as { color: string }).color
+  return roleColor(role)
 }
 
 function markerSymbol(role: DisplayRole): string {
@@ -209,6 +211,41 @@ function lineTrace(s: Series, sortByX: boolean): Trace {
   }
 }
 
+/**
+ * Segments (résidus d'une droite, écarts) : un trait vertical par point, de (x, low) à (x, high),
+ * réunis dans une seule trace (séparés par null) pour garder un identifiant stable.
+ */
+export function segmentsTrace(s: Series): Trace | null {
+  const x = nums(s, 'x')
+  const low = nums(s, 'low')
+  const high = nums(s, 'high')
+  const xs: (number | null)[] = []
+  const ys: (number | null)[] = []
+  for (let i = 0; i < Math.min(x.length, low.length, high.length); i++) {
+    const xi = x[i]
+    const a = low[i]
+    const b = high[i]
+    if (!isNum(xi) || !isNum(a) || !isNum(b)) continue
+    xs.push(xi, xi, null)
+    ys.push(a, b, null)
+  }
+  if (xs.length === 0) return null
+  const role = seriesRole(s)
+  const color = role ? markerColor(role) : cssVar('--ct-plot-data')
+  return {
+    type: 'scatter',
+    uid: s.id,
+    name: s.label,
+    mode: 'lines',
+    x: xs,
+    y: ys,
+    line: { color: withAlpha(color, 0.7), width: 1, dash: 'dot' },
+    hoverinfo: 'skip',
+    legendgroup: s.id,
+    connectgaps: false,
+  }
+}
+
 /** Ligne verticale (vraie valeur, seuil) sous forme de forme Plotly, avec son libellé. */
 function verticalLine(x: number, color: string, dash: string, text?: string): { shape: Trace; annotation?: Trace } {
   return {
@@ -280,6 +317,12 @@ function captionFor(view: ViewResult, clipped: number): string[] {
 function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
   const data: Trace[] = []
   let clipped = 0
+  // Segments d'abord : sous les points et la droite.
+  for (const s of view.series) {
+    if (s.slot !== 'segments' || !isVisible(s, opts)) continue
+    const t = segmentsTrace(s)
+    if (t) data.push(t)
+  }
   const visible = view.series.filter(
     (s) => isVisible(s, opts) && s.x != null && s.y != null,
   )
@@ -384,8 +427,9 @@ function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
   for (const s of view.series.filter((x) => isVisible(x, opts))) {
     const v = scalar(s)
     if (v !== null) {
-      const color = s.role === 'truth' ? cssVar('--ct-role-truth') : cssVar('--ct-plot-axis')
-      const line = verticalLine(v, color, s.role === 'truth' ? 'solid' : 'dot', s.label)
+      // Vraie valeur en orange, seuil en rouge (rôle rupture), le reste en neutre.
+      const color = s.role === 'truth' || s.role === 'rupture' ? roleColor(s.role) : cssVar('--ct-plot-axis')
+      const line = verticalLine(v, color, s.role === 'truth' ? 'solid' : s.role === 'rupture' ? 'dash' : 'dot', s.label)
       shapes.push(line.shape)
       if (line.annotation) annotations.push(line.annotation)
       continue
@@ -401,6 +445,7 @@ function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
       xbins: bins,
       autobinx: bins ? false : undefined,
       opacity: role === 'reference' ? 0.35 : 0.6,
+      // L'histogramme d'une vraie loi (rôle truth, ex. h1) se distingue par un motif, pas seulement l'orange.
       marker: {
         color: withAlpha(color, role === 'reference' ? 0.25 : 0.55),
         line: { color, width: 1 },
