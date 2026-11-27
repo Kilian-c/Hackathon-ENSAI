@@ -1,119 +1,100 @@
 <script lang="ts">
-  // Squelette de départ : la navigation (Accueil, Laboratoire, Entraînement, Bilan, Import) arrive ici.
-  // L'aperçu de la palette sert à vérifier tokens.css et roles.ts ; il disparaîtra avec l'accueil.
-  import {
-    ALL_ROLES,
-    plotlyStyle,
-    roleColorVar,
-    roleLabel,
-    verdictColorVar,
-    verdictIcon,
-    verdictLabel,
-    type Verdict,
-  } from './lib/roles'
-  import DevCharts from './dev/DevCharts.svelte'
-  import { api } from './lib/executor'
+  // Navigation par l'URL (lib/state.ts, parseLink) : ?exp=... ouvre le Laboratoire, ?train=... l'Entraînement.
+  // L'accueil ci-dessous est PROVISOIRE (une liste simple) : la galerie de R4 (components/home/) le remplacera.
+  // ?dev=charts ouvre le banc d'essai des graphiques et la palette.
+  import LabView from './components/lab/LabView.svelte'
+  import { listExperiments } from './lib/labSource'
+  import { LINK_VERSION, parseLink } from './lib/state'
+  import type { ExperimentSummary } from './lib/types.gen'
 
-  const verdicts: Verdict[] = ['ok', 'warning', 'broken']
+  const link = parseLink(location.search)
+  const dev = new URLSearchParams(location.search).get('dev')
 
-  let status = $state<'attente' | 'ok' | 'erreur'>('attente')
+  let experiments = $state<ExperimentSummary[] | null>(null)
+  let listKind = $state<'api' | 'fixtures'>('api')
 
   $effect(() => {
-    api.health().then(
-      () => (status = 'ok'),
-      () => (status = 'erreur'),
+    if (link.kind !== 'home' || dev) return
+    listExperiments().then(
+      (r) => {
+        experiments = r.items
+        listKind = r.kind
+      },
+      () => (experiments = []),
     )
   })
-
-  function describe(role: (typeof ALL_ROLES)[number]): string {
-    const s = plotlyStyle(role, 'lines+markers') as {
-      mode: string
-      line?: { dash: string; width: number }
-      marker?: { symbol: string }
-    }
-    const trait = s.line ? `${s.line.dash}, ${s.line.width} px` : 'aucun trait'
-    const marqueur = s.marker ? s.marker.symbol : 'aucun marqueur'
-    return `${trait} · ${marqueur}`
-  }
 </script>
 
-<main>
-  <h1>Crash-Test</h1>
-  <p>Cassez une hypothèse, mesurez ce qui cède, puis réparez.</p>
-  <p class="muted">
-    {#if status === 'attente'}
-      Connexion au moteur…
-    {:else if status === 'ok'}
-      Moteur connecté.
+{#if dev === 'charts'}
+  {#await import('./dev/DevPage.svelte') then m}
+    <m.default />
+  {/await}
+{:else if link.kind === 'lab'}
+  <LabView {link} />
+{:else if link.kind === 'error'}
+  <main class="page">
+    <h1>Lien non valable</h1>
+    <p>{link.message}</p>
+    <p><a href="?">Revenir à l'accueil</a></p>
+  </main>
+{:else if link.kind === 'training'}
+  <main class="page">
+    <h1>Entraînement</h1>
+    <p class="muted">L'écran d'Entraînement arrive bientôt.</p>
+    <p><a href="?">Revenir à l'accueil</a></p>
+  </main>
+{:else}
+  <main class="page">
+    <h1>Crash-Test</h1>
+    <p>Cassez une hypothèse, mesurez ce qui cède, puis réparez.</p>
+    {#if experiments === null}
+      <p class="muted">Chargement des expériences…</p>
+    {:else if experiments.length === 0}
+      <p class="muted">Aucune expérience disponible. Vérifiez que le moteur est lancé.</p>
     {:else}
-      Le moteur ne répond pas. Lancez-le avec <code>uv run uvicorn backend.main:app --reload --port 8000</code>.
+      {#if listKind === 'fixtures'}
+        <p class="muted">Le moteur ne répond pas : expériences de démonstration.</p>
+      {/if}
+      <ul class="list">
+        {#each experiments as e (e.id)}
+          <li>
+            <a href="?exp={encodeURIComponent(e.id)}&v={LINK_VERSION}">
+              <strong>{e.title}</strong>
+              <span class="muted">{e.discipline} · {e.level}</span>
+            </a>
+          </li>
+        {/each}
+      </ul>
     {/if}
-  </p>
-
-  <section>
-    <h2>Palette de sens</h2>
-    <ul class="roles">
-      {#each ALL_ROLES as role (role)}
-        <li>
-          <span class="swatch" style:background={roleColorVar(role)}></span>
-          <strong style:color={roleColorVar(role)}>{roleLabel(role)}</strong>
-          <span class="muted">{describe(role)}</span>
-        </li>
-      {/each}
-    </ul>
-    <div class="verdicts">
-      {#each verdicts as v (v)}
-        <span class="badge" style:--c={verdictColorVar(v)}>{verdictIcon(v)} {verdictLabel(v)}</span>
-      {/each}
-    </div>
-  </section>
-
-  <DevCharts />
-</main>
+  </main>
+{/if}
 
 <style>
-  main {
-    max-width: 80rem;
+  .page {
+    max-width: 60rem;
     margin: var(--ct-space-8) auto;
     padding: 0 var(--ct-space-6);
   }
   .muted {
     color: var(--ct-muted);
   }
-  section {
-    margin-top: var(--ct-space-8);
-    padding: var(--ct-space-4) var(--ct-space-6);
-    background: var(--ct-surface);
-    border: 1px solid var(--ct-border);
-    border-radius: var(--ct-radius-lg);
-  }
-  .roles {
+  .list {
     list-style: none;
     padding: 0;
     display: grid;
-    gap: var(--ct-space-2);
-  }
-  .roles li {
-    display: flex;
-    align-items: center;
     gap: var(--ct-space-3);
   }
-  .swatch {
-    width: 1.25rem;
-    height: 1.25rem;
-    border-radius: var(--ct-radius);
+  .list a {
+    display: grid;
+    gap: var(--ct-space-1);
+    padding: var(--ct-space-3) var(--ct-space-4);
+    background: var(--ct-surface);
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-lg);
+    color: var(--ct-text);
+    text-decoration: none;
   }
-  .verdicts {
-    display: flex;
-    gap: var(--ct-space-3);
-    margin-top: var(--ct-space-4);
-  }
-  .badge {
-    padding: var(--ct-space-1) var(--ct-space-3);
-    border: 1px solid var(--c);
-    border-radius: 999px;
-    color: var(--c);
-    font-size: var(--ct-text-sm);
-    font-weight: 600;
+  .list a:hover {
+    border-color: var(--ct-role-method);
   }
 </style>

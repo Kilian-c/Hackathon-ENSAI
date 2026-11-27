@@ -1,0 +1,683 @@
+{
+ "schema_version": 1,
+ "id": "regression-lineaire",
+ "title": "Régression linéaire : résidus et validité des intervalles de confiance",
+ "discipline": "statistique",
+ "level": "1A/2A",
+ "concepts": [
+  "mco",
+  "residus",
+  "heteroscedasticite",
+  "levier",
+  "independance",
+  "white-hc3"
+ ],
+ "theorem": {
+  "name": "Gauss-Markov et intervalles de confiance des MCO",
+  "statement": "Sous les hypothèses du modèle linéaire, l'estimateur des MCO est sans biais,\net l'intervalle de confiance à 95 % contient la vraie pente\ndans 95 % des échantillons.\n"
+ },
+ "equation": {
+  "tex": "\\widehat{\\mathrm{Var}}(\\hat{\\beta}) = {{var}}",
+  "terms": {
+   "var": {
+    "ok": "\\hat{\\sigma}^2 (X^\\top X)^{-1}",
+    "corrected": "(X^\\top X)^{-1} X^\\top \\hat{\\Omega}_{\\mathrm{HC3}} X (X^\\top X)^{-1}"
+   }
+  }
+ },
+ "params": {
+  "n": {
+   "type": "number",
+   "label": "Taille d'échantillon n",
+   "default": 150.0,
+   "min": 30.0,
+   "max": 1000.0,
+   "step": 10.0,
+   "sweep_values": [
+    30.0,
+    100.0,
+    300.0,
+    1000.0
+   ]
+  },
+  "beta1": {
+   "type": "number",
+   "label": "Vraie pente",
+   "default": 1.5,
+   "min": -3.0,
+   "max": 3.0,
+   "step": 0.1,
+   "sweep_values": null
+  },
+  "match_summary": {
+   "type": "boolean",
+   "label": "Caler la pente et le R2 (Anscombe)",
+   "default": false,
+   "min": null,
+   "max": null,
+   "step": null,
+   "sweep_values": null
+  }
+ },
+ "hypotheses": {
+  "hetero": {
+   "type": "continuous",
+   "healthy_value": 0.0,
+   "label": "Homoscédasticité (variance constante)",
+   "category": "homoscedasticite",
+   "statement_tex": "\\mathrm{Var}(\\varepsilon_i \\mid X) = \\sigma^2",
+   "why": "La formule de variance de la pente suppose un même sigma^2 pour toutes les observations.",
+   "when_broken": "La pente reste juste en moyenne, mais les intervalles sont trop étroits : ils couvrent moins de 95 %.",
+   "affects": [
+    "var"
+   ],
+   "range": [
+    0.0,
+    1.0
+   ],
+   "step": 0.05,
+   "ok_label": "Respectée",
+   "broken_label": "Relâchée",
+   "options": null,
+   "robust_expected": false,
+   "disabled_when": null,
+   "disabled_text": null
+  },
+  "autocorr": {
+   "type": "boolean",
+   "healthy_value": false,
+   "label": "Indépendance des observations",
+   "category": "independance",
+   "statement_tex": "\\mathrm{Cov}(\\varepsilon_i, \\varepsilon_j) = 0 \\ \\text{pour } i \\neq j",
+   "why": "La formule de variance suppose que chaque erreur n'apporte aucune information sur ses voisines.",
+   "when_broken": "Si x et les erreurs sont tous deux autocorrélés, les IC classiques et HC3 tombent vers 75 % ; Newey-West remonte vers 87 %.",
+   "affects": [
+    "var"
+   ],
+   "range": [
+    0.0,
+    1.0
+   ],
+   "step": null,
+   "ok_label": "Erreurs indépendantes",
+   "broken_label": "Erreurs et x autocorrélés (AR(1), rho = 0,7)",
+   "options": null,
+   "robust_expected": false,
+   "disabled_when": null,
+   "disabled_text": null
+  },
+  "error_law": {
+   "type": "choice",
+   "healthy_value": "normal",
+   "label": "Loi des erreurs",
+   "category": "normalite",
+   "statement_tex": "\\varepsilon_i \\sim \\mathcal{N}(0, \\sigma^2)",
+   "why": "La normalité rend les tests de Student exacts quand n est petit.",
+   "when_broken": "Pour la pente des MCO, presque rien : même à n = 30, la couverture reste proche de 95 %. Un résultat à retenir.",
+   "affects": [],
+   "range": [
+    0.0,
+    1.0
+   ],
+   "step": null,
+   "ok_label": null,
+   "broken_label": null,
+   "options": {
+    "normal": {
+     "label": "Normale",
+     "law": "normal",
+     "expr": null,
+     "robust_expected": false
+    },
+    "exponential": {
+     "label": "Exponentielle (asymétrique)",
+     "law": "exponential",
+     "expr": null,
+     "robust_expected": false
+    },
+    "student_2": {
+     "label": "Student à 2 ddl (queues lourdes)",
+     "law": "student_2",
+     "expr": null,
+     "robust_expected": false
+    }
+   },
+   "robust_expected": true,
+   "disabled_when": null,
+   "disabled_text": null
+  },
+  "relation": {
+   "type": "choice",
+   "healthy_value": "linear",
+   "label": "Forme de la relation",
+   "category": "specification",
+   "statement_tex": "E[Y \\mid X] = \\beta_0 + \\beta_1 X",
+   "why": "Le modèle suppose que l'espérance de Y varie linéairement avec X.",
+   "when_broken": "La pente reste juste, mais les résidus dessinent une forme et la couverture classique chute (vers 73 % en quadratique).",
+   "affects": [
+    "var"
+   ],
+   "range": [
+    0.0,
+    1.0
+   ],
+   "step": null,
+   "ok_label": null,
+   "broken_label": null,
+   "options": {
+    "linear": {
+     "label": "Linéaire",
+     "law": null,
+     "expr": "x",
+     "robust_expected": false
+    },
+    "quadratic": {
+     "label": "Quadratique",
+     "law": null,
+     "expr": "x + 0.5 * (x**2 - 1)",
+     "robust_expected": false
+    },
+    "break": {
+     "label": "Rupture de pente",
+     "law": null,
+     "expr": "where(x > 0, 1.8 * x, 0.2 * x)",
+     "robust_expected": false
+    }
+   },
+   "robust_expected": false,
+   "disabled_when": null,
+   "disabled_text": null
+  },
+  "add_leverage": {
+   "type": "boolean",
+   "healthy_value": false,
+   "label": "Présence d'un point levier",
+   "category": "outliers",
+   "statement_tex": "h_{ii} \\ll 1 \\ \\text{pour tout } i",
+   "why": "Aucune observation ne doit peser seule sur l'ajustement.",
+   "when_broken": "Une observation extrême en x attire la droite : la pente change à cause d'un seul point.",
+   "affects": [],
+   "range": [
+    0.0,
+    1.0
+   ],
+   "step": null,
+   "ok_label": "Sans levier",
+   "broken_label": "Avec levier",
+   "options": null,
+   "robust_expected": false,
+   "disabled_when": null,
+   "disabled_text": null
+  }
+ },
+ "counterexamples": [
+  {
+   "id": "grand-n-hetero",
+   "label": "Grand n mais hétéroscédastique",
+   "explain": "Même avec n = 600, la couverture des intervalles classiques reste défaillante.",
+   "state": {
+    "params": {
+     "n": 600.0
+    },
+    "hypotheses": {
+     "hetero": 0.85
+    }
+   },
+   "expect": null
+  },
+  {
+   "id": "erreurs-autocorrelees",
+   "label": "Erreurs autocorrélées",
+   "explain": "HC3 ne suffit pas ; l'alternative Newey-West remonte nettement, sans tout réparer à n modéré.",
+   "state": {
+    "params": {},
+    "hypotheses": {
+     "autocorr": true
+    }
+   },
+   "expect": null
+  },
+  {
+   "id": "anscombe-courbe",
+   "label": "Anscombe : relation courbe",
+   "explain": "Même pente et même R2 que le cas linéaire, mais des résidus en arc.",
+   "state": {
+    "params": {
+     "match_summary": true
+    },
+    "hypotheses": {
+     "relation": "quadratic"
+    }
+   },
+   "expect": "same_summary"
+  },
+  {
+   "id": "anscombe-levier",
+   "label": "Anscombe : un point levier",
+   "explain": "Même pente et même R2, mais un seul point porte tout l'ajustement.",
+   "state": {
+    "params": {
+     "match_summary": true
+    },
+    "hypotheses": {
+     "add_leverage": true
+    }
+   },
+   "expect": "same_summary"
+  }
+ ],
+ "generator": {
+  "type": "random",
+  "n": "p.n",
+  "repeat": 500,
+  "variables": {
+   "x_raw": {
+    "expr": "law('normal')",
+    "dims": null
+   },
+   "lev": {
+    "expr": "h.add_leverage & (idx == 0)",
+    "dims": null
+   },
+   "x_base": {
+    "expr": "where(h.autocorr, ar1(x_raw, 0.7), x_raw)",
+    "dims": null
+   },
+   "x": {
+    "expr": "where(lev, 6.0, x_base)",
+    "dims": null
+   },
+   "base_eps": {
+    "expr": "@h.error_law",
+    "dims": null
+   },
+   "eps_ind": {
+    "expr": "base_eps * exp(0.9 * h.hetero * x)",
+    "dims": null
+   },
+   "eps": {
+    "expr": "where(h.autocorr, ar1(eps_ind, 0.7), eps_ind)",
+    "dims": null
+   },
+   "signal": {
+    "expr": "@h.relation",
+    "dims": null
+   },
+   "y_raw": {
+    "expr": "1.0 + p.beta1 * signal + eps + where(lev, -8.0, 0.0)",
+    "dims": null
+   },
+   "y": {
+    "expr": "where(p.match_summary, ols_match(x, y_raw, 1.0, p.beta1, 0.67), y_raw)",
+    "dims": null
+   }
+  },
+  "inject": {
+   "x": "x",
+   "y": "y"
+  }
+ },
+ "methods": [
+  {
+   "id": "ols",
+   "role": "method",
+   "call": "ols_ci",
+   "label": "MCO classique (IC à 95 %)",
+   "args": {
+    "x": "x",
+    "y": "y",
+    "truth": "p.beta1",
+    "alpha": 0.05,
+    "se_type": "classic"
+   },
+   "explain": null,
+   "repairs": []
+  },
+  {
+   "id": "hc3",
+   "role": "correction",
+   "call": "ols_ci",
+   "label": "Écarts-types robustes de White (HC3)",
+   "args": {
+    "x": "x",
+    "y": "y",
+    "truth": "p.beta1",
+    "alpha": 0.05,
+    "se_type": "HC3"
+   },
+   "explain": "L'estimateur sandwich HC3 estime la variance de chaque résidu séparément.",
+   "repairs": [
+    "hetero",
+    "relation"
+   ]
+  },
+  {
+   "id": "nw",
+   "role": "alternative",
+   "call": "ols_ci",
+   "label": "Écarts-types de Newey-West (HAC)",
+   "args": {
+    "x": "x",
+    "y": "y",
+    "truth": "p.beta1",
+    "alpha": 0.05,
+    "se_type": "HAC"
+   },
+   "explain": "L'estimateur HAC tient compte de la variance non constante et de la corrélation entre erreurs voisines.",
+   "repairs": [
+    "hetero",
+    "autocorr"
+   ]
+  }
+ ],
+ "measures": {
+  "coverage": {
+   "agg": "rate(reps.hit)",
+   "label": "Taux de couverture réel",
+   "unit": "%",
+   "scale": 100.0,
+   "decimals": 1,
+   "primary": true,
+   "target": 0.95,
+   "direction": "below",
+   "ok_within": 0.03,
+   "broken_beyond": 0.1,
+   "texts": {
+    "ok": "Intervalle fiable : {value} de couverture.",
+    "warning": "Couverture en baisse ({value}) : la variance commence à être sous-estimée.",
+    "broken": "Intervalle non fiable ({value}) : la variance est sous-estimée."
+   }
+  },
+  "bias": {
+   "agg": "bias(reps.est, p.beta1)",
+   "label": "Biais de la pente",
+   "unit": "",
+   "scale": 1.0,
+   "decimals": 3,
+   "primary": false,
+   "target": 0.0,
+   "direction": "both",
+   "ok_within": 0.05,
+   "broken_beyond": 0.15,
+   "texts": {
+    "ok": "Pente sans biais ({value}).",
+    "warning": "Pente légèrement biaisée ({value}).",
+    "broken": "Pente biaisée ({value})."
+   }
+  },
+  "width": {
+   "agg": "mean(reps.width)",
+   "label": "Largeur moyenne des IC",
+   "unit": "",
+   "scale": 1.0,
+   "decimals": 3,
+   "primary": false,
+   "target": null,
+   "direction": null,
+   "ok_within": null,
+   "broken_beyond": null,
+   "texts": null
+  },
+  "bp_pvalue": {
+   "agg": "first(reps.bp_pvalue)",
+   "label": "p-value de Breusch-Pagan (échantillon affiché)",
+   "unit": "",
+   "scale": 1.0,
+   "decimals": 3,
+   "primary": false,
+   "target": null,
+   "direction": null,
+   "ok_within": null,
+   "broken_beyond": null,
+   "texts": null
+  }
+ },
+ "challenges": [
+  {
+   "id": "trap-bp-test",
+   "goal": "Piégez le test de Breusch-Pagan : sur l'échantillon affiché, obtenez une p-value > 0,05 alors que la couverture est rompue.",
+   "when": "m.bp_pvalue > 0.05 and s.coverage == 'broken'",
+   "unlock": "Vous illustrez l'angle mort d'un test peu puissant : ne pas rejeter H0 ne prouve pas que l'hypothèse tient.",
+   "hint": "Essayez un petit n et plusieurs tirages : à n = 30 et h = 0,7, environ un échantillon sur cinq trompe le test."
+  },
+  {
+   "id": "big-n-limit",
+   "goal": "Vérifiez qu'augmenter n au-delà de 500 ne répare pas les IC classiques quand hetero >= 0,7.",
+   "when": "p.n >= 500 and h.hetero >= 0.7 and s.coverage == 'broken'",
+   "unlock": "L'erreur de variance des MCO sous hétéroscédasticité ne disparaît pas quand n grandit.",
+   "hint": null
+  }
+ ],
+ "auto_sweep": [
+  "h.hetero",
+  "p.n"
+ ],
+ "draw_log": null,
+ "views": [
+  {
+   "id": "nuage",
+   "type": "scatter",
+   "title": "Nuage et droite ajustée",
+   "bind": {
+    "x": {
+     "path": "example.x",
+     "layer": "nuage"
+    },
+    "y": {
+     "path": "example.y",
+     "layer": "nuage"
+    },
+    "fit": {
+     "path": "example.y_hat",
+     "layer": "sce"
+    },
+    "segments": [
+     {
+      "from": "example.y",
+      "to": "example.y_mean",
+      "layer": "sct",
+      "label": "y - moyenne"
+     },
+     {
+      "from": "example.y_hat",
+      "to": "example.y_mean",
+      "layer": "sce",
+      "label": "prédiction - moyenne"
+     },
+     {
+      "from": "example.y",
+      "to": "example.y_hat",
+      "layer": "scr",
+      "label": "résidu"
+     }
+    ]
+   },
+   "sweep": null,
+   "axes": {
+    "x": "auto",
+    "y": "auto"
+   },
+   "layers": [
+    {
+     "id": "nuage",
+     "label": "Le nuage"
+    },
+    {
+     "id": "sct",
+     "label": "Écarts à la moyenne (SCT)"
+    },
+    {
+     "id": "sce",
+     "label": "Écarts expliqués (SCE)"
+    },
+    {
+     "id": "scr",
+     "label": "Résidus (SCR)"
+    }
+   ],
+   "inspect": true,
+   "allow_point_injection": true,
+   "mode": null,
+   "ui": null
+  },
+  {
+   "id": "residus",
+   "type": "residuals",
+   "title": "Résidus",
+   "bind": {
+    "x": "example.x",
+    "resid": "example.resid"
+   },
+   "sweep": null,
+   "axes": null,
+   "layers": null,
+   "inspect": false,
+   "allow_point_injection": false,
+   "mode": null,
+   "ui": null
+  },
+  {
+   "id": "ic",
+   "type": "repetitions",
+   "title": "100 intervalles de confiance empilés",
+   "bind": {
+    "est": "reps.est",
+    "low": "reps.low",
+    "high": "reps.high",
+    "hit": "reps.hit",
+    "truth": "p.beta1"
+   },
+   "sweep": null,
+   "axes": null,
+   "layers": null,
+   "inspect": false,
+   "allow_point_injection": false,
+   "mode": "intervals",
+   "ui": null
+  },
+  {
+   "id": "sens",
+   "type": "sensitivity",
+   "title": "Étude de sensibilité",
+   "bind": null,
+   "sweep": {
+    "axes": [
+     "h.hetero"
+    ]
+   },
+   "axes": null,
+   "layers": null,
+   "inspect": false,
+   "allow_point_injection": false,
+   "mode": null,
+   "ui": null
+  },
+  {
+   "id": "validite",
+   "type": "validity_domain",
+   "title": "Domaine de validité",
+   "bind": null,
+   "sweep": {
+    "axes": [
+     "h.hetero",
+     "p.n"
+    ]
+   },
+   "axes": null,
+   "layers": null,
+   "inspect": false,
+   "allow_point_injection": false,
+   "mode": null,
+   "ui": null
+  }
+ ],
+ "opening_question": "reg-q1-biais",
+ "questions": [
+  {
+   "id": "reg-q1-biais",
+   "type": "misconception",
+   "prompt": "Sous forte hétéroscédasticité (n = {n}), que devient l'estimateur MCO de la pente ?",
+   "hypothesis": "hetero",
+   "procedural_params": {
+    "n": {
+     "min": 150.0,
+     "max": 600.0,
+     "step": 50.0
+    }
+   },
+   "choices": [
+    {
+     "id": "a",
+     "label": "Il devient biaisé, même pour un grand échantillon.",
+     "correct": false,
+     "reveal_state": {
+      "params": {
+       "n": "{n}"
+      },
+      "hypotheses": {
+       "hetero": 0.9
+      }
+     },
+     "verify": "s.bias == 'ok' and s.coverage == 'broken'",
+     "focus_view": "ic",
+     "explain": "Observez les centres des 100 intervalles : ils restent centrés sur la vraie pente. Seule la largeur est fausse."
+    },
+    {
+     "id": "b",
+     "label": "Il reste sans biais, mais les intervalles de confiance sont invalides.",
+     "correct": true,
+     "reveal_state": {
+      "params": {
+       "n": "{n}"
+      },
+      "hypotheses": {
+       "hetero": 0.9
+      }
+     },
+     "verify": "s.bias == 'ok' and s.coverage == 'broken'",
+     "focus_view": "ic",
+     "explain": "Exact : l'estimation reste juste en moyenne tandis que la couverture chute."
+    }
+   ]
+  },
+  {
+   "id": "reg-q2-diag",
+   "type": "diagnostic_auto",
+   "prompt": "Analysez le graphique des résidus ci-dessous. Quelle situation observez-vous ?",
+   "view": "residus",
+   "state": null,
+   "pathologies": {
+    "from_": [
+     "hetero",
+     "add_leverage",
+     "relation.quadratic"
+    ]
+   },
+   "procedural_params": {}
+  },
+  {
+   "id": "reg-q3-n",
+   "type": "prediction",
+   "prompt": "Sous forte hétéroscédasticité, que devient la couverture des IC classiques si n passe de {n} à {n} x 2 ?",
+   "procedural_params": {
+    "n": {
+     "min": 100.0,
+     "max": 400.0,
+     "step": 50.0
+    }
+   },
+   "state": {
+    "params": {},
+    "hypotheses": {
+     "hetero": 0.9
+    }
+   },
+   "sweep": {
+    "target": "p.n",
+    "from_": "{n}",
+    "to": "{n} * 2"
+   },
+   "measure": "coverage"
+  }
+ ]
+}

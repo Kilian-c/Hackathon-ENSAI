@@ -1,0 +1,300 @@
+{
+ "schema_version": 1,
+ "id": "pendule-euler",
+ "title": "Pendule simple : la méthode d'Euler et son pas de temps",
+ "discipline": "physique",
+ "level": "1A",
+ "concepts": [
+  "edo",
+  "euler",
+  "runge-kutta",
+  "stabilite-numerique",
+  "pendule"
+ ],
+ "theorem": {
+  "name": "Convergence de la méthode d'Euler explicite",
+  "statement": "Sur un intervalle de temps fixé, l'erreur de la méthode d'Euler est proportionnelle\nau pas de temps : elle tend vers 0 quand le pas tend vers 0, mais elle s'accumule\nvite quand le pas grandit.\n"
+ },
+ "equation": {
+  "tex": "\\max_k |\\theta(t_k) - \\theta_k| = {{err}}",
+  "terms": {
+   "err": {
+    "ok": "O(\\Delta t)",
+    "corrected": "O(\\Delta t^4)"
+   }
+  }
+ },
+ "params": {
+  "theta0": {
+   "type": "number",
+   "label": "Amplitude initiale (rad)",
+   "default": 1.2,
+   "min": 0.2,
+   "max": 2.5,
+   "step": 0.1,
+   "sweep_values": [
+    0.2,
+    0.6,
+    1.2,
+    2.0
+   ]
+  },
+  "t_end": {
+   "type": "number",
+   "label": "Durée simulée (s)",
+   "default": 5.0,
+   "min": 2.0,
+   "max": 10.0,
+   "step": 1.0,
+   "sweep_values": null
+  }
+ },
+ "hypotheses": {
+  "pas": {
+   "type": "continuous",
+   "healthy_value": 0.0,
+   "label": "Pas de temps petit",
+   "category": "stabilite-numerique",
+   "statement_tex": "\\Delta t \\ll T_0",
+   "why": "Euler suit la tangente pendant tout un pas : l'erreur commise à chaque pas s'ajoute à la précédente.",
+   "when_broken": "L'énergie du pendule augmente à chaque pas : les oscillations s'amplifient, jusqu'à faire faire le tour au pendule.",
+   "affects": [
+    "err"
+   ],
+   "range": [
+    0.0,
+    1.0
+   ],
+   "step": null,
+   "ok_label": "Pas fin",
+   "broken_label": "Pas grossier",
+   "options": null,
+   "robust_expected": false,
+   "disabled_when": null,
+   "disabled_text": null
+  }
+ },
+ "counterexamples": [
+  {
+   "id": "tour-complet",
+   "label": "Le pendule fait le tour",
+   "explain": "Avec un pas de 0,06 s, Euler fait passer le pendule par-dessus son axe ; RK4 reste exact.",
+   "state": {
+    "params": {},
+    "hypotheses": {
+     "pas": 0.9
+    }
+   },
+   "expect": null
+  }
+ ],
+ "generator": {
+  "type": "ode",
+  "t_end": "p.t_end",
+  "state": {
+   "theta": "p.theta0",
+   "omega": 0.0
+  },
+  "rhs": {
+   "theta": "omega",
+   "omega": "-9.81 * sin(theta)"
+  },
+  "derived": {
+   "dt": "10 ** (-3.5 + 2.5 * h.pas)"
+  }
+ },
+ "methods": [
+  {
+   "id": "euler",
+   "role": "method",
+   "call": "integrate",
+   "label": "Euler explicite",
+   "args": {
+    "system": "system",
+    "dt": "dt",
+    "scheme": "euler"
+   },
+   "explain": null,
+   "repairs": []
+  },
+  {
+   "id": "rk4",
+   "role": "correction",
+   "call": "integrate",
+   "label": "Runge-Kutta d'ordre 4",
+   "args": {
+    "system": "system",
+    "dt": "dt",
+    "scheme": "rk4"
+   },
+   "explain": "RK4 évalue la pente quatre fois par pas : l'erreur devient proportionnelle à la puissance 4 du pas.",
+   "repairs": [
+    "pas"
+   ]
+  }
+ ],
+ "measures": {
+  "err_angle": {
+   "agg": "summary(max_rel_error)",
+   "label": "Erreur maximale sur l'angle",
+   "unit": "%",
+   "scale": 100.0,
+   "decimals": 1,
+   "primary": true,
+   "target": 0.0,
+   "direction": "above",
+   "ok_within": 0.05,
+   "broken_beyond": 0.2,
+   "texts": {
+    "ok": "Trajectoire fidèle : erreur de {value}.",
+    "warning": "La trajectoire dérive : erreur de {value}.",
+    "broken": "Trajectoire fausse : erreur de {value}."
+   }
+  },
+  "energy_drift": {
+   "agg": "summary(energy_drift)",
+   "label": "Dérive de l'énergie",
+   "unit": "%",
+   "scale": 100.0,
+   "decimals": 1,
+   "primary": false,
+   "target": null,
+   "direction": null,
+   "ok_within": null,
+   "broken_beyond": null,
+   "texts": null
+  },
+  "full_turn": {
+   "agg": "summary(full_turn)",
+   "label": "Le pendule fait le tour",
+   "unit": "",
+   "scale": 1.0,
+   "decimals": 0,
+   "primary": false,
+   "target": null,
+   "direction": null,
+   "ok_within": null,
+   "broken_beyond": null,
+   "texts": null
+  }
+ },
+ "challenges": [
+  {
+   "id": "plus-grand-pas",
+   "goal": "Trouvez un pas au moins trois fois plus grand que le pas minimal pour lequel Euler reste fiable.",
+   "when": "h.pas >= 0.2 and s.err_angle == 'ok'",
+   "unlock": "Le pas acceptable dépend de la durée simulée : doublez la durée et recommencez.",
+   "hint": null
+  },
+  {
+   "id": "rk4-gros-pas",
+   "goal": "Montrez que RK4 reste fiable avec un pas pour lequel Euler fait faire le tour au pendule.",
+   "when": "m.full_turn == 1 and m.err_angle.rk4 < 0.05",
+   "unlock": "Un schéma d'ordre 4 autorise des pas bien plus grands pour la même précision.",
+   "hint": null
+  }
+ ],
+ "auto_sweep": [
+  "h.pas"
+ ],
+ "draw_log": null,
+ "views": [
+  {
+   "id": "trajectoire",
+   "type": "curves",
+   "title": "Angle au cours du temps",
+   "bind": {
+    "t": "curves.t",
+    "series": [
+     {
+      "y": "curves.theta",
+      "label": "Angle"
+     }
+    ],
+    "truth": "gen.theta"
+   },
+   "sweep": null,
+   "axes": null,
+   "layers": null,
+   "inspect": false,
+   "allow_point_injection": false,
+   "mode": null,
+   "ui": null
+  },
+  {
+   "id": "sens",
+   "type": "sensitivity",
+   "title": "Erreur selon le pas",
+   "bind": null,
+   "sweep": {
+    "axes": [
+     "h.pas"
+    ]
+   },
+   "axes": null,
+   "layers": null,
+   "inspect": false,
+   "allow_point_injection": false,
+   "mode": null,
+   "ui": null
+  },
+  {
+   "id": "validite",
+   "type": "validity_domain",
+   "title": "Pas et amplitude",
+   "bind": null,
+   "sweep": {
+    "axes": [
+     "h.pas",
+     "p.theta0"
+    ]
+   },
+   "axes": null,
+   "layers": null,
+   "inspect": false,
+   "allow_point_injection": false,
+   "mode": null,
+   "ui": null
+  }
+ ],
+ "opening_question": null,
+ "questions": [
+  {
+   "id": "pend-q1-rk4",
+   "type": "misconception",
+   "prompt": "RK4 a-t-il besoin d'un pas aussi fin qu'Euler pour rester fiable ?",
+   "hypothesis": "pas",
+   "procedural_params": {},
+   "choices": [
+    {
+     "id": "a",
+     "label": "Oui : toutes les méthodes ont besoin du même pas.",
+     "correct": false,
+     "reveal_state": {
+      "params": {},
+      "hypotheses": {
+       "pas": 0.8
+      }
+     },
+     "verify": "s.err_angle == 'broken' and m.err_angle.rk4 < 0.05",
+     "focus_view": "trajectoire",
+     "explain": "Avec ce pas, Euler s'effondre alors que RK4 suit encore la solution de référence."
+    },
+    {
+     "id": "b",
+     "label": "Non : RK4 reste fiable avec un pas bien plus grand.",
+     "correct": true,
+     "reveal_state": {
+      "params": {},
+      "hypotheses": {
+       "pas": 0.8
+      }
+     },
+     "verify": "s.err_angle == 'broken' and m.err_angle.rk4 < 0.05",
+     "focus_view": "trajectoire",
+     "explain": "Exact : l'erreur de RK4 est proportionnelle à la puissance 4 du pas."
+    }
+   ]
+  }
+ ]
+}
