@@ -122,6 +122,8 @@ Sur les 7 expériences jouables : Laboratoire (casser, Correction, Référence, 
 | **R3, Kilian, interface** | `frontend/` (sauf `fixtures/`, `lib/calibration.ts`, `components/{home,summary}/`, `ImportView.svelte`), `scripts/gen_types.sh`, `supabase/schema.sql`, `CLAUDE.md` |
 | **R4, écrans secondaires** | `frontend/src/components/{home,summary}/`, `frontend/src/components/ImportView.svelte`, `frontend/src/lib/calibration.ts`, `tests/test_loader.py` |
 
+**Chantier « modularité » en cours (R1 + R3)** : les fichiers listés dans `docs/chantier_modularite.md` sont réservés. Ne les modifie pas pour une autre personne sans prévenir celle que le fichier indique, même s'ils appartiennent à son rôle dans le tableau ci-dessus.
+
 **Fichiers de contrat** : `backend/contracts.py`, `backend/engine/schema.py`, `backend/engine/method_contract.py`. Après le tag `contracts-v1`, **ils ne changent plus pendant le hackathon**. `frontend/src/lib/types.gen.ts` est **généré**, ne l'édite jamais à la main.
 
 ---

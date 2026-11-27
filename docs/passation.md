@@ -2,11 +2,16 @@
 
 ## H9,5 (21 h 30) : corrections pour R1 et R3 faites par R4, branche `r4/corrections-autres-roles` (pas une relève)
 - Branche partie de `origin/main` (après l'Import de Kilian), **à relire par chaque propriétaire avant fusion** (un commit par rôle). pytest, ruff, `npm run check` et `npm test` verts.
-- **R1** : tu as déjà retiré `energy_drift` et `full_turn` de `make_fixtures.py` (`44ed036`). Il reste sur cette branche : les calculs devenus inutiles (`drift`, `turn`) retirés, et le défi `rk4-gros-pas` aligné sur le YAML (`s.err_angle == 'broken'` au lieu de « le pendule fait le tour ») ; `pendule_gros_pas.run.json` et l'empreinte de `training_session.json` régénérés (YAML modifiés depuis par Kilian).
+- ~~**R1** : `make_fixtures.py`, calculs inutiles retirés et défi `rk4-gros-pas` aligné~~ : fait et fusionné par R1 (`6cf283c`). Il ne reste sur cette branche que la partie de Kilian.
 - **R3** : `src/dev/specs/*.spec.json` régénérées depuis les YAML au format de `GET /api/experiments/{id}` (`model_dump(mode="json", by_alias=True)`, Student et pendule depuis `archives/`) : niveaux « 3 » et « 2 », pendule sans les deux mesures, défi réécrit, `ui` des vues, notions accentuées. `lab.test.ts` vert sans changement.
 - **R3** : `lib/share.ts`, nouvelle fonction `supabaseBaseUrl` : retire la barre finale et un suffixe `/rest/v1` de `VITE_SUPABASE_URL`. Copiée telle quelle depuis le tableau de bord Supabase, l'adresse se terminait par `/rest/v1/` et le partage échouait (404 `PGRST125`, chemin `/rest/v1/rest/v1/...`). Tests dans `lib/share.test.ts` ; `.env.example` précise l'adresse et la clé publique. Partage testé de bout en bout au navigateur (création, réouverture, Sensibilité).
 - **R3** : `PlotlyChart.svelte`, `showSendToCloud: false` : Plotly 4 affichait au survol un bouton « Share chart… » (en anglais) qui envoie le graphique vers Plotly Cloud. Vérifié au navigateur : il ne reste que des boutons en français.
 - Côté R4 (branche `r4/relecture`, à relire par Kilian pour `ImportView.svelte`) : test du chargeur, Bilan relu et corrigé, Import relu (erreur de syntaxe « vers la ligne N », fichier non YAML refusé), tests utilisateurs. Ma galerie et mon Import (`r4/galerie`) sont abandonnés au profit de ceux de Kilian.
+
+## Chantier « modularité » ouvert par R3 + R1 (pas une relève)
+- Objectif : ouvrir l'appli à d'autres théorèmes (algèbre linéaire d'abord), sans toucher aux contrats. Méthodes `formula_*` (méthode écrite dans le YAML), paquet `backend/methods/linalg/`, vue `heatmap`, catalogue généré, seuils proposés par `/api/validate`.
+- **Fichiers réservés** : la liste et le partage R1 / R3 sont dans `docs/chantier_modularite.md`. **R2 et R4** : `backend/methods/__init__.py`, `expr.py`, `validate.py`, `runner.py`, `plot.ts`, `importPrompt.ts` et `ImportView.svelte` en font partie. Prévenez la personne indiquée avant d'y toucher.
+
 
 ## Questions de prédiction et Domaine de validité du TCL, faits par R3 (pas une relève)
 - **R1, à relire** : `backend/engine/training.py` sert les questions `prediction` (une fois par série). Le moteur lance l'état de départ et l'état d'arrivée (même graine) et compare la mesure de la méthode principale : « reste stable » sous 2 mc_se d'écart, « augmente » ou « diminue » au-delà de 4 ; entre les deux, nouveau tirage (5 au plus), sinon question retirée (`dropped`). Choix fixes `up`, `down`, `stable` ; `reveal.state` = état d'arrivée. Tests dans `tests/test_training.py` (deux anciens tests adaptés : ils supposaient des séries sans prédiction).
