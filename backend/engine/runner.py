@@ -47,6 +47,7 @@ from backend.engine.state import ResolvedState, healthy, resolve_state
 
 N_GRID = 400  # points de la grille de temps du générateur `ode`
 SHOWN_INTERVALS = 100  # intervalles empilés affichés (vue Répétitions)
+SHOWN_PATHS = 30  # trajectoires affichées (vue Répétitions, mode trajectoires)
 INVALID_WARN = 0.05
 _CACHE_SIZE = 48
 
@@ -355,6 +356,21 @@ _SCALAR_LABELS = {"threshold": "Seuil", "truth": "Valeur vraie"}
 _SCALAR_ROLES = {"threshold": "rupture"}
 
 
+def _paths_series(
+    view_id: str, method: str, role: str, label: str, grid: np.ndarray | None, arr: np.ndarray
+) -> Series:
+    """Série `paths` : une liste par trajectoire (SHOWN_PATHS au plus), abscisse commune facultative."""
+    return Series(
+        id=f"{view_id}.paths.{method}",
+        slot="paths",
+        method=method,
+        role=role,  # type: ignore[arg-type]
+        label=label,
+        x=_floats(grid) if grid is not None else None,
+        paths=[_floats(row) for row in arr[:SHOWN_PATHS]],
+    )
+
+
 def _arr(value: Any) -> np.ndarray | None:
     return None if value is None else np.asarray(value, dtype=float)
 
@@ -390,6 +406,9 @@ def _build_view(
     seen: set[tuple[str, bytes]] = set()
     ref_done: set[str] = set()
     shown = total = 0
+    path_arrays: list[np.ndarray] = []  # trajectoires (vue Répétitions, mode trajectoires)
+    ref_paths: np.ndarray | None = None
+    ref_x: np.ndarray | None = None
 
     for slot, path in paths.items():
         root = path.split(".")[0]
@@ -446,6 +465,29 @@ def _build_view(
                 ys.append(yt)
                 if xt is not None:
                     xs.append(xt)
+            continue
+        if slot == "paths":  # faisceau de trajectoires : tableau (trajectoires, k), une série par méthode
+            for m in spec.methods:
+                grid = _arr(_path(comp, m.id, x_path, rs)) if x_path else None
+                arr = _arr(_path(comp, m.id, path, rs))
+                if arr is None or arr.ndim != 2:
+                    continue
+                fingerprint = (slot, np.ascontiguousarray(arr).tobytes())
+                if fingerprint in seen:  # trajectoires identiques pour deux méthodes : dessinées une fois
+                    continue
+                seen.add(fingerprint)
+                result.series.append(_paths_series(view.id, m.id, roles[m.id], labels[m.id], grid, arr))
+                shown, total = min(arr.shape[0], SHOWN_PATHS), comp.n_repeat
+                path_arrays.append(arr)
+            ref_m = base.results.get(primary)
+            ref_arr = _arr(_path(base, primary, path, rs)) if ref_m is not None else None
+            if ref_arr is not None and ref_arr.ndim == 2:
+                ref_grid = _arr(_path(base, primary, x_path, rs)) if x_path else None
+                ref = _paths_series(view.id, primary, "reference", "Référence (état sain)", ref_grid, ref_arr)
+                ref.id = f"{view.id}.paths.{primary}.ref"
+                result.series.insert(0, ref)
+                ref_paths = ref_arr
+                ref_x = ref_grid
             continue
         for m in spec.methods:
             yv = _arr(_path(comp, m.id, path, rs))
@@ -575,6 +617,13 @@ def _build_view(
             )
 
     result.shown, result.total = shown, total or shown
+    if "paths" in paths:  # bornes sur la Référence : les trajectoires de l'état sain
+        reference = ref_paths if ref_paths is not None else (path_arrays[0] if path_arrays else None)
+        result.axes = ViewAxes(
+            x=[float(np.nanmin(ref_x)), float(np.nanmax(ref_x))] if ref_x is not None else None,
+            y=_stable_range(reference.ravel()) if reference is not None else None,
+        )
+        return result
     if is_intervals:  # bornes sur la Référence : intervalles sains
         ends = [_arr(_path(base, primary, paths[k], rs)) for k in ("low", "high") if k in paths]
         ends = [e[:SHOWN_INTERVALS] for e in ends if e is not None]

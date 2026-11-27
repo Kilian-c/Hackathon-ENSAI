@@ -12,11 +12,12 @@ from scipy import stats
 from backend.engine.method_contract import MethodResult, register_method
 
 _KINDS = ("independance", "dependance")
+SHOWN_PATHS = 30  # trajectoires de moyennes cumulées renvoyées (vue Répétitions, mode trajectoires)
 
 
 @register_method(
     "clt_mean",
-    provides={"reps": ["z", "inside"], "example": ["x"]},
+    provides={"reps": ["z", "inside"], "example": ["x"], "curves": ["k", "paths"]},
     cost="repeat * n",
 )
 def clt_mean(
@@ -47,4 +48,12 @@ def clt_mean(
         inside = (np.abs(z) <= q).astype(float)
         inside[~np.isfinite(z)] = np.nan
 
-    return MethodResult(reps={"z": z, "inside": inside}, example={"x": x[0].copy()})
+    # Faisceau : moyenne cumulée X̄_k de chacune des premières répétitions, pour k = 1..n.
+    k = np.arange(1, n + 1, dtype=float)
+    paths = np.cumsum(x[:SHOWN_PATHS], axis=1) / k
+
+    return MethodResult(
+        reps={"z": z, "inside": inside},
+        example={"x": x[0].copy()},
+        curves={"k": k, "paths": paths},
+    )
