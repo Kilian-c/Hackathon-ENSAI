@@ -37,7 +37,11 @@
   const schemaOk = $derived(upToDate && report !== null && report.errors.length === 0)
   const errorLines = $derived(new Set((upToDate ? (report?.errors ?? []) : []).map((e) => e.line).filter((l) => l)))
   const canShare = $derived(schemaOk && sharingAvailable() && !sharing)
-  // Seuils proposés par /api/validate : rangés par le moteur dans `warnings`, affichés à part (aide, pas problème).
+  // Seuils proposés par /api/validate : rangés par le moteur dans `warnings`, mis à part (aide, pas problème).
+  // MASQUÉS : recopiés tels quels, ils peuvent rendre l'état sain Fragile ou Rompu (carres_residus, seuil_roc,
+  // maximum_uniformes), car validate.py ne tient pas compte de l'écart déjà présent à l'état sain.
+  // TODO(passation) R1 : réactiver après correction de `_proposals`, et revoir les textes du tableau.
+  const SHOW_THRESHOLD_PROPOSALS = false
   const warningGroups = $derived(splitWarnings(report?.warnings ?? []))
 
   // Brouillon gardé à chaque modification (léger : un seul appel à localStorage).
@@ -332,7 +336,7 @@
           {/if}
         {/if}
 
-        {#if warningGroups.proposals.length > 0}
+        {#if SHOW_THRESHOLD_PROPOSALS && warningGroups.proposals.length > 0}
           <h3>Seuils suggérés par la simulation <span class="muted small">(facultatif)</span></h3>
           <p class="muted small">
             Écart toléré pour Fiable (<code>ok_within</code>) et au-delà duquel le verdict est Rompu

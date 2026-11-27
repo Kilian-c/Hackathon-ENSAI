@@ -1,5 +1,19 @@
 # Notes de passation (la plus récente en haut)
 
+## Nuit : seuils suggérés masqués dans l'Import, et ce qui attend R1 et Kilian (R4, pas une relève)
+- **R1, à corriger** (`backend/engine/validate.py`, `_proposals`, trouvé par une revue de code, essais non revérifiés par R4) : `ok_within` = 3 erreurs Monte Carlo, sans l'écart **déjà présent à l'état sain**. Recopiés tels quels, les seuils suggérés font échouer le test 1 sur 3 YAML officiels : `seuil_roc` (Rompu, suggestion 0,0011 / 0,0089 sur `exces`), `maximum_uniformes` (Rompu, 0,0028 / 0,02), `carres_residus` (Fragile, 0,014 / 0,07). Piste : `ok_within` au moins égal à l'écart sain plus son bruit (`broken_beyond` calculé à partir de lui), sinon aucune suggestion. Parfois aussi une zone Fragile quasi vide (`bias` de la régression : 0,011 / 0,012).
+- **R4, fait** : le tableau « Seuils suggérés » de l'Import est masqué (`SHOW_THRESHOLD_PROPOSALS = false` dans `ImportView.svelte`) ; les suggestions ne reviennent pas dans les avertissements en jaune. TODO(passation) : à la réactivation, dire pourquoi il manque un `broken_beyond` (et signaler un `ok_within` suggéré supérieur au `broken_beyond` du fichier), n'écrire « votre fichier reste valable » que si `report.ok`, et « vos contre-exemples (ou, à défaut, vos hypothèses cassées) ».
+- **R1, mineur** : le prompt de l'Import (`catalog.gen.ts`) propose `integrate`, qui exige le générateur `ode`, non décrit dans le prompt : un YAML qui l'utilise est refusé.
+- **Kilian, à valider au réveil** (**déjà sur `main`, sans votre relecture** : la note « à relire avant fusion » ci-dessous est dépassée ; le commit de fusion `28cf0be` dit « relue par R1 », or R1 n'a relu avec certitude que `make_fixtures.py` : ne vous y fiez pas pour le reste) :
+  1. `frontend/vite.config.ts` et `.env.example` : relais `/api` vers `127.0.0.1:8000`, variable `API_PROXY_TARGET`, messages au démarrage et si le moteur ne répond pas.
+  2. `frontend/src/lib/share.ts` (`supabaseBaseUrl`) et `share.test.ts`.
+  3. `frontend/src/components/PlotlyChart.svelte` : `showSendToCloud: false`.
+  4. `frontend/src/dev/specs/*.spec.json` et `fixtures/training_session.json`, `pendule_gros_pas.run.json` : régénérés depuis les YAML.
+  5. `frontend/src/components/ImportView.svelte` (fichier de R4 que vous avez écrit) : erreur de syntaxe « vers la ligne N », fichier non YAML refusé, suggestions mises à part puis masquées.
+  6. Nouveau dossier `frontend/src/components/import/` (`proposals.ts` et son test), créé par R4 : hors de la liste des dossiers de R4 dans `CLAUDE.md` (section 3), donc à vous par défaut. Dire s'il passe à R4 ou ce qu'il faut déplacer.
+- **Kilian, à décider** : la branche `r2/lab-lisible` (refonte de l'étape Expérimenter et vue `decomposition` de la régression), **non fusionnée**, à relire. R1 a repris les rôles R2 et R3 cette nuit (`docs/notes/r1.md`). Elle touche l'écran et l'expérience de la démo : à trancher avant le gel de H25.
+- `importPrompt.ts` relu par R4 comme demandé : correct, hormis `integrate` ci-dessus.
+
 ## H9,5 (21 h 30) : corrections pour R1 et R3 faites par R4, branche `r4/corrections-autres-roles` (pas une relève)
 - Branche partie de `origin/main` (après l'Import de Kilian), **à relire par chaque propriétaire avant fusion** (un commit par rôle). pytest, ruff, `npm run check` et `npm test` verts.
 - ~~**R1** : `make_fixtures.py`, calculs inutiles retirés et défi `rk4-gros-pas` aligné~~ : fait et fusionné par R1 (`6cf283c`). Il ne reste sur cette branche que la partie de Kilian.
