@@ -115,6 +115,9 @@ BASE_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "min": np.min,
     "max": np.max,
     "cumsum": np.cumsum,
+    "cumprod": np.cumprod,
+    "sort": np.sort,
+    "quantile": np.quantile,
     "ar1": ar1,
     "ols_match": ols_match,
 }

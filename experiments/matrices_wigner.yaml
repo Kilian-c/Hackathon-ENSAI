@@ -1,0 +1,173 @@
+# yaml-language-server: $schema=./schema.json
+schema_version: 1
+id: "matrices-wigner"
+title: "Matrices aléatoires : le spectre en demi-cercle"
+discipline: "algèbre linéaire"
+level: "3"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé
+concepts: ["matrice symétrique", "valeurs propres", "loi du demi-cercle", "universalité"]
+
+theorem:
+  name: "Loi du demi-cercle de Wigner"
+  statement: |
+    Soit G une matrice d x d dont les entrées sont indépendantes, centrées, de variance 1, et
+    W = (G + G^T) / racine(2 d). Quand d grandit, les valeurs propres de W se répartissent selon la loi
+    du demi-cercle sur [-2, 2], et la plus grande valeur propre tend vers 2. Ce résultat ne dépend pas de
+    la loi des entrées : seule compte l'existence de la variance.
+
+equation:
+  tex: '\lambda_{\max}(W) \;\longrightarrow\; {{edge}}'
+  terms:
+    edge:
+      ok: '2'
+
+params:
+  d: { type: number, label: "Taille de la matrice d", min: 10, max: 40, step: 5, default: 30,
+       sweep_values: [10, 15, 20, 30, 40] }
+
+hypotheses:
+  entrees:
+    type: choice
+    healthy_value: "normal"
+    label: "Loi des entrées (variance finie)"
+    category: "moments"
+    options:
+      normal:      { label: "Normale", law: normal }
+      uniform:     { label: "Uniforme", law: uniform, robust_expected: true }
+      exponential: { label: "Exponentielle (asymétrique)", law: exponential, robust_expected: true }
+      student_2:   { label: "Student à 2 ddl (variance infinie)", law: student_2 }
+      cauchy:      { label: "Cauchy (sans espérance)", law: cauchy }
+    statement_tex: '\mathrm{Var}(G_{ij}) = 1 < \infty'
+    why: "La normalisation par racine de 2 d suppose que les entrées ont une variance finie : c'est elle qui fixe la taille du spectre."
+    when_broken: "Sans variance finie, quelques entrées énormes dominent : la plus grande valeur propre dépasse largement 2 et ne se stabilise pas quand d grandit."
+    affects: [edge]
+
+counterexamples:
+  - id: "student-2"
+    label: "Entrées de Student à 2 ddl"
+    explain: "La variance est infinie : quelques entrées très grandes poussent le spectre bien au-delà de 2, et la forme n'est plus un demi-cercle."
+    state: { hypotheses: { entrees: "student_2" } }
+  - id: "cauchy"
+    label: "Entrées de Cauchy"
+    explain: "Aucune espérance : une seule entrée gigantesque suffit à rendre la plus grande valeur propre énorme."
+    state: { hypotheses: { entrees: "cauchy" } }
+
+generator:
+  type: random
+  n: p.d * p.d                    # une matrice d x d par répétition, rangée en d * d entrées
+  repeat: 500
+  variables:
+    x: { expr: "@h.entrees" }
+
+methods:
+  - id: spectre
+    role: method
+    call: spectrum
+    label: "Spectre de W = (G + G^T) / racine(2 d)"
+    args: { x: x, d: p.d }
+
+measures:
+  rayon:
+    agg: "median(reps.radius)"
+    label: "Rayon spectral (théorie : 2)"
+    decimals: 2
+    primary: true
+    target: 2
+    direction: above
+    ok_within: 0.15
+    broken_beyond: 0.6
+    texts:
+      ok: "Le spectre tient dans [-2, 2] : rayon spectral de {value}."
+      warning: "Le spectre déborde un peu de [-2, 2] : rayon spectral de {value}."
+      broken: "Le spectre sort de [-2, 2] : rayon spectral de {value}."
+  ks:
+    agg: "summary(semicircle_ks)"
+    label: "Écart au demi-cercle (distance de Kolmogorov)"
+    decimals: 3
+    target: 0
+    direction: above
+    ok_within: 0.05
+    broken_beyond: 0.1
+    texts:
+      ok: "Les valeurs propres suivent le demi-cercle : écart de {value}."
+      warning: "Le demi-cercle est déformé : écart de {value}."
+      broken: "Ce n'est plus un demi-cercle : écart de {value}."
+
+challenges:
+  - id: "universalite"
+    goal: "Obtenez un spectre en demi-cercle (verdict Fiable) avec des entrées exponentielles."
+    when: "h.entrees == 'exponential' and s.rayon == 'ok' and s.ks == 'ok'"
+    unlock: "La loi des entrées n'a pas besoin d'être normale : seule la variance compte. C'est l'universalité."
+  - id: "queues-lourdes"
+    goal: "Faites sortir le spectre de [-2, 2] (verdict Rompu)."
+    when: "s.rayon == 'broken'"
+    unlock: "Des entrées sans variance finie, comme Cauchy, dominent la matrice : le spectre explose."
+
+auto_sweep: [p.d]
+
+views:
+  - id: matrice
+    type: heatmap
+    title: "Une matrice W tirée au hasard"
+    bind: { matrix: curves.matrix }
+    ui: { decimals: 1 }
+  - id: spectre
+    type: distribution
+    title: "Les valeurs propres de 40 matrices"
+    bind: { stat: curves.eigenvalues }
+    ui: { x_title: "Valeur propre (le demi-cercle occupe [-2, 2])", x_range: [-6, 6] }
+  - id: sens-entrees
+    type: sensitivity
+    title: "Selon la loi des entrées"
+    sweep: { axes: [h.entrees] }
+  - id: sens-d
+    type: sensitivity
+    title: "Selon la taille de la matrice"
+    sweep: { axes: [p.d] }
+
+questions:
+  - id: "wig-q1-universalite"
+    type: misconception
+    prompt: "Les entrées de la matrice sont uniformes au lieu d'être normales. Le spectre cesse-t-il d'être un demi-cercle ?"
+    hypothesis: "entrees"
+    choices:
+      - id: "a"
+        label: "Oui : la forme du spectre dépend de la loi des entrées."
+        correct: false
+        reveal_state: { hypotheses: { entrees: "uniform" } }
+        verify: "s.rayon == 'ok' and s.ks == 'ok'"
+        focus_view: "spectre"
+        explain: "Avec une variance finie, la loi des entrées n'a aucune influence sur la limite : le spectre reste un demi-cercle sur [-2, 2]."
+      - id: "b"
+        label: "Non : seule la variance des entrées compte, pas leur loi."
+        correct: true
+        reveal_state: { hypotheses: { entrees: "uniform" } }
+        verify: "s.rayon == 'ok' and s.ks == 'ok'"
+        focus_view: "spectre"
+        explain: "Exact : c'est l'universalité de Wigner. Uniforme, normale ou exponentielle, le spectre est le même demi-cercle."
+
+  - id: "wig-q2-cauchy"
+    type: misconception
+    prompt: "Les entrées suivent une loi de Cauchy. Le spectre garde-t-il quand même la forme du demi-cercle ?"
+    hypothesis: "entrees"
+    choices:
+      - id: "a"
+        label: "Oui : toutes les lois d'entrées donnent le même demi-cercle."
+        correct: false
+        reveal_state: { hypotheses: { entrees: "cauchy" } }
+        verify: "s.rayon == 'broken'"
+        focus_view: "spectre"
+        explain: "Le résultat suppose une variance finie. Une loi de Cauchy n'a même pas d'espérance : quelques entrées énormes déforment tout le spectre."
+      - id: "b"
+        label: "Non : sans variance finie, le spectre explose."
+        correct: true
+        reveal_state: { hypotheses: { entrees: "cauchy" } }
+        verify: "s.rayon == 'broken'"
+        focus_view: "spectre"
+        explain: "Exact : l'hypothèse de variance finie est indispensable, et la taille de la matrice n'y change rien."
+
+  - id: "wig-q3-diag"
+    type: diagnostic_auto
+    prompt: "Observez le spectre ci-dessous. Quelle situation observez-vous ?"
+    view: "spectre"
+    pathologies:
+      from: [entrees.student_2, entrees.cauchy]   # plus « Hypothèses respectées », ajouté d'office

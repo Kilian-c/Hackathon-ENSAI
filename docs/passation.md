@@ -10,7 +10,13 @@
 
 ## Chantier « modularité » ouvert par R3 + R1 (pas une relève)
 - Objectif : ouvrir l'appli à d'autres théorèmes (algèbre linéaire d'abord), sans toucher aux contrats. Méthodes `formula_*` (méthode écrite dans le YAML), paquet `backend/methods/linalg/`, vue `heatmap`, catalogue généré, seuils proposés par `/api/validate`.
-- **Fichiers réservés** : la liste et le partage R1 / R3 sont dans `docs/chantier_modularite.md`. **R2 et R4** : `backend/methods/__init__.py`, `expr.py`, `validate.py`, `runner.py`, `plot.ts`, `importPrompt.ts` et `ImportView.svelte` en font partie. Prévenez la personne indiquée avant d'y toucher.
+- **Partie R3 terminée** (détail dans `docs/chantier_modularite.md`) :
+  - `plot.ts` : `ui.log_y`, `ui.log_x`, `ui.aspect` et `ui.unit_circle`, plus la vue `heatmap` ;
+  - catalogue généré (`scripts/gen_catalog.py` → `lib/catalog.gen.ts`), lu par le prompt de l'Import ;
+  - schéma JSON du YAML (`experiments/schema.json`) pour VS Code.
+  - **R1** : `gen_catalog.py` est fait (à relire) ; la forme des données de `heatmap` est à confirmer avant de coder `runner.py`. Après chaque méthode ajoutée, relancer `gen_catalog.py`, sinon `tests/test_generated.py` échoue.
+  - **R4** : `ImportView.svelte` est libéré (rien à changer) ; `importPrompt.ts` est modifié (à relire).
+- **Fichiers réservés** : la liste et le partage R1 / R3 sont dans `docs/chantier_modularite.md`. **R2** : `backend/methods/__init__.py`, `expr.py`, `validate.py` et `runner.py` restent réservés (partie de R1). Prévenez R1 avant d'y toucher. Les fichiers d'interface sont libérés.
 
 
 ## Questions de prédiction et Domaine de validité du TCL, faits par R3 (pas une relève)

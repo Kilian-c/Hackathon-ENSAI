@@ -15,6 +15,7 @@ from backend.contracts import EngineState, RunResult, ValidateIssue, ValidateRes
 from backend.engine import runner
 from backend.engine.loader import ExperimentError, _line, load_experiment
 from backend.engine.schema import ExperimentSpec, RandomGenerator
+from backend.engine.sweep import _gap as sweep_gap
 
 VALIDATE_REPEAT = 200
 
@@ -140,6 +141,65 @@ def _warnings(
     return out
 
 
+def _round2(value: float) -> float:
+    """Deux chiffres significatifs : un seuil lisible dans un YAML."""
+    return float(f"{value:.2g}")
+
+
+def _gap(value: float | None, target: float | None, direction: str) -> float | None:
+    if value is None or target is None:
+        return None
+    return sweep_gap(value, target, direction)
+
+
+def _proposals(
+    spec: ExperimentSpec, healthy: RunResult, root: yaml.Node | None, se_factor: float
+) -> list[ValidateIssue]:
+    """Seuils proposés d'après la simulation, un avertissement par mesure à verdict.
+
+    Format stable (lu par l'interface) : le chemin est `measures.<id>` et le message commence par
+    « Seuils proposés : ok_within = <x> ; broken_beyond = <y> » (la seconde partie peut manquer).
+    - `ok_within` : 3 erreurs Monte Carlo de la méthode principale à l'état sain, au `repeat` du fichier.
+    - `broken_beyond` : moyenne géométrique entre `ok_within` et le plus petit écart des contre-exemples ;
+      sans contre-exemple, des hypothèses cassées au maximum qui ne sont pas `robust_expected`.
+    """
+    method, _ = _primary(spec)
+    perturbed = [_run(spec, ce.state.model_dump()) for ce in spec.counterexamples if ce.expect is None]
+    if not perturbed:
+        for hid, hyp in spec.hypotheses.items():
+            for v in _broken_values(hyp):
+                robust = hyp.robust_expected or (
+                    hyp.type == "choice" and hyp.options[v].robust_expected
+                )
+                if not robust:
+                    perturbed.append(_run(spec, {"hypotheses": {hid: v}}))
+    out: list[ValidateIssue] = []
+    for mid, mr in healthy.measures.items():
+        se = mr.mc_se.get(method)
+        if mr.direction is None or se is None or se <= 1e-6 or mr.target is None:
+            continue  # pas de bruit mesurable (mesure déterministe) : rien à proposer
+        ok = _round2(3 * se * se_factor)
+        gaps = []
+        for res in perturbed:
+            pm = res.measures[mid]
+            target = pm.baseline.get(method) if pm.target == "base" else pm.target
+            g = _gap(pm.values.get(method), target, pm.direction or mr.direction)
+            if g is not None and g > ok:
+                gaps.append(g)
+        text = f"Seuils proposés : ok_within = {ok:g}"
+        if gaps:
+            text += f" ; broken_beyond = {_round2((ok * min(gaps)) ** 0.5):g}"
+        else:
+            text += " (aucune perturbation du fichier ne la dépasse : pas de broken_beyond proposé)"
+        text += f" (fichier : ok_within = {mr.ok_within:g} ; broken_beyond = {mr.broken_beyond:g})."
+        out.append(ValidateIssue(
+            line=_line(root, ("measures", mid)) if root is not None else None,
+            path=f"measures.{mid}",
+            message=text,
+        ))
+    return out
+
+
 def validate(raw: str) -> ValidateResponse:
     try:
         spec = load_experiment(raw)
@@ -183,4 +243,8 @@ def validate(raw: str) -> ValidateResponse:
     if isinstance(gen_full, RandomGenerator) and isinstance(gen_fast, RandomGenerator):
         se_factor = (gen_fast.repeat / gen_full.repeat) ** 0.5
     warnings = _warnings(fast, healthy, root, se_factor)
+    try:
+        warnings += _proposals(fast, healthy, root, se_factor)
+    except Exception:  # noqa: BLE001 : les propositions sont facultatives, jamais bloquantes
+        pass
     return ValidateResponse(ok=all(t.passed for t in tests), errors=errors, warnings=warnings, tests=tests)

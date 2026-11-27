@@ -166,3 +166,20 @@ def test_draw_log_served_only_when_declared_and_matches_first_repetition() -> No
     assert res.draw_log.pvalue == pytest.approx(float(reps["pvalue"][0]), abs=1e-5)
     assert runner.run(spec, state).draw_log == res.draw_log  # déterministe
     assert runner.run(_spec("regression_lineaire")).draw_log is None  # non déclaré : null
+
+
+def test_misspelled_reference_in_method_args_is_a_french_error() -> None:
+    spec = _spec("regression_lineaire")
+    args = {**spec.methods[0].args, "truth": "p.beta_inconnu"}
+    methods = [spec.methods[0].model_copy(update={"args": args}), *spec.methods[1:]]
+    bad = spec.model_copy(update={"methods": methods})
+    with pytest.raises(runner.RunError, match="p.beta_inconnu"):
+        runner.run(bad)
+    runner.run(spec)  # les textes littéraux (« classic », « HC3 ») restent acceptés
+
+
+def test_total_size_cap_is_a_french_error() -> None:
+    spec = _spec("regression_lineaire")
+    heavy = spec.generator.model_copy(update={"repeat": 1000, "n": 5000})
+    with pytest.raises(runner.RunError, match="trop lourde"):
+        runner.run(spec.model_copy(update={"generator": heavy}))

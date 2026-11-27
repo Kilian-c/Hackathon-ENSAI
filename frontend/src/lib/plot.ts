@@ -62,6 +62,36 @@ export interface ChartOptions {
   axisLabels?: readonly [string, string]
 }
 
+/**
+ * Types de vue que buildFigure sait dessiner (les autres retombent sur la vue de secours
+ * measures_table), avec leur usage : repris tel quel par le prompt de l'écran Import.
+ */
+export const VIEW_TYPES: Readonly<Record<string, string>> = {
+  scatter: 'nuage de points et droites (x, y)',
+  residuals: 'résidus, avec la ligne 0',
+  curves: 'courbes dans l’ordre reçu (temps, itérations)',
+  repetitions: 'intervalles par répétition, ou trajectoires (mode: paths)',
+  distribution: 'histogrammes superposés, vraie valeur et seuil en lignes verticales',
+  sensitivity: 'la mesure primaire selon un contrôle balayé (sweep)',
+  validity_domain: 'carte des verdicts sur deux contrôles balayés',
+  heatmap: 'matrices côte à côte (paths : une liste par ligne)',
+}
+
+/** Réglages du champ libre `ui` d'une vue, lus par ce fichier : repris par le prompt de l'écran Import. */
+export const VIEW_UI_KEYS: Readonly<Record<string, string>> = {
+  x_title: 'titre de l’axe horizontal',
+  y_title: 'titre de l’axe vertical',
+  log_x: 'true : axe horizontal en échelle logarithmique',
+  log_y: 'true : axe vertical en échelle logarithmique (convergence, erreurs)',
+  aspect: '"equal" : repère orthonormé (un cercle reste un cercle)',
+  unit_circle: 'true ou un rayon : cercle centré en 0 (plan complexe)',
+  marker_size: 'taille des points',
+  point_labels: 'liste de noms, un par point (emplacement points)',
+  zmin: 'heatmap : borne basse de l’échelle de couleur',
+  zmax: 'heatmap : borne haute de l’échelle de couleur',
+  decimals: 'heatmap : décimales écrites dans les cases (2 par défaut)',
+}
+
 /** Identifiant de la trace des points posés : PlotlyChart le reconnaît au clic (pour un retrait). */
 export const INJECTED_SUFFIX = '.points-poses'
 
@@ -212,7 +242,7 @@ function markerTraces(s: Series, view: ViewResult): { traces: Trace[]; clipped: 
 }
 
 /** Ligne d'une série ; triée par x pour une droite ajustée (qui arrive dans l'ordre des observations). */
-function lineTrace(s: Series, sortByX: boolean): Trace {
+function lineTrace(s: Series, sortByX: boolean, log: { x: boolean; y: boolean } = { x: false, y: false }): Trace {
   const role = seriesRole(s)
   const x = nums(s, 'x')
   const y = nums(s, 'y')
@@ -220,6 +250,9 @@ function lineTrace(s: Series, sortByX: boolean): Trace {
   for (let i = 0; i < Math.min(x.length, y.length); i++) {
     const xi = x[i]
     const yi = y[i]
+    // En échelle logarithmique, une valeur ≤ 0 n'a pas de place : Plotly ferait plonger la ligne
+    // jusqu'au bord. Elle est retirée (et comptée sous la vue par nonPositiveCount).
+    if ((log.x && isNum(xi) && xi <= 0) || (log.y && isNum(yi) && yi <= 0)) continue
     if (isNum(xi) && isNum(yi)) pairs.push([xi, yi])
   }
   if (sortByX) pairs.sort((a, b) => a[0] - b[0])
@@ -287,10 +320,16 @@ function verticalLine(x: number, color: string, dash: string, text?: string): { 
 // Mise en page commune
 // ---------------------------------------------------------------------------
 
-function axisLayout(range: Range | null | undefined, title?: string): Trace {
+/**
+ * Axe d'une vue. En échelle logarithmique, Plotly attend les bornes en log10 : on les convertit, et
+ * des bornes non strictement positives passent en automatique (log de 0 ou d'un négatif).
+ */
+function axisLayout(range: Range | null | undefined, title?: string, log = false): Trace {
   const grid = cssVar('--ct-plot-grid')
+  const r = log ? (range && range[0] > 0 && range[1] > 0 ? [Math.log10(range[0]), Math.log10(range[1])] : null) : range
   return {
-    ...(range ? { range: [...range], autorange: false } : { autorange: true }),
+    ...(log ? { type: 'log', exponentformat: 'power' } : {}),
+    ...(r ? { range: [...r], autorange: false } : { autorange: true }),
     gridcolor: grid,
     zerolinecolor: grid,
     linecolor: grid,
@@ -304,7 +343,46 @@ function uiString(view: ViewResult, key: string): string | undefined {
   return typeof v === 'string' ? v : undefined
 }
 
+/** Réglage booléen du champ libre `ui` (`log_x`, `log_y`) : absent ou autre chose que true = faux. */
+export function uiFlag(view: ViewResult, key: string): boolean {
+  return view.ui?.[key] === true
+}
+
+function uiNumber(view: ViewResult, key: string): number | undefined {
+  const v = view.ui?.[key]
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined
+}
+
+/**
+ * Repère orthonormé (`ui.aspect: "equal"`) : une unité a la même longueur sur les deux axes, pour
+ * qu'un cercle reste un cercle (plan complexe, image du cercle unité par une matrice). Les bornes du
+ * moteur sont gardées : c'est la zone de tracé qui se resserre (`constrain: domain`).
+ */
+function equalAspect(view: ViewResult): { x: Layout; y: Layout } {
+  if (uiString(view, 'aspect') !== 'equal') return { x: {}, y: {} }
+  // `constrain: domain` sur les DEUX axes : sinon Plotly élargit les bornes de l'axe x au lieu de
+  // resserrer la zone de tracé (vérifié à l'œil : x passait de [-1,6 ; 1,6] à [-4,5 ; 4,5]).
+  return { x: { constrain: 'domain' }, y: { scaleanchor: 'x', scaleratio: 1, constrain: 'domain' } }
+}
+
+/**
+ * Cercle centré en 0 (`ui.unit_circle`) : true pour le cercle unité, ou un rayon positif. Dessiné en
+ * pointillés neutres sous les données (repère, pas une série : il ne va pas dans la légende).
+ */
+export function unitCircle(view: ViewResult): Trace | null {
+  const v = view.ui?.unit_circle
+  const r = v === true ? 1 : typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null
+  if (r === null) return null
+  return {
+    type: 'circle', xref: 'x', yref: 'y', x0: -r, y0: -r, x1: r, y1: r, layer: 'below',
+    line: { color: cssVar('--ct-plot-axis'), dash: 'dot', width: 1 },
+  }
+}
+
 export function baseLayout(view: ViewResult, extra: Layout = {}): Layout {
+  const aspect = equalAspect(view)
+  const xaxis = { ...axisLayout(axisRange(view, 'x'), uiString(view, 'x_title'), uiFlag(view, 'log_x')), ...aspect.x }
+  const yaxis = { ...axisLayout(axisRange(view, 'y'), uiString(view, 'y_title'), uiFlag(view, 'log_y')), ...aspect.y }
   return {
     uirevision: 'keep',
     paper_bgcolor: 'rgba(0,0,0,0)',
@@ -320,8 +398,8 @@ export function baseLayout(view: ViewResult, extra: Layout = {}): Layout {
       font: { color: cssVar('--ct-plot-axis') },
     },
     hovermode: 'closest',
-    xaxis: axisLayout(axisRange(view, 'x'), uiString(view, 'x_title')),
-    yaxis: axisLayout(axisRange(view, 'y'), uiString(view, 'y_title')),
+    xaxis,
+    yaxis,
     shapes: [],
     annotations: [],
     ...extra,
@@ -358,7 +436,7 @@ function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
   for (const s of visible) {
     if (LINE_SLOTS.has(s.slot) || view.type === 'curves') {
       // Une courbe dans le temps arrive déjà dans l'ordre ; une droite ajustée doit être triée.
-      data.push(lineTrace(s, view.type !== 'curves'))
+      data.push(lineTrace(s, view.type !== 'curves', { x: uiFlag(view, 'log_x'), y: uiFlag(view, 'log_y') }))
     } else {
       const m = markerTraces(s, view)
       data.push(...m.traces)
@@ -367,13 +445,37 @@ function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
   }
   if (opts.injected && opts.injected.length > 0) data.push(injectedTrace(view.id, opts.injected))
   const shapes: Trace[] = []
-  if (view.type === 'residuals') {
+  // La ligne 0 et le cercle centré en 0 n'existent pas en échelle logarithmique (et Plotly y attend
+  // des coordonnées en log10) : ils ne sont dessinés qu'en échelle linéaire.
+  const linear = !uiFlag(view, 'log_x') && !uiFlag(view, 'log_y')
+  if (view.type === 'residuals' && linear) {
     shapes.push({
       type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: 0, y1: 0,
       line: { color: cssVar('--ct-plot-axis'), width: 1 },
     })
   }
-  return { data, layout: baseLayout(view, { shapes }), caption: captionFor(view, clipped) }
+  const circle = linear ? unitCircle(view) : null
+  if (circle) shapes.push(circle)
+  const caption = captionFor(view, clipped)
+  const hidden = nonPositiveCount(view, visible)
+  if (hidden > 0) {
+    caption.push(
+      hidden === 1
+        ? '1 valeur négative ou nulle non affichée (échelle logarithmique)'
+        : `${hidden} valeurs négatives ou nulles non affichées (échelle logarithmique)`,
+    )
+  }
+  return { data, layout: baseLayout(view, { shapes }), caption }
+}
+
+/** Valeurs qu'une échelle logarithmique ne peut pas placer (≤ 0) : Plotly les tait, on les compte. */
+function nonPositiveCount(view: ViewResult, series: Series[]): number {
+  const axes = (['x', 'y'] as const).filter((a) => uiFlag(view, `log_${a}`))
+  let count = 0
+  for (const s of series) {
+    for (const a of axes) count += nums(s, a).filter((v) => isNum(v) && v <= 0).length
+  }
+  return count
 }
 
 /** Répétitions (intervalles) : un intervalle par ligne, les ratés en rouge avec une croix. */
@@ -577,21 +679,42 @@ function sensitivityFigure(view: ViewResult, opts: ChartOptions): Figure {
   const target = targetFor(sweep, principal)
   const { ok_within: ok, broken_beyond: broken, direction } = sweep
 
+  // Échelles logarithmiques (`ui.log_y`, `ui.log_x`) : seules les valeurs > 0 ont une place. Plotly 4
+  // n'est pas cohérent sur un axe log (vérifié dans le navigateur) : les FORMES prennent des valeurs
+  // en unités de données, les ANNOTATIONS des valeurs en log10.
+  const logY = uiFlag(view, 'log_y')
+  const logX = uiFlag(view, 'log_x') && numeric
+  const posY = (v: number) => !logY || v > 0
+  /** Ordonnée d'une forme : la valeur elle-même ; null si l'échelle log ne peut la placer (≤ 0). */
+  const shapeY = (v: number): number | null => (logY && v <= 0 ? null : v)
+  const shapeX = (v: number): number | null => (logX && v <= 0 ? null : v)
+  /** Coordonnée d'une annotation : log10 sur un axe log. */
+  const annY = (v: number): number => (logY ? Math.log10(v) : v)
+  const annX = (v: number): number => (logX ? Math.log10(v) : v)
+
   // Bornes verticales : valeurs, marges et cible, pour que la bande de tolérance soit visible.
   const all: number[] = []
   for (const m of methods) {
     const se = row(sweep.mc_se[m])
     row(sweep.values[m]).forEach((v, i) => {
       const e = se[i]
-      if (isNum(v)) all.push(v - 2 * (isNum(e) ? e : 0), v + 2 * (isNum(e) ? e : 0))
+      // La valeur elle-même aussi : en échelle log, le bas de sa bande (≤ 0) est écarté, et le point
+      // tomberait sous l'axe si seules les bornes de la bande comptaient.
+      if (isNum(v)) all.push(v, v - 2 * (isNum(e) ? e : 0), v + 2 * (isNum(e) ? e : 0))
     })
   }
   if (isNum(target)) all.push(target)
   if (isNum(target) && isNum(broken)) all.push(direction === 'above' ? target + broken : target - broken)
-  const lo = all.length ? Math.min(...all) : 0
-  const hi = all.length ? Math.max(...all) : 1
-  const pad = (hi - lo || 1) * 0.08
-  const yRange: Range = axisRange(view, 'y') ?? [(lo - pad) * scale, (hi + pad) * scale]
+  const bounds = all.filter(posY)
+  const lo = bounds.length ? Math.min(...bounds) : 0
+  const hi = bounds.length ? Math.max(...bounds) : 1
+  let yRange: Range | null
+  if (axisRange(view, 'y')) yRange = axisRange(view, 'y')
+  else if (logY) yRange = bounds.length ? [(lo * scale) / 1.5, hi * scale * 1.5] : null // marge multiplicative
+  else {
+    const pad = (hi - lo || 1) * 0.08
+    yRange = [(lo - pad) * scale, (hi + pad) * scale]
+  }
 
   for (const m of methods) {
     const role = roles[m] ?? 'method'
@@ -602,8 +725,14 @@ function sensitivityFigure(view: ViewResult, opts: ChartOptions): Figure {
     const hover = `%{customdata} : %{y:.1f}${unit ? ' ' + unit : ''}<extra></extra>`
     if (numeric) {
       if (se.length > 0) {
+        // En échelle log, le bas de la bande peut passer sous 0 : il est ramené au bas de l'axe.
+        const floor = logY && yRange ? yRange[0] : null
         const band = (sign: 1 | -1) =>
-          y.map((v, i) => (v === null || !isNum(se[i]) ? null : v + sign * 2 * (se[i] as number) * scale))
+          y.map((v, i) => {
+            if (v === null || !isNum(se[i])) return null
+            const b = v + sign * 2 * (se[i] as number) * scale
+            return logY && b <= 0 ? floor : b
+          })
         const common = { type: 'scatter', x: axis.values, mode: 'lines', line: { width: 0 }, showlegend: false, hoverinfo: 'skip', legendgroup: m }
         data.push({ ...common, uid: `${view.id}.bande-haut.${m}`, y: band(1) })
         data.push({ ...common, uid: `${view.id}.bande-bas.${m}`, y: band(-1), fill: 'tonexty', fillcolor: withAlpha(color, 0.15) })
@@ -641,43 +770,71 @@ function sensitivityFigure(view: ViewResult, opts: ChartOptions): Figure {
   }
 
   // Bande de tolérance (zone Fiable) et limite de rupture, pour la méthode principale.
+  // Une ligne horizontale à la hauteur v (en unités affichées), si l'échelle peut la placer.
+  const hline = (v: number, line: Trace) => {
+    const y = shapeY(v)
+    if (y !== null) shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: y, y1: y, line })
+    return y
+  }
   if (isNum(target) && isNum(ok)) {
     const t = target * scale
     const o = ok * scale
-    const [y0, y1] =
-      direction === 'below' ? [t - o, yRange[1]] : direction === 'above' ? [yRange[0], t + o] : [t - o, t + o]
-    shapes.push({ type: 'rect', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0, y1, fillcolor: withAlpha(verdictColor('ok'), 0.08), line: { width: 0 }, layer: 'below' })
-    shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: t, y1: t, line: { color: cssVar('--ct-plot-axis'), dash: 'dot', width: 1 } })
-    annotations.push({ xref: 'paper', x: 1, xanchor: 'right', y: t, yanchor: 'bottom', text: 'Cible', showarrow: false, font: { color: cssVar('--ct-plot-axis'), size: 11 } })
+    const [b0, b1] =
+      direction === 'below' ? [t - o, yRange?.[1] ?? null] : direction === 'above' ? [yRange?.[0] ?? null, t + o] : [t - o, t + o]
+    // En échelle log, un bord ≤ 0 de la zone Fiable est ramené au bas de l'axe.
+    const edge = (v: number | null) => (v === null ? null : logY && v <= 0 ? (yRange?.[0] ?? null) : shapeY(v))
+    const [y0, y1] = [edge(b0), edge(b1)]
+    if (y0 !== null && y1 !== null) {
+      shapes.push({ type: 'rect', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0, y1, fillcolor: withAlpha(verdictColor('ok'), 0.08), line: { width: 0 }, layer: 'below' })
+    }
+    const ty = hline(t, { color: cssVar('--ct-plot-axis'), dash: 'dot', width: 1 })
+    if (ty !== null) {
+      annotations.push({ xref: 'paper', x: 1, xanchor: 'right', y: annY(ty), yanchor: 'bottom', text: 'Cible', showarrow: false, font: { color: cssVar('--ct-plot-axis'), size: 11 } })
+    }
   }
   if (isNum(target) && isNum(broken)) {
     const limits =
       direction === 'both' ? [target - broken, target + broken] : [direction === 'above' ? target + broken : target - broken]
-    for (const b of limits) {
-      shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: b * scale, y1: b * scale, line: { color: verdictColor('broken'), dash: 'dash', width: 1 } })
+    const placed = limits.map((b) => hline(b * scale, { color: verdictColor('broken'), dash: 'dash', width: 1 }))
+    if (placed[0] !== null) {
+      annotations.push({ xref: 'paper', x: 1, xanchor: 'right', y: annY(placed[0]), yanchor: 'top', text: 'Rompu au-delà', showarrow: false, font: { color: verdictColor('broken'), size: 11 } })
     }
-    annotations.push({ xref: 'paper', x: 1, xanchor: 'right', y: limits[0] * scale, yanchor: 'top', text: 'Rompu au-delà', showarrow: false, font: { color: verdictColor('broken'), size: 11 } })
   }
 
   // Seuil critique de la méthode principale, et état actuel.
   if (numeric) {
     const crit = principal ? sweep.critical?.[principal] : null
-    if (crit && isNum(crit.warning_at)) {
-      const v = verticalLine(crit.warning_at, verdictColor('warning'), 'dot', 'Seuil critique')
+    const critX = crit && isNum(crit.warning_at) ? shapeX(crit.warning_at) : null
+    if (critX !== null) {
+      const v = verticalLine(critX, verdictColor('warning'), 'dot', 'Seuil critique')
       shapes.push(v.shape)
-      if (v.annotation) annotations.push(v.annotation)
+      if (v.annotation) annotations.push({ ...v.annotation, x: annX(critX) })
     }
     const current = sweep.current[axis.target]
-    if (typeof current === 'number') {
-      shapes.push(verticalLine(current, cssVar('--ct-text'), 'solid').shape)
-    }
+    const currentX = typeof current === 'number' ? shapeX(current) : null
+    if (currentX !== null) shapes.push(verticalLine(currentX, cssVar('--ct-text'), 'solid').shape)
   }
 
+  const caption: string[] = []
+  if (logY) {
+    const hidden = methods.reduce((n, m) => n + row(sweep.values[m]).filter((v) => isNum(v) && v <= 0).length, 0)
+    if (hidden > 0) {
+      caption.push(
+        hidden === 1
+          ? '1 valeur négative ou nulle non affichée (échelle logarithmique)'
+          : `${hidden} valeurs négatives ou nulles non affichées (échelle logarithmique)`,
+      )
+    }
+  }
   const ytitle = opts.measure ? `${opts.measure.label}${unit ? ` (${unit})` : ''}` : undefined
   const layout = baseLayout(view, { shapes, annotations, barmode: 'group' })
-  layout.yaxis = { ...axisLayout(yRange, ytitle) }
-  if (numeric) layout.xaxis = { ...axisLayout(axisRange(view, 'x'), uiString(view, 'x_title') ?? opts.axisLabel ?? axis.target) }
-  return { data, layout, caption: [] }
+  layout.yaxis = { ...axisLayout(yRange, ytitle, logY) }
+  if (numeric) {
+    layout.xaxis = {
+      ...axisLayout(axisRange(view, 'x'), uiString(view, 'x_title') ?? opts.axisLabel ?? axis.target, logX),
+    }
+  }
+  return { data, layout, caption }
 }
 
 /** Identifiant de la carte du Domaine de validité : PlotlyChart le reconnaît au clic (choix d'une case). */
@@ -788,6 +945,117 @@ function validityFigure(view: ViewResult, opts: ChartOptions): Figure {
   return { data, layout, caption }
 }
 
+/** Matrices affichées côte à côte dans une vue `heatmap` ; au-delà, elles sont comptées en légende. */
+export const MAX_MATRICES = 3
+/** Au-delà de cette taille (lignes ou colonnes), les valeurs ne sont plus écrites dans les cases. */
+export const MAX_WRITTEN = 12
+
+/**
+ * Matrices (vue `heatmap`) : une carte par série visible, côte à côte (A, puis QᵀQ, puis la Référence).
+ * Chaque série porte sa matrice dans `paths`, une liste par ligne : `paths[i][j]` = coefficient
+ * (i + 1, j + 1). Ligne 1 en haut, comme on écrit une matrice.
+ *
+ * Une seule échelle de couleur pour toutes les cartes, pour qu'une même couleur veuille dire la même
+ * valeur ; divergente et centrée sur 0 quand les signes sont mêlés. Bornes imposables par `ui.zmin`
+ * et `ui.zmax`, décimales par `ui.decimals`. Jamais la couleur seule : la valeur est écrite dans
+ * chaque case jusqu'à 12 × 12, et toujours donnée au survol.
+ */
+function heatmapFigure(view: ViewResult, opts: ChartOptions): Figure {
+  const all = view.series.filter((s) => isVisible(s, opts) && Array.isArray(s.paths) && s.paths.length > 0)
+  // La Référence en dernier : à droite, comme point de comparaison.
+  all.sort((a, b) => Number(a.role === 'reference') - Number(b.role === 'reference'))
+  const mats = all.slice(0, MAX_MATRICES)
+  if (mats.length === 0) {
+    return { data: [], layout: baseLayout(view), caption: ['Aucune matrice à afficher pour les méthodes choisies'] }
+  }
+
+  let lo = Infinity
+  let hi = -Infinity
+  for (const s of mats) {
+    for (const rowValues of s.paths ?? []) {
+      for (const v of rowValues) {
+        if (isNum(v)) [lo, hi] = [Math.min(lo, v), Math.max(hi, v)]
+      }
+    }
+  }
+  if (!Number.isFinite(lo)) [lo, hi] = [0, 1]
+  const mixed = lo < 0 && hi > 0
+  const bound = Math.max(Math.abs(lo), Math.abs(hi)) || 1
+  const zmin = uiNumber(view, 'zmin') ?? (mixed ? -bound : lo)
+  const zmax = uiNumber(view, 'zmax') ?? (mixed ? bound : hi === lo ? lo + 1 : hi)
+  const diverging = zmin < 0 && zmax > 0
+  const bg = cssVar('--ct-plot-bg')
+  const colorscale = diverging
+    ? [[0, roleColor('method')], [-zmin / (zmax - zmin), bg], [1, roleColor('truth')]]
+    : [[0, bg], [1, roleColor('method')]]
+  const decimals = uiNumber(view, 'decimals') ?? 2
+  const fmt = (v: Num) => (isNum(v) ? formatMeasure(v, { unit: '', scale: 1, decimals }) : '')
+
+  const gap = 0.08
+  const width = (1 - gap * (mats.length - 1)) / mats.length
+  const data: Trace[] = []
+  const annotations: Trace[] = []
+  const axes: Layout = {}
+  let large = false
+  mats.forEach((s, k) => {
+    const suffix = k === 0 ? '' : String(k + 1)
+    const rows = s.paths ?? []
+    const ncol = Math.max(...rows.map((r) => r.length))
+    const written = rows.length <= MAX_WRITTEN && ncol <= MAX_WRITTEN
+    large ||= !written
+    const z = rows.map((r) => Array.from({ length: ncol }, (_, j) => (isNum(r[j]) ? r[j] : null)))
+    data.push({
+      type: 'heatmap',
+      uid: s.id,
+      name: s.label,
+      x: Array.from({ length: ncol }, (_, j) => j + 1),
+      y: rows.map((_, i) => i + 1),
+      z,
+      zmin,
+      zmax,
+      colorscale,
+      showscale: k === mats.length - 1,
+      // Une seule barre de couleur (l'échelle est commune), sur la dernière carte.
+      ...(k === mats.length - 1 ? { colorbar: { tickfont: { color: cssVar('--ct-plot-axis') }, thickness: 12 } } : {}),
+      xgap: 1,
+      ygap: 1,
+      xaxis: `x${suffix}`,
+      yaxis: `y${suffix}`,
+      customdata: z.map((r) => r.map(fmt)),
+      hovertemplate: `${s.label}<br>ligne %{y}, colonne %{x} : %{customdata}<extra></extra>`,
+      ...(written
+        ? { text: z.map((r) => r.map(fmt)), texttemplate: '%{text}', textfont: { size: ncol > 8 ? 9 : 11, color: cssVar('--ct-text') } }
+        : {}),
+      showlegend: false,
+    })
+    const x0 = k * (width + gap)
+    const ticks = (count: number) =>
+      count <= MAX_WRITTEN ? { tickmode: 'array', tickvals: Array.from({ length: count }, (_, i) => i + 1) } : {}
+    axes[`xaxis${suffix}`] = {
+      ...axisLayout(null), ...ticks(ncol), domain: [x0, x0 + width], anchor: `y${suffix}`,
+      side: 'top', showgrid: false, zeroline: false, constrain: 'domain',
+    }
+    axes[`yaxis${suffix}`] = {
+      ...axisLayout(null), ...ticks(rows.length), anchor: `x${suffix}`, autorange: 'reversed',
+      scaleanchor: `x${suffix}`, constrain: 'domain', showgrid: false, zeroline: false,
+    }
+    annotations.push({
+      xref: 'paper', x: x0 + width / 2, xanchor: 'center', yref: 'paper', y: 0, yanchor: 'top', yshift: -8,
+      text: s.label, showarrow: false, font: { color: s.role === 'reference' ? cssVar('--ct-plot-axis') : cssVar('--ct-text'), size: 12 },
+    })
+  })
+
+  const caption = captionFor(view, 0)
+  if (all.length > mats.length) caption.push(`${mats.length} matrices affichées sur ${all.length}`)
+  if (large) caption.push('Valeurs au survol')
+  const layout = baseLayout(view, { ...axes, annotations, showlegend: false, hovermode: 'closest' })
+  // Pas de légende (le nom de chaque matrice est écrit dessous) : sans bloc `legend`, Plotly.validate
+  // ne bute plus sur une légende masquée.
+  delete layout.legend
+  layout.margin = { l: 40, r: 16, t: 40, b: 48 }
+  return { data, layout, caption }
+}
+
 /**
  * Figure d'une vue ; null si elle ne peut pas être dessinée (type non géré, ou aucune série hors
  * Sensibilité, dont les données viennent du balayage) : afficher la vue de secours.
@@ -807,6 +1075,8 @@ export function buildFigure(view: ViewResult, opts: ChartOptions): Figure | null
       return sensitivityFigure(view, opts)
     case 'validity_domain':
       return validityFigure(view, opts)
+    case 'heatmap':
+      return heatmapFigure(view, opts)
     default:
       // surface_3d (P1), vector_space (P2), measures_table : autres composants.
       return null

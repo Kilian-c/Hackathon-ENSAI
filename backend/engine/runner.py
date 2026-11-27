@@ -152,7 +152,9 @@ def _eval_arg(value: Any, env: Env) -> Any:
         return value
     try:
         return compile_expr(value).evaluate(env)
-    except ExprError:
+    except ExprError as exc:
+        if value.strip().startswith(("p.", "h.", "m.", "s.", "base.")):  # référence mal écrite, pas un texte
+            raise RunError(f"Argument de méthode invalide « {value} » : {exc}") from exc
         return value
 
 
@@ -382,6 +384,21 @@ def _paths_series(
     )
 
 
+MAX_MATRIX = 64  # lignes et colonnes servies au plus pour une vue `heatmap` (coin supérieur gauche)
+
+
+def _matrix_series(view_id: str, method: str, role: str, label: str, arr: np.ndarray) -> Series:
+    """Série `matrix` : une liste par ligne, `paths[i][j]` = coefficient (i + 1, j + 1)."""
+    return Series(
+        id=f"{view_id}.matrix.{method}",
+        slot="matrix",
+        method=method,
+        role=role,  # type: ignore[arg-type]
+        label=label,
+        paths=[_floats(row[:MAX_MATRIX]) for row in arr[:MAX_MATRIX]],
+    )
+
+
 def _arr(value: Any) -> np.ndarray | None:
     return None if value is None else np.asarray(value, dtype=float)
 
@@ -476,6 +493,22 @@ def _build_view(
                 ys.append(yt)
                 if xt is not None:
                     xs.append(xt)
+            continue
+        if slot == "matrix":  # matrice 2D par méthode (vue heatmap) ; la Référence vient de l'état sain
+            for m in spec.methods:
+                arr = _arr(_path(comp, m.id, path, rs))
+                if arr is None or arr.ndim != 2:
+                    continue
+                fingerprint = (slot, np.ascontiguousarray(arr).tobytes())
+                if fingerprint in seen:  # même matrice pour deux méthodes : dessinée une fois
+                    continue
+                seen.add(fingerprint)
+                result.series.append(_matrix_series(view.id, m.id, roles[m.id], labels[m.id], arr))
+            ref_arr = _arr(_path(base, primary, path, rs)) if primary in base.results else None
+            if ref_arr is not None and ref_arr.ndim == 2:
+                ref = _matrix_series(view.id, primary, "reference", "Référence (état sain)", ref_arr)
+                ref.id = f"{view.id}.matrix.{primary}.ref"
+                result.series.append(ref)
             continue
         if slot == "paths":  # faisceau de trajectoires : tableau (trajectoires, k), une série par méthode
             for m in spec.methods:
@@ -628,6 +661,8 @@ def _build_view(
             )
 
     result.shown, result.total = shown, total or shown
+    if "matrix" in paths:  # pas d'axes : la couleur est mise à l'échelle par l'interface
+        return result
     if "paths" in paths:  # bornes sur la Référence : les trajectoires de l'état sain
         reference = ref_paths if ref_paths is not None else (path_arrays[0] if path_arrays else None)
         result.axes = ViewAxes(
