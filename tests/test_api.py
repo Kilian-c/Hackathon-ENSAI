@@ -119,3 +119,17 @@ def test_validate_reports_line_errors() -> None:
     assert body["ok"] is False
     assert body["errors"] and all(e["message"] for e in body["errors"])
     assert body["tests"] == []
+
+
+def test_caps_on_requests() -> None:
+    points = [{"x": float(i), "y": 0.0} for i in range(21)]  # 20 points ajoutés au plus
+    assert (
+        client.post(
+            "/api/run", json={"experiment_id": "regression-lineaire", "state": {"extra_points": points}}
+        ).status_code
+        == 422
+    )
+    big = "# " + "x" * (64 * 1024) + "\n"  # YAML > 64 Ko
+    assert client.post("/api/run", json={"raw_content": big}).status_code == 422
+    assert client.post("/api/validate", json={"raw_content": big}).status_code == 422
+    assert client.post("/api/training/session", json={"filter": "toutes", "count": 11}).status_code == 422
