@@ -1,5 +1,11 @@
 # Notes de passation (la plus récente en haut)
 
+## H7 (19 h 30) : `integrate` générique, branche `r2/integrate-generique` (pas une relève)
+- Fusionné dans `main` à la demande de R2. `backend/methods/integrate.py` ne calcule plus l'énergie du pendule ni `full_turn` : `summary` = `max_rel_error` seulement. `pendule_euler.yaml` : mesures `energy_drift` et `full_turn` retirées, défi `rk4-gros-pas` réécrit (`s.err_angle == 'broken'`). `test_integrate.py` adapté. pytest et ruff verts.
+- **R1, à faire** : `scripts/make_fixtures.py` (lignes 323 à 370) fabrique encore `energy_drift` et `full_turn` : les retirer, puis régénérer `frontend/src/fixtures/pendule_*.run.json` (`uv run python scripts/make_fixtures.py`).
+- **R3, à faire** : régénérer `frontend/src/dev/specs/pendule_euler.spec.json` (contient encore les deux mesures et l'ancien défi). Sans effet tant que le moteur répond.
+- Reste propre au pendule : la courbe de sortie s'appelle `theta` (le YAML lit `curves.theta`).
+
 ## H7 (19 h) : expérience « Déséquilibre », branche `r2/desequilibre` (pas une relève)
 - Fusionné dans `main` à la demande de R2. Aucun fichier de R1 ni de R3 touché : seulement `experiments/desequilibre.yaml` (niveau « 1 », méthode `classifier`, 3 questions, 2 défis). Vérifications vertes (pytest, test 6 à 50 tirages, ruff, npm check, npm test).
 - Chiffres (graine 42, 300 études de 600 patients) : sensibilité du seuil « qui se trompe le moins » 77 % (50 % de malades), 44 % (1 sur 5), 1,2 % (1 sur 100) ; exactitude 77 %, 85 %, 99 %. Seuils 0,10 / 0,30 ; « un malade sur 5 » est Rompu avec 0,03 de marge : ne pas les changer sans rejouer la simulation.
