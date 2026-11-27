@@ -42,6 +42,7 @@
   --ct-plot-bg: var(--ct-surface);
   --ct-plot-grid: #21262d;
   --ct-plot-axis: var(--ct-muted);
+  --ct-plot-data: #adbac7;     /* données du générateur (nuage), communes à toutes les méthodes */
 
   /* --- Typographie --- */
   --ct-font: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -85,5 +86,6 @@
     --ct-verdict-warning: #9a6700;
 
     --ct-plot-grid: #d0d7de;
+    --ct-plot-data: #57606a;
   }
 }
