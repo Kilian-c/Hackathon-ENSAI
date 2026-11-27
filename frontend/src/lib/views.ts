@@ -1,95 +1,61 @@
 /**
- * views.ts : format des vues reçues du moteur, tel que l'interface l'attend (R3).
+ * views.ts : lecture des vues du moteur (R3).
  *
- * PROPOSITION PROVISOIRE, à aligner avec R1 dans backend/contracts.py (cahier, annexe E).
- * TODO(passation) : remplacer ces types par ceux de types.gen.ts dès qu'il existe.
+ * Les TYPES viennent de types.gen.ts (générés depuis backend/contracts.py) : ViewResult, Series,
+ * SweepResult... Ce fichier ajoute seulement ce que le contrat laisse libre, à savoir le contenu de
+ * `Series.data` selon le type de vue (annexe E du cahier), et des accès typés à ce contenu.
  *
- * Principe : le moteur résout les `bind` du YAML et renvoie une liste plate de séries prêtes
- * à dessiner. Chaque série dit à quel emplacement (`slot`) elle correspond, de quelle méthode
- * elle vient et quel rôle elle joue. L'interface ne connaît aucun nom de clé propre à un théorème.
+ * Contenu de `Series.data` attendu par l'interface (à garder aligné avec les fixtures de R1) :
+ * - points ou ligne (nuage, résidus, courbes) : { x: number[], y: number[] }
+ * - intervalles (Répétitions)                 : { est, low, high: number[], hit: boolean[] }
+ * - distribution                             : { x: number[] }  (valeurs à mettre en histogramme)
+ * - valeur scalaire (vraie valeur, seuil)    : { value: number }
+ * Les NaN arrivent en null : toutes les lectures les tolèrent.
  */
 
-import type { MethodRole, Verdict } from './roles'
+import type { MeasureResult, Series, SweepResult, ViewResult } from './types.gen'
+
+export type { Series, SweepResult, ViewResult }
 
 export type Num = number | null
 export type Range = [number, number]
 
-export type ViewType =
-  | 'scatter'
-  | 'residuals'
-  | 'repetitions'
-  | 'distribution'
-  | 'curves'
-  | 'sensitivity'
-  | 'validity_domain'
-  | 'surface_3d'
-  | 'vector_space'
-  | 'measures_table'
+/** Mise en forme d'une mesure (sous-ensemble de RunResult.measures.<id>). */
+export type MeasureFormat = Pick<MeasureResult, 'label'> & Partial<Pick<MeasureResult, 'unit' | 'scale' | 'decimals'>>
+
+/** Emplacement d'une série, lu dans son identifiant stable `<vue>.<emplacement>.<methode>`. */
+export function slotOf(s: Series): string {
+  return s.id.split('.')[1] ?? ''
+}
+
+/** Tableau numérique d'une série (null pour les valeurs absentes ou non numériques). */
+export function nums(s: Series, key: string): Num[] {
+  const v = s.data[key]
+  return Array.isArray(v) ? v.map((x) => (typeof x === 'number' && Number.isFinite(x) ? x : null)) : []
+}
+
+/** Tableau booléen d'une série. */
+export function bools(s: Series, key: string): boolean[] {
+  const v = s.data[key]
+  return Array.isArray(v) ? v.map((x) => x === true) : []
+}
+
+/** Valeur scalaire d'une série, ou null. */
+export function scalar(s: Series, key = 'value'): Num {
+  const v = s.data[key]
+  return typeof v === 'number' && Number.isFinite(v) ? v : null
+}
+
+/** Bornes [min, max] d'un axe de la vue, ou null (automatique). */
+export function axisRange(view: ViewResult, axis: 'x' | 'y'): Range | null {
+  const r = view.axes?.[axis]
+  return r && r.length === 2 ? [r[0], r[1]] : null
+}
 
 /**
- * Rôle d'une série : celui de sa méthode, ou bien
- * - reference : même série calculée à l'état sain (Référence, en pointillés) ;
- * - truth     : vraie valeur, solution exacte (générateur) ;
- * - data      : données du générateur, communes à toutes les méthodes (nuage de points).
+ * Série de données du générateur (nuage d'observations), commune à toutes les méthodes :
+ * pas de méthode d'origine, et ni vraie valeur, ni Référence, ni point ajouté.
  */
-export type SeriesRole = MethodRole | 'reference' | 'truth' | 'data'
-
-export interface ViewSeries {
-  /** Identifiant stable `<vue>.<emplacement>.<methode>` : Plotly s'en sert pour animer proprement. */
-  id: string
-  /** Emplacement du `bind` (x/y, fit, resid, est, stat, series, truth...). */
-  slot: string
-  /** Méthode d'origine ; null pour les données du générateur. */
-  method: string | null
-  role: SeriesRole
-  label: string
-  /** Calque pas à pas (P2), null sinon. */
-  layer?: string | null
-  x?: Num[]
-  y?: Num[]
-  /** Vue Répétitions (intervalles) : bornes et succès par répétition ; `x` porte l'estimation. */
-  low?: Num[]
-  high?: Num[]
-  hit?: boolean[]
-  /** Valeur scalaire (vraie valeur d'un paramètre, seuil). */
-  value?: Num
-}
-
-export interface ViewData {
-  id: string
-  type: ViewType
-  title: string
-  /** Vue Répétitions : intervalles ou trajectoires. */
-  mode?: 'intervals' | 'paths'
-  /** Bornes calculées sur la Référence ; null = automatique. */
-  axes: { x?: Range | null; y?: Range | null }
-  /** Nombre d'éléments affichés et calculés (100 intervalles sur 500 répétitions). */
-  shown: number
-  total: number
-  clipped: number
-  ui?: Record<string, unknown>
-  series: ViewSeries[]
-}
-
-/** Résultat d'un balayage (POST /api/sweep), pour la vue Sensibilité. Champs : CLAUDE.md, section 8. */
-export interface SweepData {
-  axes: { target: string; values: (number | string | boolean)[]; labels: string[] }[]
-  measure: string
-  values: Record<string, Num[]>
-  mc_se: Record<string, Num[] | null>
-  states: Record<string, (Verdict | null)[]>
-  critical: Record<string, { warning_at: Num; broken_at: Num } | null>
-  target: Num
-  ok_within: Num
-  broken_beyond: Num
-  direction: 'below' | 'above' | 'both' | null
-  current: Record<string, unknown>
-}
-
-/** Mise en forme d'une mesure (vient de RunResult.measures.<id>). */
-export interface MeasureFormat {
-  label: string
-  unit?: string
-  scale?: number
-  decimals?: number
+export function isGeneratorData(s: Series): boolean {
+  return s.method === null && (s.role === 'method' || s.role === 'correction')
 }

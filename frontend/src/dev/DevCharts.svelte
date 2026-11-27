@@ -6,7 +6,8 @@
 <script lang="ts">
   import PlotlyChart from '../components/PlotlyChart.svelte'
   import { displayRoles } from '../lib/roles'
-  import { pendulumFixture, pendulumMethods, regressionFixture, regressionMethods, regressionSweep } from './fakeViews'
+  import type { ViewResult } from '../lib/views'
+  import { pendulumFixture, regressionFixture, regressionMethods, regressionSweep } from './fakeViews'
 
   let hetero = $state(0.8)
   let pas = $state(0.6)
@@ -15,7 +16,6 @@
   let showReference = $state(true)
 
   const regRoles = displayRoles(regressionMethods)
-  const penRoles = displayRoles(pendulumMethods)
   const regLabels = Object.fromEntries(regressionMethods.map((m) => [m.id, m.label]))
 
   const regOn = $derived(new Set(correction ? ['ols', 'hc3'] : ['ols']))
@@ -27,9 +27,9 @@
   const sweep = $derived({ ...sweepBase, current: { 'h.hetero': hetero } })
   const pen = $derived(pendulumFixture(pas))
 
-  const sensView = {
-    id: 'sens', type: 'sensitivity' as const, title: 'Étude de sensibilité',
-    axes: {}, shown: 11, total: 11, clipped: 0, series: [],
+  const sensView: ViewResult = {
+    id: 'sens', type: 'sensitivity', title: 'Étude de sensibilité',
+    axes: null, shown: 11, total: 11, clipped: 0, data: { series: [] },
     ui: { x_title: 'Hétéroscédasticité h' },
   }
   const pct = (v: number) => `${(v * 100).toFixed(1).replace('.', ',')} %`
@@ -54,9 +54,9 @@
   </p>
 
   <div class="grid">
-    <PlotlyChart view={reg.views.nuage} roles={regRoles} methodsOn={regOn} {showReference} />
-    <PlotlyChart view={reg.views.residus} roles={regRoles} methodsOn={regOn} {showReference} />
-    <PlotlyChart view={reg.views.ic} roles={regRoles} methodsOn={regOn} {showReference} height={420} />
+    <PlotlyChart view={reg.views.nuage} methodsOn={regOn} {showReference} />
+    <PlotlyChart view={reg.views.residus} methodsOn={regOn} {showReference} />
+    <PlotlyChart view={reg.views.ic} methodsOn={regOn} {showReference} height={420} />
     <PlotlyChart
       view={sensView}
       roles={regRoles}
@@ -67,8 +67,8 @@
       methodLabels={regLabels}
       height={420}
     />
-    <PlotlyChart view={reg.views.pentes} roles={regRoles} methodsOn={regOn} {showReference} />
-    <PlotlyChart view={pen.view} roles={penRoles} methodsOn={penOn} {showReference} />
+    <PlotlyChart view={reg.views.pentes} methodsOn={regOn} {showReference} />
+    <PlotlyChart view={pen.view} methodsOn={penOn} {showReference} />
   </div>
 </section>
 

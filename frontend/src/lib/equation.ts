@@ -15,19 +15,14 @@
  */
 
 import { cssVar, type MethodRole, type Verdict } from './roles'
+import type { Equation, EquationResult } from './types.gen'
 
-// TODO(passation) : remplacer ces types par ceux de types.gen.ts quand il existera (H3 à H4).
-
-/** Bloc `equation` du YAML (ExperimentSpec). */
-export interface EquationSpec {
-  tex: string
-  terms: Record<string, { ok: string; corrected?: string }>
+/** Bloc `equation` du YAML (ExperimentSpec.equation). `corrected` peut manquer ou valoir null. */
+export type EquationSpec = Pick<Equation, 'tex'> & {
+  terms: Record<string, { ok: string; corrected?: string | null }>
 }
 
-/** Bloc `equation` de RunResult. */
-export interface EquationResult {
-  terms: Record<string, { violated_by: string[] }>
-}
+export type { EquationResult }
 
 /** Ce dont la règle a besoin dans RunResult. */
 export interface EquationContext {

@@ -3,7 +3,7 @@
  *
  * Fonctions pures, sans Svelte, testées par plot.test.ts. PlotlyChart.svelte ne fait que
  * passer le résultat à Plotly.react(). Aucune connaissance d'un théorème : tout vient du type
- * de vue, de l'emplacement (`slot`) et du rôle de chaque série.
+ * de vue, de l'emplacement de chaque série (lu dans son id) et de son rôle.
  *
  * Règles du cahier (section 3.1, annexe E) appliquées ici :
  * - axes fixes : bornes reçues du moteur (calculées sur la Référence), jamais recalculées ;
@@ -13,7 +13,20 @@
  */
 
 import { cssVar, plotlyStyle, verdictColor, type DisplayRole } from './roles'
-import type { MeasureFormat, Num, Range, SweepData, ViewData, ViewSeries } from './views'
+import {
+  axisRange,
+  bools,
+  isGeneratorData,
+  nums,
+  scalar,
+  slotOf,
+  type MeasureFormat,
+  type Num,
+  type Range,
+  type Series,
+  type SweepResult,
+  type ViewResult,
+} from './views'
 
 export type Trace = Record<string, unknown>
 export type Layout = Record<string, unknown>
@@ -26,17 +39,17 @@ export interface Figure {
 }
 
 export interface ChartOptions {
-  /** Rôle d'affichage de chaque méthode (roles.displayRoles). */
-  roles: Readonly<Record<string, DisplayRole>>
   /** Méthodes affichées (état d'affichage). */
   methodsOn: ReadonlySet<string>
   /** Afficher la Référence (état sain) en arrière-plan. */
   showReference: boolean
+  /** Vue Sensibilité : rôle d'affichage de chaque méthode (roles.displayRoles(RunResult.methods)). */
+  roles?: Readonly<Record<string, DisplayRole>>
   /** Vue Sensibilité : résultat du balayage (POST /api/sweep), null pendant le chargement. */
-  sweep?: SweepData | null
+  sweep?: SweepResult | null
   /** Vue Sensibilité : mise en forme de la mesure balayée. */
   measure?: MeasureFormat | null
-  /** Libellé de chaque méthode (RunResult.methods[].label), pour les légendes. */
+  /** Vue Sensibilité : libellé de chaque méthode (RunResult.methods[].label), pour la légende. */
   methodLabels?: Readonly<Record<string, string>>
 }
 
@@ -56,16 +69,13 @@ const PATTERN: Partial<Record<DisplayRole, string>> = {
 // Utilitaires
 // ---------------------------------------------------------------------------
 
-export function seriesRole(s: ViewSeries, roles: ChartOptions['roles']): DisplayRole | null {
-  if (s.role === 'reference') return 'reference'
-  if (s.role === 'truth') return 'truth'
-  if (s.role === 'data') return null
-  if (s.method && roles[s.method]) return roles[s.method]
-  return s.role === 'alternative' ? 'alternative_1' : s.role
+/** Rôle de style d'une série ; null pour les données du générateur (style neutre). */
+export function seriesRole(s: Series): DisplayRole | null {
+  return isGeneratorData(s) ? null : s.role
 }
 
-export function isVisible(s: ViewSeries, opts: ChartOptions): boolean {
-  if (s.role === 'data' || s.role === 'truth') return true
+export function isVisible(s: Series, opts: ChartOptions): boolean {
+  if (isGeneratorData(s) || s.role === 'truth' || s.role === 'injected') return true
   const methodShown = s.method === null || opts.methodsOn.has(s.method)
   return s.role === 'reference' ? opts.showReference && methodShown : methodShown
 }
@@ -80,6 +90,14 @@ export function withAlpha(color: string, alpha: number): string {
   if (!m) return color
   const n = parseInt(m[1], 16)
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+}
+
+function markerColor(role: DisplayRole): string {
+  return (plotlyStyle(role, 'markers').marker as { color: string }).color
+}
+
+function markerSymbol(role: DisplayRole): string {
+  return (plotlyStyle(role, 'markers').marker as { symbol: string }).symbol
 }
 
 export interface Clamped {
@@ -123,13 +141,16 @@ function pointsStyle(role: DisplayRole | null): Trace {
     return { mode: 'markers', marker: { color: cssVar('--ct-plot-data'), size: 5, opacity: 0.75 } }
   }
   const s = plotlyStyle(role, 'markers') as { mode: string; marker: Record<string, unknown> }
-  return { mode: 'markers', marker: { ...s.marker, size: 6, opacity: role === 'reference' ? 0.6 : 0.9 } }
+  return {
+    mode: 'markers',
+    marker: { ...s.marker, size: role === 'injected' ? 12 : 6, opacity: role === 'reference' ? 0.6 : 0.9 },
+  }
 }
 
 /** Points d'une série, avec les points hors cadre ramenés au bord (triangles). */
-function markerTraces(s: ViewSeries, role: DisplayRole | null, view: ViewData): { traces: Trace[]; clipped: number } {
-  const { inside, outside } = clampPoints(s.x ?? [], s.y ?? [], view.axes.x, view.axes.y)
-  const style = pointsStyle(role)
+function markerTraces(s: Series, view: ViewResult): { traces: Trace[]; clipped: number } {
+  const { inside, outside } = clampPoints(nums(s, 'x'), nums(s, 'y'), axisRange(view, 'x'), axisRange(view, 'y'))
+  const style = pointsStyle(seriesRole(s))
   const marker = style.marker as Record<string, unknown>
   const traces: Trace[] = [
     { type: 'scatter', uid: s.id, name: s.label, x: inside.x, y: inside.y, ...style, legendgroup: s.id },
@@ -152,18 +173,21 @@ function markerTraces(s: ViewSeries, role: DisplayRole | null, view: ViewData): 
   return { traces, clipped: outside.x.length }
 }
 
-/** Ligne d'une série, triée par x (une droite ajustée arrive dans l'ordre des observations). */
-function lineTrace(s: ViewSeries, role: DisplayRole | null): Trace {
+/** Ligne d'une série ; triée par x pour une droite ajustée (qui arrive dans l'ordre des observations). */
+function lineTrace(s: Series, sortByX: boolean): Trace {
+  const role = seriesRole(s)
+  const x = nums(s, 'x')
+  const y = nums(s, 'y')
   const pairs: [number, number][] = []
-  const x = s.x ?? []
-  const y = s.y ?? []
   for (let i = 0; i < Math.min(x.length, y.length); i++) {
     const xi = x[i]
     const yi = y[i]
     if (isNum(xi) && isNum(yi)) pairs.push([xi, yi])
   }
-  if (s.slot !== 'series') pairs.sort((a, b) => a[0] - b[0])
-  const style = role ? plotlyStyle(role, 'lines') : { mode: 'lines', line: { color: cssVar('--ct-plot-data'), width: 1.5 } }
+  if (sortByX) pairs.sort((a, b) => a[0] - b[0])
+  const style = role
+    ? plotlyStyle(role, 'lines')
+    : { mode: 'lines', line: { color: cssVar('--ct-plot-data'), width: 1.5 } }
   return {
     type: 'scatter',
     uid: s.id,
@@ -202,8 +226,12 @@ function axisLayout(range: Range | null | undefined, title?: string): Trace {
   }
 }
 
-export function baseLayout(view: ViewData, extra: Layout = {}): Layout {
-  const ui = view.ui ?? {}
+function uiString(view: ViewResult, key: string): string | undefined {
+  const v = view.ui?.[key]
+  return typeof v === 'string' ? v : undefined
+}
+
+export function baseLayout(view: ViewResult, extra: Layout = {}): Layout {
   return {
     uirevision: 'keep',
     paper_bgcolor: 'rgba(0,0,0,0)',
@@ -219,15 +247,15 @@ export function baseLayout(view: ViewData, extra: Layout = {}): Layout {
       font: { color: cssVar('--ct-plot-axis') },
     },
     hovermode: 'closest',
-    xaxis: axisLayout(view.axes.x, typeof ui.x_title === 'string' ? ui.x_title : undefined),
-    yaxis: axisLayout(view.axes.y, typeof ui.y_title === 'string' ? ui.y_title : undefined),
+    xaxis: axisLayout(axisRange(view, 'x'), uiString(view, 'x_title')),
+    yaxis: axisLayout(axisRange(view, 'y'), uiString(view, 'y_title')),
     shapes: [],
     annotations: [],
     ...extra,
   }
 }
 
-function captionFor(view: ViewData, clipped: number): string[] {
+function captionFor(view: ViewResult, clipped: number): string[] {
   const out: string[] = []
   if (view.total > view.shown) out.push(`${view.shown} affichés sur ${view.total} calculés`)
   const c = Math.max(clipped, view.clipped ?? 0)
@@ -240,18 +268,20 @@ function captionFor(view: ViewData, clipped: number): string[] {
 // ---------------------------------------------------------------------------
 
 /** Nuage, résidus, courbes : chaque série est une ligne ou des points selon son emplacement. */
-function xyFigure(view: ViewData, opts: ChartOptions): Figure {
+function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
   const data: Trace[] = []
   let clipped = 0
-  const visible = view.series.filter((s) => isVisible(s, opts) && s.x && s.y)
+  const visible = view.data.series.filter(
+    (s) => isVisible(s, opts) && s.data.x !== undefined && s.data.y !== undefined,
+  )
   // Référence d'abord, pour qu'elle reste derrière.
   visible.sort((a, b) => Number(b.role === 'reference') - Number(a.role === 'reference'))
   for (const s of visible) {
-    const role = seriesRole(s, opts.roles)
-    if (LINE_SLOTS.has(s.slot) || view.type === 'curves') {
-      data.push(lineTrace(s, role))
+    if (LINE_SLOTS.has(slotOf(s)) || view.type === 'curves') {
+      // Une courbe dans le temps arrive déjà dans l'ordre ; une droite ajustée doit être triée.
+      data.push(lineTrace(s, view.type !== 'curves'))
     } else {
-      const m = markerTraces(s, role, view)
+      const m = markerTraces(s, view)
       data.push(...m.traces)
       clipped += m.clipped
     }
@@ -267,23 +297,24 @@ function xyFigure(view: ViewData, opts: ChartOptions): Figure {
 }
 
 /** Répétitions (intervalles) : un intervalle par ligne, les ratés en rouge avec une croix. */
-function intervalsFigure(view: ViewData, opts: ChartOptions): Figure {
+function intervalsFigure(view: ViewResult, opts: ChartOptions): Figure {
   const data: Trace[] = []
   const shapes: Trace[] = []
   const annotations: Trace[] = []
   const rupture = cssVar('--ct-role-rupture')
-  const series = view.series.filter((s) => isVisible(s, opts) && s.low && s.high && s.x)
+  const series = view.data.series.filter(
+    (s) => isVisible(s, opts) && s.data.low !== undefined && s.data.high !== undefined,
+  )
   const spacing = series.length > 1 ? 0.8 / series.length : 0
   let rows = 0
 
   series.forEach((s, k) => {
-    const role = seriesRole(s, opts.roles) ?? 'method'
-    const color = (plotlyStyle(role, 'markers').marker as { color: string }).color
-    const symbol = (plotlyStyle(role, 'markers').marker as { symbol: string }).symbol
-    const est = s.x ?? []
-    const low = s.low ?? []
-    const high = s.high ?? []
-    const hit = s.hit ?? []
+    const role = seriesRole(s) ?? 'method'
+    const color = markerColor(role)
+    const est = nums(s, 'est')
+    const low = nums(s, 'low')
+    const high = nums(s, 'high')
+    const hit = bools(s, 'hit')
     rows = Math.max(rows, est.length)
     const groups = { ok: [] as number[], miss: [] as number[] }
     est.forEach((e, i) => {
@@ -301,7 +332,7 @@ function intervalsFigure(view: ViewData, opts: ChartOptions): Figure {
         y: idx.map((i) => i + k * spacing),
         customdata: idx.map((i) => [low[i], high[i], i + 1]),
         hovertemplate: 'Répétition %{customdata[2]} : [%{customdata[0]:.3f} ; %{customdata[1]:.3f}]<extra></extra>',
-        marker: { color: c, symbol: kind === 'ok' ? symbol : 'x', size: kind === 'ok' ? 4 : 7 },
+        marker: { color: c, symbol: kind === 'ok' ? markerSymbol(role) : 'x', size: kind === 'ok' ? 4 : 7 },
         error_x: {
           type: 'data',
           symmetric: false,
@@ -315,39 +346,48 @@ function intervalsFigure(view: ViewData, opts: ChartOptions): Figure {
     }
   })
 
-  for (const t of view.series.filter((s) => s.role === 'truth' && isNum(s.value))) {
-    const v = verticalLine(t.value as number, cssVar('--ct-role-truth'), 'solid', t.label)
-    shapes.push(v.shape)
-    if (v.annotation) annotations.push(v.annotation)
+  for (const t of view.data.series.filter((s) => s.role === 'truth')) {
+    const v = scalar(t)
+    if (v === null) continue
+    const line = verticalLine(v, cssVar('--ct-role-truth'), 'solid', t.label)
+    shapes.push(line.shape)
+    if (line.annotation) annotations.push(line.annotation)
   }
 
   const layout = baseLayout(view, { shapes, annotations })
-  layout.yaxis = { ...(layout.yaxis as Trace), range: [-1, Math.max(rows, 1)], autorange: false, showticklabels: false, title: undefined }
+  layout.yaxis = {
+    ...(layout.yaxis as Trace),
+    range: [-1, Math.max(rows, 1)],
+    autorange: false,
+    showticklabels: false,
+    title: undefined,
+  }
   return { data, layout, caption: captionFor(view, 0) }
 }
 
 /** Distribution : histogrammes superposés, bacs fixés par les bornes de l'axe. */
-function distributionFigure(view: ViewData, opts: ChartOptions): Figure {
+function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
   const data: Trace[] = []
   const shapes: Trace[] = []
   const annotations: Trace[] = []
-  const rx = view.axes.x
+  const rx = axisRange(view, 'x')
   const bins = rx ? { start: rx[0], end: rx[1], size: (rx[1] - rx[0]) / 40 } : undefined
-  for (const s of view.series.filter((x) => isVisible(x, opts))) {
-    if (isNum(s.value)) {
+  for (const s of view.data.series.filter((x) => isVisible(x, opts))) {
+    const v = scalar(s)
+    if (v !== null) {
       const color = s.role === 'truth' ? cssVar('--ct-role-truth') : cssVar('--ct-plot-axis')
-      const v = verticalLine(s.value, color, s.role === 'truth' ? 'solid' : 'dot', s.label)
-      shapes.push(v.shape)
-      if (v.annotation) annotations.push(v.annotation)
+      const line = verticalLine(v, color, s.role === 'truth' ? 'solid' : 'dot', s.label)
+      shapes.push(line.shape)
+      if (line.annotation) annotations.push(line.annotation)
       continue
     }
-    const role = seriesRole(s, opts.roles) ?? 'method'
-    const color = (plotlyStyle(role, 'markers').marker as { color: string }).color
+    const role = seriesRole(s) ?? 'method'
+    const color = markerColor(role)
     data.push({
       type: 'histogram',
       uid: s.id,
       name: s.label,
-      x: (s.x ?? []).filter(isNum),
+      x: nums(s, 'x').filter(isNum),
       histnorm: 'probability density',
       xbins: bins,
       autobinx: bins ? false : undefined,
@@ -362,81 +402,105 @@ function distributionFigure(view: ViewData, opts: ChartOptions): Figure {
   return { data, layout: baseLayout(view, { barmode: 'overlay', shapes, annotations }), caption: captionFor(view, 0) }
 }
 
+/** Ligne d'une grille de balayage à un axe (une grille à 2 axes va au Domaine de validité). */
+function row(grid: Num[] | Num[][] | undefined): Num[] {
+  if (!grid || grid.length === 0 || Array.isArray(grid[0])) return []
+  return grid as Num[]
+}
+
+/** Cible de la méthode principale : nombre, ou dictionnaire par méthode quand la cible est « base ». */
+function targetFor(sweep: SweepResult, method: string | undefined): Num {
+  const t = sweep.target
+  if (typeof t === 'number') return t
+  if (t && method && typeof t[method] === 'number') return t[method]
+  return null
+}
+
 /** Sensibilité : la mesure selon la perturbation, bande de tolérance, seuil critique. */
-function sensitivityFigure(view: ViewData, opts: ChartOptions): Figure {
+function sensitivityFigure(view: ViewResult, opts: ChartOptions): Figure {
   const sweep = opts.sweep
   if (!sweep || sweep.axes.length === 0) {
     return { data: [], layout: baseLayout(view), caption: ['Balayage en cours…'] }
   }
+  const roles = opts.roles ?? {}
   const scale = opts.measure?.scale ?? 1
   const unit = opts.measure?.unit ?? ''
   const axis = sweep.axes[0]
   const numeric = axis.values.every((v) => typeof v === 'number')
   const methods = Object.keys(sweep.values).filter((m) => opts.methodsOn.has(m))
+  const principal = Object.keys(sweep.values).find((m) => roles[m] === 'method')
   const data: Trace[] = []
   const shapes: Trace[] = []
   const annotations: Trace[] = []
   const scaled = (v: Num | undefined) => (isNum(v) ? v * scale : null)
 
+  const target = targetFor(sweep, principal)
+  const { ok_within: ok, broken_beyond: broken, direction } = sweep
+
   // Bornes verticales : valeurs, marges et cible, pour que la bande de tolérance soit visible.
   const all: number[] = []
   for (const m of methods) {
-    sweep.values[m].forEach((v, i) => {
-      const se = sweep.mc_se[m]?.[i]
-      if (isNum(v)) all.push(v - 2 * (isNum(se) ? se : 0), v + 2 * (isNum(se) ? se : 0))
+    const se = row(sweep.mc_se[m])
+    row(sweep.values[m]).forEach((v, i) => {
+      const e = se[i]
+      if (isNum(v)) all.push(v - 2 * (isNum(e) ? e : 0), v + 2 * (isNum(e) ? e : 0))
     })
   }
-  const { target, ok_within: ok, broken_beyond: broken, direction } = sweep
   if (isNum(target)) all.push(target)
   if (isNum(target) && isNum(broken)) all.push(direction === 'above' ? target + broken : target - broken)
-  const lo = Math.min(...all)
-  const hi = Math.max(...all)
+  const lo = all.length ? Math.min(...all) : 0
+  const hi = all.length ? Math.max(...all) : 1
   const pad = (hi - lo || 1) * 0.08
-  const yRange: Range = view.axes.y ?? [(lo - pad) * scale, (hi + pad) * scale]
+  const yRange: Range = axisRange(view, 'y') ?? [(lo - pad) * scale, (hi + pad) * scale]
 
   for (const m of methods) {
-    const role = opts.roles[m] ?? 'method'
-    const style = plotlyStyle(role, 'lines+markers')
-    const color = (style.marker as { color: string } | undefined)?.color ?? cssVar('--ct-role-method')
-    const y = sweep.values[m].map(scaled)
-    const se = sweep.mc_se[m]
+    const role = roles[m] ?? 'method'
+    const color = markerColor(role)
+    const y = row(sweep.values[m]).map(scaled)
+    const se = row(sweep.mc_se[m])
+    const name = opts.methodLabels?.[m] ?? m
+    const hover = `%{customdata} : %{y:.1f}${unit ? ' ' + unit : ''}<extra></extra>`
     if (numeric) {
-      if (se) {
-        const upper = y.map((v, i) => (v === null || !isNum(se[i]) ? null : v + 2 * (se[i] as number) * scale))
-        const lower = y.map((v, i) => (v === null || !isNum(se[i]) ? null : v - 2 * (se[i] as number) * scale))
-        data.push({ type: 'scatter', uid: `${view.id}.bande-haut.${m}`, x: axis.values, y: upper, mode: 'lines', line: { width: 0 }, showlegend: false, hoverinfo: 'skip', legendgroup: m })
-        data.push({ type: 'scatter', uid: `${view.id}.bande-bas.${m}`, x: axis.values, y: lower, mode: 'lines', line: { width: 0 }, fill: 'tonexty', fillcolor: withAlpha(color, 0.15), showlegend: false, hoverinfo: 'skip', legendgroup: m })
+      if (se.length > 0) {
+        const band = (sign: 1 | -1) =>
+          y.map((v, i) => (v === null || !isNum(se[i]) ? null : v + sign * 2 * (se[i] as number) * scale))
+        const common = { type: 'scatter', x: axis.values, mode: 'lines', line: { width: 0 }, showlegend: false, hoverinfo: 'skip', legendgroup: m }
+        data.push({ ...common, uid: `${view.id}.bande-haut.${m}`, y: band(1) })
+        data.push({ ...common, uid: `${view.id}.bande-bas.${m}`, y: band(-1), fill: 'tonexty', fillcolor: withAlpha(color, 0.15) })
       }
       data.push({
         type: 'scatter',
         uid: `${view.id}.mesure.${m}`,
-        name: opts.methodLabels?.[m] ?? m,
+        name,
         legendgroup: m,
         x: axis.values,
         y,
-        ...style,
+        ...plotlyStyle(role, 'lines+markers'),
         customdata: axis.labels,
-        hovertemplate: `%{customdata} : %{y:.1f}${unit ? ' ' + unit : ''}<extra></extra>`,
+        hovertemplate: hover,
       })
     } else {
       data.push({
         type: 'bar',
         uid: `${view.id}.mesure.${m}`,
-        name: opts.methodLabels?.[m] ?? m,
+        name,
         x: axis.labels,
         y,
-        error_y: se ? { type: 'data', array: se.map((v) => (isNum(v) ? 2 * v * scale : 0)), color: cssVar('--ct-plot-axis'), thickness: 1 } : undefined,
+        customdata: axis.labels,
+        hovertemplate: hover,
+        error_y: se.length > 0
+          ? { type: 'data', array: se.map((v) => (isNum(v) ? 2 * v * scale : 0)), color: cssVar('--ct-plot-axis'), thickness: 1 }
+          : undefined,
         marker: {
           color: withAlpha(color, 0.6),
           line: { color, width: 1.5 },
           pattern: { shape: PATTERN[role] ?? '', fgcolor: color, size: 6 },
         },
-        hovertemplate: `%{x} : %{y:.1f}${unit ? ' ' + unit : ''}<extra></extra>`,
       })
     }
   }
 
-  // Bande de tolérance (zone Fiable) et limite de rupture.
+  // Bande de tolérance (zone Fiable) et limite de rupture, pour la méthode principale.
   if (isNum(target) && isNum(ok)) {
     const t = target * scale
     const o = ok * scale
@@ -447,7 +511,8 @@ function sensitivityFigure(view: ViewData, opts: ChartOptions): Figure {
     annotations.push({ xref: 'paper', x: 1, xanchor: 'right', y: t, yanchor: 'bottom', text: 'Cible', showarrow: false, font: { color: cssVar('--ct-plot-axis'), size: 11 } })
   }
   if (isNum(target) && isNum(broken)) {
-    const limits = direction === 'both' ? [target - broken, target + broken] : [direction === 'above' ? target + broken : target - broken]
+    const limits =
+      direction === 'both' ? [target - broken, target + broken] : [direction === 'above' ? target + broken : target - broken]
     for (const b of limits) {
       shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: b * scale, y1: b * scale, line: { color: verdictColor('broken'), dash: 'dash', width: 1 } })
     }
@@ -456,8 +521,7 @@ function sensitivityFigure(view: ViewData, opts: ChartOptions): Figure {
 
   // Seuil critique de la méthode principale, et état actuel.
   if (numeric) {
-    const principal = methods.find((m) => opts.roles[m] === 'method')
-    const crit = principal ? sweep.critical[principal] : null
+    const crit = principal ? sweep.critical?.[principal] : null
     if (crit && isNum(crit.warning_at)) {
       const v = verticalLine(crit.warning_at, verdictColor('warning'), 'dot', 'Seuil critique')
       shapes.push(v.shape)
@@ -472,20 +536,20 @@ function sensitivityFigure(view: ViewData, opts: ChartOptions): Figure {
   const ytitle = opts.measure ? `${opts.measure.label}${unit ? ` (${unit})` : ''}` : undefined
   const layout = baseLayout(view, { shapes, annotations, barmode: 'group' })
   layout.yaxis = { ...axisLayout(yRange, ytitle) }
-  if (numeric) layout.xaxis = { ...axisLayout(view.axes.x ?? null, (view.ui?.x_title as string) ?? axis.target) }
+  if (numeric) layout.xaxis = { ...axisLayout(axisRange(view, 'x'), uiString(view, 'x_title') ?? axis.target) }
   return { data, layout, caption: [] }
 }
 
 /** Figure d'une vue ; null si le type n'est pas (encore) dessiné : afficher la vue de secours. */
-export function buildFigure(view: ViewData, opts: ChartOptions): Figure | null {
+export function buildFigure(view: ViewResult, opts: ChartOptions): Figure | null {
   switch (view.type) {
     case 'scatter':
     case 'residuals':
     case 'curves':
       return xyFigure(view, opts)
     case 'repetitions':
-      // TODO(passation) : mode « trajectoires » (LGN et TCL, P1).
-      return view.mode === 'paths' ? xyFigure(view, opts) : intervalsFigure(view, opts)
+      // Intervalles si les séries portent des bornes ; sinon trajectoires (LGN et TCL, P1).
+      return view.data.series.some((s) => s.data.low !== undefined) ? intervalsFigure(view, opts) : xyFigure(view, opts)
     case 'distribution':
       return distributionFigure(view, opts)
     case 'sensitivity':

@@ -6,23 +6,16 @@
  * Jamais la couleur seule : chaque rôle a un trait et un marqueur distincts.
  */
 
-/** Rôle d'affichage d'une série (cahier, annexe E). */
-export type DisplayRole =
-  | 'method'
-  | 'correction'
-  | 'alternative_1'
-  | 'alternative_2'
-  | 'reference'
-  | 'truth'
-  | 'rupture'
-  | 'injected'
+import type { MeasureResult, MethodInfo, Series } from './types.gen'
+
+/** Rôle d'affichage d'une série (cahier, annexe E) : celui que le moteur met dans Series.role. */
+export type DisplayRole = Series['role']
 
 /** Rôle d'une méthode tel que renvoyé par le moteur dans RunResult.methods[].role. */
-// TODO(passation) : remplacer par le type de types.gen.ts quand il existera (H3 à H4).
-export type MethodRole = 'method' | 'correction' | 'alternative'
+export type MethodRole = MethodInfo['role']
 
 /** Verdict d'une mesure, tel que renvoyé par le moteur. */
-export type Verdict = 'ok' | 'warning' | 'broken'
+export type Verdict = MeasureResult['states'][string]
 
 /** Valeurs de `line.dash` comprises par Plotly. */
 type PlotlyDash = 'solid' | 'dash' | 'dot' | 'dashdot'
