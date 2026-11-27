@@ -17,6 +17,10 @@
 - Chiffres (graine 42, 300 études de 600 patients) : sensibilité du seuil « qui se trompe le moins » 77 % (50 % de malades), 44 % (1 sur 5), 1,2 % (1 sur 100) ; exactitude 77 %, 85 %, 99 %. Seuils 0,10 / 0,30 ; « un malade sur 5 » est Rompu avec 0,03 de marge : ne pas les changer sans rejouer la simulation.
 - **R3** : pas de ligne de seuil dans la vue `distribution` (le seuil dépend de `h.rarete` et `p.ecart`, et `bind.threshold` n'accepte qu'un `p.<id>`) ; pas de courbe ROC (indépendante du seuil).
 
+## H6,5 (18 h 30) : correctif moteur fait par R3, branche `r3/p1` (pas une relève)
+- **R1, à relire** (`backend/engine/runner.py`, ligne 168) : `_compute_uncached` rappelait `with_extra_points` alors que `generate()` ajoute déjà les points posés : chaque point comptait deux fois. Le runner prend maintenant `world.variables` tel quel. Test : `tests/test_runner.py::test_extra_points_added_once` (échoue sans le correctif : 152 points au lieu de 151).
+- Sur la même branche (interface) : niveaux en mots, `segments`, `h1` et seuil dans `distribution`, banc de méthodes, ajout de points par clic, faisceau de trajectoires (attend les `paths` du TCL, R2).
+
 ## H6,5 (18 h 30) : planning revu, on a de l'avance (pas une relève)
 - Décision de Kilian : le P0 est presque vert, donc **jalon P0 avancé à H9 (21 h)**, P1 ouvert tout de suite, priorités P1 : mécaniques visuelles puis Import + Supabase. Coupes appliquées au P1 à H17. Détail et tâches dans l'ordre : **CLAUDE.md, section 2**.
 - R3 (jusqu'à 21 h) : niveaux en mots, `segments` dans `plot.ts`, puis banc de méthodes, trajectoires du TCL, ajout de points par clic.

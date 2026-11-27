@@ -165,7 +165,7 @@ def _compute_uncached(spec: ExperimentSpec, rs: ResolvedState) -> Computed:
     try:
         if isinstance(spec.generator, RandomGenerator):
             world = generate(spec, rs)
-            variables: dict[str, Any] = dict(world.with_extra_points(rs.extra_points).variables)
+            variables: dict[str, Any] = dict(world.variables)  # points posés : déjà dans generate()
             n_repeat = world.repeat
         elif isinstance(spec.generator, OdeGenerator):
             variables = _ode_world(spec, rs)

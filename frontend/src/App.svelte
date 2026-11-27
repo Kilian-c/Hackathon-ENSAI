@@ -8,6 +8,7 @@
   import { listExperiments } from './lib/labSource'
   import { LINK_VERSION, parseLink } from './lib/state'
   import type { ExperimentSummary } from './lib/types.gen'
+  import { levelLabel } from './lib/format'
 
   const link = parseLink(location.search)
   const query = new URLSearchParams(location.search)
@@ -72,7 +73,7 @@
           <li>
             <a href="?exp={encodeURIComponent(e.id)}&v={LINK_VERSION}">
               <strong>{e.title}</strong>
-              <span class="muted">{e.discipline} · {e.level}</span>
+              <span class="muted">{e.discipline} · {levelLabel(e.level)}</span>
             </a>
           </li>
         {/each}

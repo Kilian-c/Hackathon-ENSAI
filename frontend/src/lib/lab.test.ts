@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { formatControl, formatMargin, formatMeasure } from './format'
 import {
+  addPoint,
+  allowsPoints,
   axisTitle,
+  clearPoints,
+  removePoint,
+  viewPoints,
   brokenValue,
   currentOnAxes,
   headlineVerdict,
@@ -103,5 +108,31 @@ describe('lab : titre de l’axe d’un balayage', () => {
     expect(axisTitle(reg, 'h.hetero')).toBe(`${reg.hypotheses.hetero.label} : h`)
     expect(axisTitle(reg, 'p.n')).toBe(reg.params.n.label)
     expect(axisTitle(reg, 'h.inconnue')).toBe('h.inconnue')
+  })
+})
+
+describe('ajout de points', () => {
+  const spec = regressionSpec as unknown as ExperimentSpec
+  const s0 = defaultState(spec)
+  it('la vue du nuage les accepte, les autres non', () => {
+    const nuage = spec.views.find((v) => v.allow_point_injection)!.id
+    expect(allowsPoints(spec, nuage)).toBe(true)
+    expect(allowsPoints(spec, 'inexistante')).toBe(false)
+    expect(allowsPoints(studentSpec as unknown as ExperimentSpec, 'puissance')).toBe(false)
+  })
+  it('pose, arrondit, retire et efface sans toucher au reste de l’état', () => {
+    const s1 = addPoint(spec, s0, { x: 4.12345, y: -2.00001 })!
+    expect(s1.extra_points).toEqual([{ x: 4.123, y: -2 }])
+    expect(s1.seed).toBe(s0.seed)
+    const s2 = addPoint(spec, s1, { x: 1, y: 1 })!
+    expect(viewPoints(spec, s2)).toEqual([{ x: 4.123, y: -2 }, { x: 1, y: 1 }])
+    expect(removePoint(spec, s2, 0).extra_points).toEqual([{ x: 1, y: 1 }])
+    expect(clearPoints(spec, s2).extra_points).toEqual([])
+  })
+  it('refuse le 21e point', () => {
+    let s = s0
+    for (let i = 0; i < 20; i++) s = addPoint(spec, s, { x: i, y: i })!
+    expect(s.extra_points).toHaveLength(20)
+    expect(addPoint(spec, s, { x: 0, y: 0 })).toBeNull()
   })
 })

@@ -88,3 +88,14 @@ def test_intervals_view_keeps_every_method_even_with_identical_estimates() -> No
 def test_view_axis_titles_come_from_the_yaml() -> None:
     res = runner.run(_spec("regression_lineaire"))
     assert next(v for v in res.views if v.id == "residus").ui == {"x_title": "x", "y_title": "Résidu"}
+
+
+def test_extra_points_added_once() -> None:
+    """Un point posé au clic entre une seule fois dans l'échantillon (generate() l'ajoute déjà)."""
+    spec = _spec("regression_lineaire")
+    base = runner.run(spec, EngineState())
+    res = runner.run(spec, EngineState(extra_points=[{"x": 4.2, "y": 30.0}]))
+    data = lambda r: next(s for s in next(v for v in r.views if v.id == "nuage").series if s.role == "data")  # noqa: E731
+    before, after = data(base), data(res)
+    assert len(after.x) == len(before.x) + 1
+    assert after.x.count(4.2) == 1 and after.y[-1] == 30.0
