@@ -14,6 +14,12 @@ const lonely = {
   message:
     'Seuils proposés : ok_within = 0.028 (aucune perturbation du fichier ne la dépasse : pas de broken_beyond proposé) (fichier : ok_within = 0.025 ; broken_beyond = 0.1).',
 }
+const withReason = {
+  line: 90,
+  path: 'measures.bias',
+  message:
+    "Seuils proposés : ok_within = 0.03 (pas de broken_beyond proposé : aucune perturbation du fichier ne dépasse cette valeur) ; écart déjà présent à l'état sain : 0.013 (fichier : ok_within = 0.05 ; broken_beyond = 0.15).",
+}
 const realWarning = { line: null, path: 'questions', message: 'Moins de 3 questions : en ajouter.' }
 
 describe('Import : seuils proposés', () => {
@@ -23,6 +29,7 @@ describe('Import : seuils proposés', () => {
       line: 142,
       ok: 0.035,
       broken: 0.086,
+      reason: null,
       fileOk: 0.03,
       fileBroken: 0.1,
     })
@@ -30,6 +37,18 @@ describe('Import : seuils proposés', () => {
 
   it('lit une proposition sans broken_beyond (la valeur du fichier ne compte pas comme proposée)', () => {
     expect(parseProposal(lonely)).toMatchObject({ measure: 'false_alarm', ok: 0.028, broken: null, fileOk: 0.025, fileBroken: 0.1 })
+  })
+
+  it('lit la raison de l’absence de broken_beyond et ignore l’écart sain', () => {
+    expect(parseProposal(withReason)).toEqual({
+      measure: 'bias',
+      line: 90,
+      ok: 0.03,
+      broken: null,
+      reason: 'aucune perturbation du fichier ne dépasse cette valeur',
+      fileOk: 0.05,
+      fileBroken: 0.15,
+    })
   })
 
   it('accepte la notation scientifique de Python (format :g)', () => {

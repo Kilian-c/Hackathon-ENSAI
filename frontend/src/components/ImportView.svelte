@@ -38,10 +38,9 @@
   const errorLines = $derived(new Set((upToDate ? (report?.errors ?? []) : []).map((e) => e.line).filter((l) => l)))
   const canShare = $derived(schemaOk && sharingAvailable() && !sharing)
   // Seuils proposés par /api/validate : rangés par le moteur dans `warnings`, mis à part (aide, pas problème).
-  // MASQUÉS : recopiés tels quels, ils peuvent rendre l'état sain Fragile ou Rompu (carres_residus, seuil_roc,
-  // maximum_uniformes), car validate.py ne tient pas compte de l'écart déjà présent à l'état sain.
-  // TODO(passation) R1 : réactiver après correction de `_proposals`, et revoir les textes du tableau.
-  const SHOW_THRESHOLD_PROPOSALS = false
+  // `ok_within` tient compte de l'écart déjà présent à l'état sain : recopié, il garde l'état sain Fiable
+  // (tests/test_proposals.py).
+  const SHOW_THRESHOLD_PROPOSALS = true
   const warningGroups = $derived(splitWarnings(report?.warnings ?? []))
 
   // Brouillon gardé à chaque modification (léger : un seul appel à localStorage).
@@ -340,8 +339,8 @@
           <h3>Seuils suggérés par la simulation <span class="muted small">(facultatif)</span></h3>
           <p class="muted small">
             Écart toléré pour Fiable (<code>ok_within</code>) et au-delà duquel le verdict est Rompu
-            (<code>broken_beyond</code>), d'après le bruit de la simulation et vos contre-exemples. Votre fichier
-            reste valable tel quel.
+            (<code>broken_beyond</code>), d'après le bruit de la simulation et vos contre-exemples (ou, à défaut,
+            vos hypothèses cassées).{#if report?.ok} Votre fichier reste valable tel quel.{/if}
           </p>
           <div class="table-scroll">
             <table class="proposals">
@@ -361,7 +360,13 @@
                       </button>
                     </th>
                     <td>{frThreshold(p.fileOk)} / {frThreshold(p.fileBroken)}</td>
-                    <td>{frThreshold(p.ok)} / {frThreshold(p.broken)}</td>
+                    <td>
+                      {frThreshold(p.ok)} / {frThreshold(p.broken)}
+                      {#if p.reason}<span class="muted small">({p.reason})</span>{/if}
+                      {#if p.fileBroken !== null && p.ok >= p.fileBroken}
+                        <span class="muted small">(plus grand que le <code>broken_beyond</code> de votre fichier)</span>
+                      {/if}
+                    </td>
                   </tr>
                 {/each}
               </tbody>

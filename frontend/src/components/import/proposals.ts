@@ -15,8 +15,10 @@ export interface ThresholdProposal {
   measure: string
   line: number | null
   ok: number
-  /** null : aucune perturbation du fichier ne dépasse ok_within. */
+  /** null : pas de broken_beyond proposé (voir `reason`). */
   broken: number | null
+  /** Pourquoi il manque un broken_beyond (texte du moteur), null s'il est proposé. */
+  reason: string | null
   /** Valeurs actuelles du fichier (null si le message ne les donne pas). */
   fileOk: number | null
   fileBroken: number | null
@@ -46,6 +48,7 @@ export function parseProposal(issue: ValidateIssue): ThresholdProposal | null {
     line: issue.line,
     ok,
     broken: num(proposed.match(new RegExp(`broken_beyond = ${NUMBER}`))?.[1]),
+    reason: proposed.match(/\(pas de broken_beyond proposé : ([^)]*)\)/)?.[1] ?? null,
     fileOk: num(file.match(new RegExp(`ok_within = ${NUMBER}`))?.[1]),
     fileBroken: num(file.match(new RegExp(`broken_beyond = ${NUMBER}`))?.[1]),
   }
