@@ -130,7 +130,7 @@
     <p><button type="button" onclick={() => load(link.seed)}>Réessayer</button></p>
   {:else if session}
     {#if kind === 'fixtures'}
-      <p class="banner">Série de démonstration : le moteur ne fabrique pas encore les séries.</p>
+      <p class="banner">Série de démonstration : ces questions ne viennent pas du moteur.</p>
     {/if}
 
     {#if total === 0}

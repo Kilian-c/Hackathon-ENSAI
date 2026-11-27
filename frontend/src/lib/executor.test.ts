@@ -33,6 +33,11 @@ describe('api : erreurs en français', () => {
     await expect(api.run(req(3))).rejects.toMatchObject({ status: 0, message: expect.stringContaining('Impossible de joindre') })
   })
 
+  it('réponse 200 qui n’est pas du JSON (adresse du moteur absente en ligne)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<!doctype html>', { status: 200 })))
+    await expect(api.run(req(5))).rejects.toMatchObject({ message: expect.stringContaining('ne vient pas du moteur') })
+  })
+
   it('cache : la même requête ne repart pas au moteur', async () => {
     const fetchMock = vi.fn(async () => jsonResponse(200, { ok: true }))
     vi.stubGlobal('fetch', fetchMock)
