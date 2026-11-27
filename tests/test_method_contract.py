@@ -332,6 +332,11 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         15,
     ),
+    "spectrum": (
+        {"x": np.random.default_rng(1).standard_normal((20, 9)), "d": 3, "rng": np.random.default_rng(0)},
+        20,
+        None,
+    ),
     "formula_estimate": (
         {"est": _X0.mean(axis=1), "truth": 0.0, "rng": np.random.default_rng(0)},
         20,

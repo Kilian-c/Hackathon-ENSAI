@@ -16,9 +16,8 @@ import { VIEW_TYPES, VIEW_UI_KEYS } from './plot'
 /**
  * Types de vue que l'interface dessine mais que le moteur ne sert pas encore : tus dans le prompt, pour
  * qu'un assistant ne les propose pas (la vue retomberait sur le tableau de secours).
- * TODO(chantier modularité) : retirer `heatmap` quand runner.py la sert (R1, docs/chantier_modularite.md).
  */
-export const PENDING_VIEWS: ReadonlySet<string> = new Set(['heatmap'])
+export const PENDING_VIEWS: ReadonlySet<string> = new Set<string>()
 
 /** Une ligne par méthode : appel et arguments, valeurs de `kind`, ce qu'elle fournit, à quoi elle sert. */
 export function methodLine(m: CatalogMethod): string {

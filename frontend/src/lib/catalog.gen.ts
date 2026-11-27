@@ -470,6 +470,36 @@ export const CATALOG: Catalog = {
       "doc": "Par répétition : pente, somme des carrés des résidus (`sse`), et `excess` = sse / sse des MCO - 1 (0 pour la droite des MCO, positif pour toute autre droite)."
     },
     {
+      "name": "spectrum",
+      "args": [
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "d",
+          "default": null
+        }
+      ],
+      "kinds": [],
+      "provides": {
+        "reps": [
+          "lmax",
+          "lmin",
+          "radius"
+        ],
+        "curves": [
+          "matrix",
+          "eigenvalues"
+        ],
+        "summary": [
+          "semicircle_ks"
+        ]
+      },
+      "cost": "repeat * d**3",
+      "doc": "`lmax`, `lmin`, `radius` : plus grande, plus petite valeur propre et rayon spectral par répétition."
+    },
+    {
       "name": "statistic",
       "args": [
         {

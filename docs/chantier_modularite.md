@@ -11,17 +11,17 @@ Quand une ligne est terminée et fusionnée sur `main`, rayez-la (`~~...~~`) : l
 | Fichier | Nouveau ? | Ce qui change | Relu par |
 |---|---|---|---|
 | ~~`backend/methods/formula.py`~~ | oui | ~~méthodes génériques `formula_estimate`, `formula_test`, `formula_interval`~~ **Fait** (arguments = expressions réduisant l'axe des observations, ex. `mean(x, axis=1)`) ; 3 exemples ajoutés dans `tests/test_method_contract.py` (R2) | R2 |
-| `backend/methods/linalg/__init__.py` | oui | paquet de l'algèbre linéaire | R2 |
+| ~~`backend/methods/linalg/__init__.py`~~ | oui | ~~paquet de l'algèbre linéaire~~ **Fait** | R2 |
 | `backend/methods/linalg/linsolve.py` | oui | `linsolve` (gauss, gauss_pivot, cholesky, jacobi, gauss_seidel, cg) | R2 |
 | `backend/methods/linalg/eigen.py` | oui | `eigen` (power, qr, numpy) | R2 |
 | `backend/methods/linalg/orthonormalize.py` | oui | `orthonormalize` (cgs, mgs, householder) | R2 |
-| `backend/methods/linalg/spectrum.py` | oui | `spectrum` (spectre de matrices aléatoires) | R2 |
+| ~~`backend/methods/linalg/spectrum.py`~~ | oui | ~~`spectrum` (spectre de matrices aléatoires)~~ **Fait** (Wigner : `reps` lmax, lmin, radius ; `curves` matrix, eigenvalues ; `summary` semicircle_ks) | R2 |
 | ~~`backend/methods/__init__.py`~~ | non | ~~découverte automatique (`pkgutil`)~~ **Fait** | R2 |
 | ~~`backend/engine/expr.py`~~ | non | ~~liste blanche : `sort`, `quantile`, `cumprod`~~ **Fait** | R3 |
 | ~~`backend/engine/validate.py`~~ | non | ~~seuils proposés~~ **Fait** : un avertissement par mesure, `path` = `measures.<id>`, message « Seuils proposés : ok_within = x ; broken_beyond = y (fichier : ...). » (s'affiche déjà dans l'Import) | R3 |
-| `backend/engine/runner.py` | non | `_build_view` : vue `heatmap` (afficher une matrice), forme des données ci-dessous | R3 |
+| ~~`backend/engine/runner.py`~~ | non | ~~`_build_view` : vue `heatmap`~~ **Fait** : série `slot: matrix` par méthode + Référence (`.ref`), `bind: { matrix: curves.<clé> }`, 64 × 64 au plus (coin supérieur gauche) | R3 |
 | `scripts/new_experiment.py` | oui | crée un YAML à partir d'un modèle (statistique, régression, classifieur, algèbre) ; mettre en tête `# yaml-language-server: $schema=./schema.json` | R2 |
-| `experiments/matrices_wigner.yaml` | oui | expérience pilote de l'algèbre, simulée avant d'écrire les seuils | R2 |
+| ~~`experiments/matrices_wigner.yaml`~~ | oui | ~~expérience pilote de l'algèbre~~ **Fait** : universalité de Wigner (normale, uniforme, exponentielle : demi-cercle ; Student à 2 ddl, Cauchy : rompu), 40 graines sans verdict ambigu, test 6 à 50 tirages vert | R2 |
 | ~~`tests/test_formula.py`~~ | oui | ~~tests des méthodes `formula_*`~~ **Fait** | |
 | `tests/test_linalg.py` | oui | tests de `linalg/` (comparaison à `np.linalg`, vectorisation, temps de calcul) | |
 | ~~`tests/test_api.py`~~ | non | ~~`/api/validate` : seuils proposés~~ **Fait** | |

@@ -41,10 +41,10 @@ describe('prompt de l’écran Import', () => {
     expect(prompt).toContain('rate(f)')
     expect(prompt).not.toContain('summary_dict')
   })
-  it('une vue que le moteur ne sert pas encore (heatmap) n’est pas proposée, ni ses réglages', () => {
-    expect(PENDING_VIEWS.has('heatmap')).toBe(true)
-    expect(prompt).not.toContain('- heatmap : ')
-    expect(prompt).not.toContain('zmin (')
+  it('la vue heatmap, servie par le moteur depuis matrices_wigner, est proposée avec ses réglages', () => {
+    expect(PENDING_VIEWS.has('heatmap')).toBe(false)
+    expect(prompt).toContain('- heatmap : ')
+    expect(prompt).toContain('zmin (')
   })
   it('une méthode ajoutée au catalogue apparaît sans rien recopier', () => {
     const extra: Catalog = {
