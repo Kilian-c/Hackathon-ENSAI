@@ -1,0 +1,89 @@
+/*
+ * tokens.css : thème sombre et palette de sens de Crash-Test (R3).
+ *
+ * SEULE source des couleurs de l'interface. Les composants lisent ces variables en CSS
+ * (var(--ct-role-correction)) ; les graphiques Plotly les lisent via lib/roles.ts.
+ * Ne jamais écrire une couleur en dur dans un composant : ajouter une variable ici.
+ *
+ * Rappel : jamais la couleur seule. Chaque rôle a aussi un trait et un marqueur (roles.ts),
+ * chaque verdict a aussi une icône et un mot (Fiable, Fragile, Rompu).
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* --- Surfaces et texte --- */
+  --ct-bg: #0d1117;            /* fond de page */
+  --ct-surface: #161b22;       /* panneaux, cartes */
+  --ct-surface-2: #1c2230;     /* survol, champ actif */
+  --ct-border: #30363d;
+  --ct-text: #e6edf3;
+  --ct-muted: #8b949e;         /* texte secondaire, légendes */
+  --ct-focus: #4ea1ff;         /* anneau de focus clavier */
+
+  /* --- Rôles des séries (cahier, annexe E) --- */
+  --ct-role-method: #4ea1ff;
+  --ct-role-correction: #3fb950;
+  --ct-role-alternative-1: #d2a8ff;
+  --ct-role-alternative-2: #56d4dd;
+  --ct-role-reference: #6e7681;
+  --ct-role-truth: #f0883e;    /* vraie valeur, générateur */
+  --ct-role-rupture: #f85149;
+  --ct-role-injected: #e6edf3; /* point posé à la main */
+
+  /* --- Verdicts (Fiable, Fragile, Rompu) ---
+   * Fiable et Rompu reprennent Correction et Rupture. Fragile n'a pas de couleur dans le cahier :
+   * ambre, distinct de l'orange du générateur. */
+  --ct-verdict-ok: var(--ct-role-correction);
+  --ct-verdict-warning: #d29922;
+  --ct-verdict-broken: var(--ct-role-rupture);
+
+  /* --- Graphiques --- */
+  --ct-plot-bg: var(--ct-surface);
+  --ct-plot-grid: #21262d;
+  --ct-plot-axis: var(--ct-muted);
+
+  /* --- Typographie --- */
+  --ct-font: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --ct-font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --ct-text-sm: 0.875rem;
+  --ct-text-md: 1rem;
+  --ct-text-lg: 1.25rem;
+  --ct-text-xl: 1.75rem;
+
+  /* --- Espacements et formes --- */
+  --ct-space-1: 0.25rem;
+  --ct-space-2: 0.5rem;
+  --ct-space-3: 0.75rem;
+  --ct-space-4: 1rem;
+  --ct-space-6: 1.5rem;
+  --ct-space-8: 2rem;
+  --ct-radius: 6px;
+  --ct-radius-lg: 10px;
+  --ct-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
+}
+
+/* Version impression (captures, export PDF) : palette claire du cahier, annexe E. */
+@media print {
+  :root {
+    color-scheme: light;
+    --ct-bg: #ffffff;
+    --ct-surface: #f6f8fa;
+    --ct-surface-2: #eef3f8;
+    --ct-border: #d0d7de;
+    --ct-text: #1f2328;
+    --ct-muted: #57606a;
+
+    --ct-role-method: #1d6fd8;
+    --ct-role-correction: #1f883d;
+    --ct-role-alternative-1: #8250df;
+    --ct-role-alternative-2: #1b7c83;
+    --ct-role-reference: #57606a;
+    --ct-role-truth: #c95e12;
+    --ct-role-rupture: #cf222e;
+    --ct-role-injected: #1f2328;
+    --ct-verdict-warning: #9a6700;
+
+    --ct-plot-grid: #d0d7de;
+  }
+}
