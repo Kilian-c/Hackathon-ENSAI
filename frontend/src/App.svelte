@@ -12,17 +12,17 @@
     type Verdict,
   } from './lib/roles'
   import DevCharts from './dev/DevCharts.svelte'
+  import { api } from './lib/executor'
 
-  const apiUrl = import.meta.env.VITE_API_URL ?? ''
   const verdicts: Verdict[] = ['ok', 'warning', 'broken']
 
   let status = $state<'attente' | 'ok' | 'erreur'>('attente')
 
   $effect(() => {
-    fetch(`${apiUrl}/api/health`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then(() => (status = 'ok'))
-      .catch(() => (status = 'erreur'))
+    api.health().then(
+      () => (status = 'ok'),
+      () => (status = 'erreur'),
+    )
   })
 
   function describe(role: (typeof ALL_ROLES)[number]): string {
