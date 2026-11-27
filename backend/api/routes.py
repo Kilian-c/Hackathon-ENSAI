@@ -17,6 +17,8 @@ from backend.contracts import (
     SweepResult,
     TrainingRequest,
     TrainingSessionResponse,
+    ValidateRequest,
+    ValidateResponse,
 )
 from backend.engine.loader import ExperimentError
 from backend.engine.runner import RunError, run
@@ -24,6 +26,7 @@ from backend.engine.schema import ExperimentSpec
 from backend.engine.state import StateError
 from backend.engine.sweep import sweep
 from backend.engine.training import SEED_RANGE, build_session
+from backend.engine.validation import validate
 
 router = APIRouter(prefix="/api")
 
@@ -106,3 +109,9 @@ def post_training_session(request: TrainingRequest) -> TrainingSessionResponse:
         )
     except RunError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/validate", response_model=ValidateResponse)
+def post_validate(request: ValidateRequest) -> ValidateResponse:
+    """Erreurs par ligne du YAML reçu, puis tests 1, 3, 4 et 10 s'il est valide."""
+    return validate(request.raw_content)

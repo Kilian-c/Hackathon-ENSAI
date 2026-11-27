@@ -102,3 +102,20 @@ def test_training_same_seed_same_series() -> None:
 def test_training_unknown_filter_is_french_422() -> None:
     r = client.post("/api/training/session", json={"filter": "nexiste-pas"})
     assert r.status_code == 422 and "Aucune expérience" in r.json()["detail"]
+
+
+def test_validate_official_yaml_passes() -> None:
+    from backend.api.registry import EXPERIMENTS_DIR
+
+    raw = (EXPERIMENTS_DIR / "somme_des.yaml").read_text(encoding="utf-8")
+    body = client.post("/api/validate", json={"raw_content": raw}).json()
+    assert body["errors"] == []
+    assert {t["id"] for t in body["tests"]} == {1, 3, 4, 10}
+    assert body["ok"], body["tests"]
+
+
+def test_validate_reports_line_errors() -> None:
+    body = client.post("/api/validate", json={"raw_content": "schema_version: 1\nid: x\nbidon: 3\n"}).json()
+    assert body["ok"] is False
+    assert body["errors"] and all(e["message"] for e in body["errors"])
+    assert body["tests"] == []
