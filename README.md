@@ -35,7 +35,7 @@ cd frontend && npm install       # interface
 | Types de l'interface | `npm run check` | `frontend/` |
 | Tests de l'interface | `npm test` | `frontend/` |
 | Construire l'interface | `npm run build` | `frontend/` |
-| Contexte pour un LLM de discussion | `node scripts/pack.mjs <r1\|r2\|r3\|r4> [--diff]` | racine |
+| Contexte pour un LLM de discussion | `node scripts/pack.mjs <r1|r2|r3|r4> [--diff | --full]` | racine |\|r2\|r3\|r4> [--diff]` | racine |
 
 **Rien n'entre dans `main` sans les quatre vérifications au vert** : `pytest`, `ruff check`, `npm run check`, `npm test`.
 
@@ -43,14 +43,24 @@ cd frontend && npm install       # interface
 
 ## Travailler avec un LLM de discussion (sans accès au dépôt)
 
-Pour R2 et R4, qui codent avec un LLM en conversation. Le but : lui donner **le strict nécessaire**, pas tout le dépôt (l'export complet fait environ 90 000 tokens, dont la moitié est le cahier et les fichiers de verrouillage).
+Pour R2 et R4, qui codent avec un LLM en conversation. Le LLM doit **voir tout ce qui existe** (sinon il invente des noms et des formats incohérents), sans payer tout le code en entier. D'où un pack **hybride** :
 
-1. **Début de conversation** : `node scripts/pack.mjs r2` (ou `r4`) crée `context/r2.md` (20 000 à 30 000 tokens) : `CLAUDE.md`, la dernière passation, vos notes, vos fichiers et les contrats que vous lisez. Collez-le en premier message, avec : « Je suis R2. Lis ce contexte, puis attends ma demande. »
-2. **En cours de conversation** : après un `git pull` ou vos propres changements, `node scripts/pack.mjs r2 --diff` crée `context/r2-diff.md` avec **seulement les fichiers modifiés** depuis le dernier pack (souvent moins de 5 000 tokens). Collez-le en disant « Voici les fichiers qui ont changé ».
-3. **Nouvelle conversation** quand le LLM commence à oublier ou à se contredire : refaites un pack complet. C'est moins cher que de traîner un long historique.
-4. **Pour une question précise**, ne collez que le fichier concerné : souvent suffisant et bien moins cher.
+- **Partie A, en entier** : `CLAUDE.md`, la dernière passation, vos notes et les fichiers de votre rôle (ceux que le LLM a le droit de modifier).
+- **Partie B, compressée** : tout le reste du dépôt, front et back, réduit aux signatures, types et docstrings (les corps de fonctions sont omis). Le LLM voit ainsi les noms, les types et les formats des autres, et sait qu'il ne doit pas réécrire ces fichiers.
+- Le cahier, les fichiers de verrouillage et les images sont exclus de tout export (`.repomixignore`).
 
-Le code renvoyé par le LLM : collez-le dans le bon fichier, lancez les tests, puis commitez sur une branche (`r2/methodes-ols`). Le dossier `context/` n'est jamais commité.
+| Commande | Produit | Quand |
+|---|---|---|
+| `node scripts/pack.mjs | Contexte pour un LLM de discussion | `node scripts/pack.mjs <r1|r2|r3|r4> [--diff | --full]` | racine |` | `context/r2.md`, hybride (environ 35 000 tokens aujourd'hui) | début de conversation |
+| `node scripts/pack.mjs | Contexte pour un LLM de discussion | `node scripts/pack.mjs <r1|r2|r3|r4> [--diff | --full]` | racine | --diff` | `context/r2-diff.md`, seulement les fichiers modifiés depuis votre dernier pack, en entier | après un `git pull` ou vos changements |
+| `node scripts/pack.mjs | Contexte pour un LLM de discussion | `node scripts/pack.mjs <r1|r2|r3|r4> [--diff | --full]` | racine | --full` | `context/r2.md`, tout le dépôt en entier (environ 50 000 tokens aujourd'hui, davantage ensuite) | si votre LLM a une grande fenêtre |
+
+1. **Début de conversation** : collez `context/| Contexte pour un LLM de discussion | `node scripts/pack.mjs <r1|r2|r3|r4> [--diff | --full]` | racine |.md` en premier message, avec : « Je suis R2. Lis ce contexte en suivant ses consignes, puis attends ma demande. »
+2. **En cours de conversation** : collez `context/| Contexte pour un LLM de discussion | `node scripts/pack.mjs <r1|r2|r3|r4> [--diff | --full]` | racine |-diff.md` en disant « Voici les fichiers qui ont changé ».
+3. **Si le LLM a besoin d'un fichier de la partie B en entier**, il doit le demander ; collez-le simplement.
+4. **Nouvelle conversation** quand le LLM commence à oublier ou à se contredire : refaites un pack complet. C'est moins cher que de traîner un long historique.
+
+Le code renvoyé par le LLM : collez-le dans le bon fichier, lancez les tests, puis commitez sur une branche (`| Contexte pour un LLM de discussion | `node scripts/pack.mjs <r1|r2|r3|r4> [--diff | --full]` | racine |/methodes-ols`). Le dossier `context/` n'est jamais commité.
 
 ---
 

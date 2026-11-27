@@ -1,0 +1,13 @@
+# Exclu de tout export repomix : gros et inutile pour coder.
+docs/*.pdf
+docs/*.tex
+**/uv.lock
+**/package-lock.json
+**/*.svg
+**/*.png
+**/.gitkeep
+LICENSE
+context/
+repomix-output.*
+frontend/src/dev/
+frontend/.vscode/
