@@ -194,6 +194,7 @@ views:
   - id: nuage
     type: scatter
     title: "Nuage et droite ajustée"
+    ui: { x_title: "x", y_title: "y" }
     allow_point_injection: true     # fiche F.4
     inspect: true                   # fiche F.6
     axes: { x: auto, y: auto }
@@ -213,11 +214,13 @@ views:
   - id: residus
     type: residuals
     title: "Résidus"
+    ui: { x_title: "x", y_title: "Résidu" }
     bind: { x: example.x, resid: example.resid }
   - id: ic
     type: repetitions
     mode: intervals
     title: "100 intervalles de confiance empilés"
+    ui: { x_title: "Estimation de la pente" }
     bind: { est: reps.est, low: reps.low, high: reps.high, hit: reps.hit, truth: p.beta1 }
   - id: sens
     type: sensitivity

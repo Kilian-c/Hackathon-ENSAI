@@ -1,5 +1,15 @@
 # Notes de passation (la plus récente en haut)
 
+## H4 (16 h 15) : `r2/runner` fusionnée dans `r3/entrainement-et-cours` (pas une relève)
+Cette branche réunit le vrai moteur de R2, l'écran d'Entraînement et les nouvelles expériences : c'est elle qu'il faut fusionner dans `main`. Les 4 expériences ont été rejouées sur le vrai `run()` : mêmes valeurs de la mesure primaire qu'au mini-pipeline.
+
+**Correctifs faits à la fusion, à relire par R1 et R2**
+- `backend/methods/__init__.py` importe toutes les méthodes : sans cela, les 3 nouvelles expériences renvoyaient une erreur 500, sans qu'aucun test le signale (d'autres fichiers de test les importaient).
+- `backend/engine/sweep.py` : une hypothèse continue est balayée sur la grille de son `step`, sans doublon.
+- `tests/test_runner.py` : la vue des intervalles n'attend plus que MCO et HC3 (Newey-West retiré). `tests/_mini_run.py` supprimé, comme sur `r2/runner`.
+- `match_summary` retiré de `training_session.json` et de `scripts/make_fixtures.py` (le moteur refusait la correction).
+- **R2** : le pendule et Newey-West sont abandonnés (note ci-dessous), n'y passez plus de temps.
+
 ## H4 (16 h) : changement des expériences (pas une relève)
 Décision de Kilian : ne montrer que des théorèmes vus en cours. P0 : régression (IC d'une pente), TCL, multicolinéarité, tests multiples. Student/Wilcoxon et pendule sont abandonnés. Aucun fichier de contrat modifié. Vérifié sur le mini-pipeline `tests/_mini_run.py` (graine 42, 500 répétitions), pas sur le moteur.
 
@@ -10,9 +20,8 @@ Décision de Kilian : ne montrer que des théorèmes vus en cours. P0 : régress
 - TCL : une correction par la médiane a été essayée et retirée (fausse sous loi exponentielle). Rien ne répare la variance infinie : c'est voulu.
 
 **R1**
-- Importer dans le runner (ou `methods/__init__.py`) : `clt_mean`, `ols_two`, `pairwise_tests`, `ols_ci`.
+- Import des méthodes et grille du balayage : faits à la fusion (note ci-dessus).
 - Plus besoin du générateur `ode` en P0.
-- Balayage de `h.groupes` (continu de 2 à 10, pas 1) : prendre les valeurs entières de `range`, pas 11 points de 0 à 1. De même, `h.rho` va jusqu'à 0,9 (TCL) ou 0,99 (colinéarité).
 - Tukey : `studentized_range.ppf` prend près de 0,7 s au premier appel d'un couple (groupes, ddl), puis reste en cache ; à surveiller pour la limite de 2 s et le balayage.
 - Fixtures à refaire pour les 3 nouvelles ; numéro de ligne ajusté dans `tests/test_engine.py` (`test_unknown_repair_reports_line`).
 

@@ -108,6 +108,7 @@ views:
   - id: trajectoire
     type: curves
     title: "Angle au cours du temps"
+    ui: { x_title: "Temps (s)", y_title: "Angle (rad)" }
     bind: { t: curves.t, series: [ { y: curves.theta, label: "Angle" } ], truth: gen.theta }
   - id: sens
     type: sensitivity

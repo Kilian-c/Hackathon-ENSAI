@@ -401,7 +401,7 @@ def full_state(params: dict, hypotheses: dict, defaults: dict):
             "extra_points": [], "seed": SEED}
 
 
-REG_DEFAULTS = {"params": {"n": 150, "beta1": 1.5, "match_summary": False},
+REG_DEFAULTS = {"params": {"n": 150, "beta1": 1.5},
                 "hypotheses": {"hetero": 0.0, "autocorr": False, "error_law": "normal",
                                "relation": "linear", "add_leverage": False}}
 STU_DEFAULTS = {"params": {"n": 25, "delta": 0.5}, "hypotheses": {"loi": "normal"}}
