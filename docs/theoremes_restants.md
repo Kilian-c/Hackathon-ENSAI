@@ -7,7 +7,7 @@
 | Fichier | Niveau | Méthodes |
 |---|---|---|
 | `regression_lineaire`, `multicolinearite`, `theoreme_central_limite`, `tests_multiples` | 3, 3, 2, 2 | `ols_ci`, `ols_two`, `clt_mean`, `pairwise_tests` |
-| `somme_des` | 1 | `statistic` |
+| `somme_des`, `moyenne_mediane` | 1 | `statistic` |
 | `seuil_roc`, `desequilibre` | 1 | `classifier` (kind « seuil ») |
 | `carres_residus` | 1 | `regressor` (ols, manuelle) |
 
@@ -29,11 +29,10 @@ Méthodes existantes : `statistic` (sum, mean, max, min, median), `classifier` (
 | Binomiale = somme de Bernoulli (1) | 1 | `statistic` (sum) |
 | Maximum de n uniformes (2), minimum d'exponentielles (3) | 1 | `statistic` (max, min) |
 | Mélange θP + (1−θ)Dirac (2) | 1 | option `expr:` pour la loi |
-| Moyenne contre médiane + valeur extrême (1) | 1 | `statistic` ; le point posé au clic est P1 |
 | Y = g(X), inversion F⁻¹(U) (2, 3) | 1 | choix de g ou de la loi par une hypothèse de type `choice` |
 | Poisson ≈ binomiale (2) | 2 | loi `poisson` absente du registre (option `expr:`) |
 | Séparation et AUC (2), coûts asymétriques (2), comparer deux modèles (3) | 1 | `classifier` ; coûts : à faire lire par `summary` |
-| Levier contre aberrant (1), régression vers la moyenne (2), Simpson (2), variable omise (3), extrapolation (2) | 1 | `regressor` / `ols_ci` ; Anscombe : `ols_match` est une fonction du générateur |
+| Levier contre aberrant (1, déjà en partie dans `carres_residus`), régression vers la moyenne (2), Simpson (2), variable omise (3), extrapolation (2) | 1 | `regressor` / `ols_ci` ; Anscombe : `ols_match` est une fonction du générateur |
 | Fréquence de pile / LGN du dé (1), Cauchy (2), fléchettes pour π (1), intégrale Monte Carlo (2), marche aléatoire (2) | 1 ou 2 | vue en trajectoires (`paths`, servi pour le TCL) ; vérifier que `cumsum` est dans la liste blanche |
 | Sondage et marge d'erreur (1), pièce truquée et puissance (2) | 2 | test sur une proportion à écrire |
 | 20 tests, un « significatif » (2) | 1 | proche de `tests_multiples` |

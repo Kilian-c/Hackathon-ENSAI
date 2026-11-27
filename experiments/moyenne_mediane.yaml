@@ -1,0 +1,184 @@
+schema_version: 1
+id: "moyenne-mediane"
+title: "Moyenne ou médiane : qui résiste à une valeur extrême ?"
+discipline: "statistique"
+level: "1"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
+concepts: ["moyenne", "mediane", "valeur-aberrante", "robustesse"]
+
+theorem:
+  name: "Sensibilité de la moyenne aux valeurs extrêmes"
+  statement: |
+    La moyenne de n valeurs fait intervenir chaque valeur avec le même poids 1/n : une seule valeur
+    très grande la tire vers elle, d'autant plus fort que cette valeur est grande et que n est petit.
+    La médiane ne dépend que de l'ordre des valeurs : une valeur extrême, aussi grande soit-elle,
+    ne la déplace presque pas. En échange, quand il n'y a aucune valeur extrême, la médiane est un
+    peu moins précise que la moyenne.
+
+equation:
+  tex: '\hat{\mu} = {{centre}}'
+  terms:
+    centre:
+      ok: '\dfrac{1}{n} \sum_{i=1}^{n} X_i'
+      corrected: '\operatorname{med}(X_1, \ldots, X_n)'
+
+params:
+  n: { type: number, label: "Nombre d'observations n", min: 10, max: 200, step: 10, default: 20,
+       sweep_values: [10, 20, 50, 100, 200] }
+
+hypotheses:
+  extreme:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Aucune valeur extrême"
+    category: "donnees"
+    ok_label: "Aucune"
+    broken_label: "Une valeur très grande, loin de toutes les autres"
+    statement_tex: '|X_i| \ \text{modérés}'
+    why: "La moyenne donne le même poids à chaque observation : elle suppose qu'aucune n'est si éloignée des autres qu'elle pèse à elle seule."
+    when_broken: "Une seule valeur très grande tire la moyenne vers elle : le décalage vaut cette valeur divisée par n. La médiane, qui ne regarde que l'ordre des valeurs, bouge à peine."
+    affects: [centre]
+
+counterexamples:
+  - id: "une-valeur-extreme"
+    label: "Une valeur extrême"
+    explain: "Une seule valeur, très loin des autres, décale nettement la moyenne ; la médiane reste au centre des autres valeurs."
+    state: { hypotheses: { extreme: 1.0 } }
+  - id: "valeur-moderee"
+    label: "Une valeur un peu éloignée"
+    explain: "Même une valeur éloignée, sans être absurde, décale déjà nettement la moyenne ; la médiane ne bouge presque pas."
+    state: { hypotheses: { extreme: 0.2 } }
+
+generator:
+  type: random
+  n: p.n                          # n observations autour de 0 (le vrai centre)
+  repeat: 500                     # 500 échantillons
+  variables:
+    x: { expr: "normal() + 40 * h.extreme * (idx == p.n - 1)" }   # la dernière observation est extrême
+
+methods:
+  - id: moyenne
+    role: method
+    call: statistic
+    label: "Moyenne"
+    args: { x: x, kind: "mean" }
+  - id: mediane
+    role: correction
+    call: statistic
+    label: "Médiane"
+    explain: "La médiane est la valeur du milieu une fois les observations rangées : une valeur extrême ne fait que changer de place tout au bout du classement. Prix à payer : sans valeur extrême, elle est un peu moins précise que la moyenne."
+    repairs: [extreme]
+    args: { x: x, kind: "median" }
+
+measures:
+  biais:
+    agg: "bias(reps.stat, 0)"
+    label: "Écart du centre estimé au vrai centre (0)"
+    decimals: 2
+    primary: true
+    target: 0
+    direction: both
+    ok_within: 0.12
+    broken_beyond: 0.30
+    texts:
+      ok: "Centre bien estimé : écart de {value}."
+      warning: "Centre un peu décalé : écart de {value}."
+      broken: "Centre faussé : écart de {value}."
+  etalement:
+    agg: "sd(reps.stat)"
+    label: "Variation de l'estimation d'un échantillon à l'autre"
+    decimals: 2
+
+challenges:
+  - id: "mediane-resiste"
+    goal: "Rendez la moyenne Rompue alors que la médiane reste Fiable."
+    when: "s.biais == 'broken' and s.biais.mediane == 'ok'"
+    unlock: "Posez une valeur extrême : la moyenne la suit, la médiane non."
+  - id: "grand-echantillon"
+    goal: "Avec au moins 100 observations, rendez quand même la moyenne Rompue."
+    when: "p.n >= 100 and s.biais == 'broken'"
+    unlock: "Le décalage de la moyenne est la valeur extrême divisée par n : il faut une valeur très grande."
+
+auto_sweep: [h.extreme]
+
+views:
+  - id: estimations
+    type: distribution
+    title: "Le centre estimé sur 500 échantillons"
+    bind: { stat: reps.stat }
+    ui: { x_title: "Centre estimé (le vrai centre vaut 0)", x_range: [-2, 5] }
+  - id: echantillon
+    type: distribution
+    title: "Un échantillon"
+    bind: { stat: example.x }
+    ui: { x_title: "Valeurs observées" }
+  - id: sens-extreme
+    type: sensitivity
+    title: "Selon la valeur extrême"
+    sweep: { axes: [h.extreme] }
+  - id: sens-n
+    type: sensitivity
+    title: "Selon le nombre d'observations"
+    sweep: { axes: [p.n] }
+
+questions:
+  - id: "mm-q1-moyenne"
+    type: misconception
+    prompt: "Vingt observations sont centrées sur 0, sauf une, très grande. La moyenne reste-t-elle proche de 0 ?"
+    hypothesis: "extreme"
+    choices:
+      - id: "a"
+        label: "Oui : une seule valeur sur vingt ne change presque rien."
+        correct: false
+        reveal_state: { hypotheses: { extreme: 1.0 } }
+        verify: "s.biais == 'broken' and s.biais.mediane == 'ok'"
+        focus_view: "estimations"
+        explain: "La valeur extrême pèse autant que chacune des autres dans la somme, mais elle est bien plus grande : elle décale la moyenne de sa valeur divisée par le nombre d'observations."
+      - id: "b"
+        label: "Non : cette valeur tire la moyenne vers elle."
+        correct: true
+        reveal_state: { hypotheses: { extreme: 1.0 } }
+        verify: "s.biais == 'broken' and s.biais.mediane == 'ok'"
+        focus_view: "estimations"
+        explain: "Exact : la moyenne suit les valeurs extrêmes. La médiane, qui ne regarde que l'ordre, reste au centre des autres valeurs."
+
+  - id: "mm-q2-precision"
+    type: misconception
+    prompt: "Il n'y a aucune valeur extrême. La médiane estime-t-elle le centre avec la même précision que la moyenne ?"
+    hypothesis: "extreme"
+    choices:
+      - id: "a"
+        label: "Oui : la médiane est toujours aussi bonne que la moyenne, et plus sûre."
+        correct: false
+        reveal_state: { hypotheses: { extreme: 0.0 } }
+        verify: "m.etalement.mediane > 1.1 * m.etalement.moyenne"
+        focus_view: "estimations"
+        explain: "Sans valeur extrême, la moyenne utilise toute l'information des valeurs : ses estimations varient moins d'un échantillon à l'autre que celles de la médiane."
+      - id: "b"
+        label: "Non : elle est un peu moins précise, c'est le prix de sa robustesse."
+        correct: true
+        reveal_state: { hypotheses: { extreme: 0.0 } }
+        verify: "m.etalement.mediane > 1.1 * m.etalement.moyenne"
+        focus_view: "estimations"
+        explain: "Exact : la médiane ne regarde que l'ordre des valeurs, donc elle perd un peu d'information quand aucune valeur n'est extrême."
+
+  - id: "mm-q3-grand-n"
+    type: misconception
+    prompt: "Vous avez 200 observations, dont une seule très grande. Un échantillon aussi grand protège-t-il la moyenne ?"
+    hypothesis: "extreme"
+    choices:
+      - id: "a"
+        label: "Oui : sur 200 valeurs, une seule ne pèse presque rien."
+        correct: false
+        reveal_state: { params: { n: 200 }, hypotheses: { extreme: 1.0 } }
+        verify: "s.biais != 'ok' and s.biais.mediane == 'ok'"
+        focus_view: "estimations"
+        explain: "Le poids de la valeur extrême baisse avec n, mais elle est si grande que la moyenne est encore décalée au-delà de ce qu'on tolère."
+      - id: "b"
+        label: "Non : la moyenne est encore décalée, la médiane non."
+        correct: true
+        reveal_state: { params: { n: 200 }, hypotheses: { extreme: 1.0 } }
+        verify: "s.biais != 'ok' and s.biais.mediane == 'ok'"
+        focus_view: "estimations"
+        explain: "Exact : plus n est grand, moins la valeur extrême pèse, mais la valeur n'est pas bornée : un échantillon plus grand ne remplace pas une méthode robuste."
