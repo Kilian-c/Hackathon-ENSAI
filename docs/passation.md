@@ -1,5 +1,11 @@
 # Notes de passation (la plus récente en haut)
 
+## H7 (21 h) : trajectoires du TCL, branche `r2/paths-auto-sweep` (pas une relève)
+- `runner.py` (fichier de R1, modifié par R2, **R1 relit à H9**) sert l'emplacement `paths` : tableau 2D `(trajectoires, k)` lu sur la méthode, une série par méthode (`slot: paths`, `paths` = une liste par trajectoire, `x` = grille commune), plus une série `reference` (état sain) ; les méthodes aux trajectoires identiques ne donnent qu'une série ; bornes `axes` calculées sur la Référence ; `shown` = 30, `total` = nombre de répétitions. Constante `SHOWN_PATHS = 30`.
+- `clt_mean` fournit `curves.k` et `curves.paths` (moyennes cumulées des 30 premières répétitions). `theoreme_central_limite.yaml` : nouvelle vue `trajectoires` (`type: repetitions`, `mode: paths`, `bind: { x: curves.k, paths: curves.paths }`). Test ajouté : `tests/test_runner.py`. Rien à changer côté R3 : le contrat est celui de `plot.test.ts`.
+- `auto_sweep` était déjà rempli dans les 8 YAML (régression : `h.hetero` et `p.n` ; TCL : `p.n` ; tests multiples : `h.groupes`).
+- Pas de ligne `truth` (valeur vraie 0) dans cette vue : `truth` ne lit qu'un `p.<id>`, et le TCL n'a pas de paramètre de moyenne.
+
 ## H7 (20 h 30) : suite des théorèmes, `docs/theoremes_restants.md` (pas une relève)
 - Pour la personne qui continue les expériences : `docs/theoremes_restants.md` (ce qui est fait, ce qu'il reste, cas YAML seul / méthode / vue, marche à suivre, pièges) et `docs/catalogue_experiences.md` (copie du catalogue de Kilian).
 

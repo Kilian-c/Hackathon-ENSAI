@@ -129,6 +129,12 @@ views:
     title: "500 moyennes normalisées"
     bind: { stat: reps.z }
     ui: { x_range: [-5, 5] }
+  - id: trajectoires
+    type: repetitions
+    mode: paths
+    title: "Moyennes cumulées de 30 échantillons"
+    bind: { x: curves.k, paths: curves.paths }
+    ui: { x_title: "Nombre d'observations k", y_title: "Moyenne des k premières observations" }
   - id: echantillon
     type: distribution
     title: "Un échantillon"

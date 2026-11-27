@@ -99,3 +99,20 @@ def test_extra_points_added_once() -> None:
     before, after = data(base), data(res)
     assert len(after.x) == len(before.x) + 1
     assert after.x.count(4.2) == 1 and after.y[-1] == 30.0
+
+
+def test_clt_paths_view_serves_a_bundle_of_trajectories() -> None:
+    """Vue Répétitions en mode trajectoires : une liste par trajectoire, Référence, bornes de l'état sain."""
+    res = runner.run(_spec("theoreme_central_limite"), EngineState(hypotheses={"loi": "cauchy"}))
+    RunResult.model_validate(res.model_dump())
+    view = next(v for v in res.views if v.id == "trajectoires")
+    assert view.mode == "paths" and (view.shown, view.total) == (30, 500)
+    series = {s.role: s for s in view.series}
+    # Les deux méthodes ont les mêmes trajectoires : une seule série, plus la Référence.
+    assert set(series) == {"reference", "method"}
+    s = series["method"]
+    assert len(s.paths) == 30 and len(s.paths[0]) == len(s.x) == 50
+    assert view.axes.x == [1.0, 50.0] and view.axes.y is not None
+    healthy = runner.run(_spec("theoreme_central_limite"))
+    healthy_view = next(v for v in healthy.views if v.id == "trajectoires")
+    assert healthy_view.axes == view.axes  # bornes sur la Référence : elles ne bougent pas avec l'état
