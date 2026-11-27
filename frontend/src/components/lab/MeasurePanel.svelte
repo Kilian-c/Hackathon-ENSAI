@@ -19,6 +19,7 @@
 
   const roles = $derived(displayRoles(result.methods))
   const shown = $derived(result.methods.filter((m) => methodsOn.includes(m.id)))
+  const principal = $derived(result.methods.find((x) => x.role === 'method') ?? null)
   // La mesure primaire d'abord.
   const measures = $derived(Object.entries(result.measures).sort(([, a], [, b]) => Number(b.primary) - Number(a.primary)))
 </script>
@@ -38,12 +39,15 @@
               {#if margin}<span class="margin">{margin}</span>{/if}
             </span>
             {#if verdict}<VerdictBadge {verdict} />{/if}
+            {#if m.target == null && principal && method.id !== principal.id && m.values[principal.id] != null}
+              <!-- Banc de méthodes : le prix d'une méthode robuste se lit sur une mesure sans cible. -->
+              <p class="cost">contre {formatMeasure(m.values[principal.id], m)} pour {principal.label}</p>
+            {/if}
             {#if m.texts[method.id]}<p class="text">{m.texts[method.id]}</p>{/if}
           </li>
         {/each}
       </ul>
       {#if showReference}
-        {@const principal = result.methods.find((x) => x.role === 'method')}
         {#if principal && m.baseline[principal.id] != null}
           <p class="ref">Référence (état sain) : {formatMeasure(m.baseline[principal.id], m)}</p>
         {/if}
@@ -124,6 +128,12 @@
   .margin {
     font-size: var(--ct-text-sm);
     color: var(--ct-muted);
+  }
+  .cost {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: var(--ct-text-sm);
+    color: var(--ct-text);
   }
   .text {
     grid-column: 1 / -1;

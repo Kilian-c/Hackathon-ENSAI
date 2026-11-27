@@ -16,6 +16,7 @@
   import ChallengesPanel from './ChallengesPanel.svelte'
   import CounterexampleBar from './CounterexampleBar.svelte'
   import MeasurePanel from './MeasurePanel.svelte'
+  import MethodBench from './MethodBench.svelte'
   import ParamControl from './ParamControl.svelte'
   import UnderstandPanel from './UnderstandPanel.svelte'
   import VerdictBadge from './VerdictBadge.svelte'
@@ -27,7 +28,6 @@
     headlineVerdict,
     healAll,
     methodLabels,
-    methodWithRole,
     primaryMeasureId,
     setValue,
     sweepRequest,
@@ -179,8 +179,6 @@
   const primaryId = $derived(result ? primaryMeasureId(result) : null)
   const sweptMeasure = $derived(result ? (result.measures[sweep?.measure ?? primaryId ?? ''] ?? null) : null)
   const verdict = $derived(result ? headlineVerdict(result) : null)
-  const correction = $derived(spec ? methodWithRole(spec.methods, 'correction') : null)
-  const correctionOn = $derived(correction ? ui.methodsOn.includes(correction.id) : false)
   const anyBroken = $derived(spec && engine ? brokenHypotheses(spec, engine).length > 0 : false)
 
   // --- Actions ---
@@ -217,8 +215,8 @@
     if (engine) engine = nextDraw(engine)
   }
 
-  function toggleCorrection(): void {
-    if (spec && correction) ui = toggleMethod(spec, ui, correction.id)
+  function toggle(id: string): void {
+    if (spec) ui = toggleMethod(spec, ui, id)
   }
 
   function selectTab(id: string): void {
@@ -311,20 +309,14 @@
           <DynamicEquation equation={spec.equation} {result} hypotheses={spec.hypotheses} methodsOn={ui.methodsOn} />
         {/if}
 
+        <!-- Banc de méthodes : la Correction et les alternatives, sans appel au moteur. -->
+        <MethodBench methods={spec.methods} {roles} methodsOn={ui.methodsOn} ontoggle={toggle} />
         <div class="toolbar">
-          {#if correction}
-            <button type="button" class="correction" aria-pressed={correctionOn} onclick={toggleCorrection}>
-              <span aria-hidden="true">◆</span> Correction : {correction.label}
-            </button>
-          {/if}
           <label class="ref">
             <input type="checkbox" bind:checked={showReference} />
             <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
           </label>
         </div>
-        {#if correction && correctionOn && correction.explain}
-          <p class="explain">{correction.explain}</p>
-        {/if}
 
         <div class="tabs" role="tablist" aria-label="Vues">
           {#each tabs as t (t.id)}
@@ -509,11 +501,6 @@
     gap: var(--ct-space-4);
     align-items: center;
   }
-  .correction[aria-pressed='true'] {
-    border-color: var(--ct-role-correction);
-    color: var(--ct-role-correction);
-    font-weight: 600;
-  }
   .ref {
     display: flex;
     align-items: center;
@@ -523,13 +510,6 @@
   .ref-mark {
     color: var(--ct-role-reference);
     font-weight: 700;
-  }
-  .explain {
-    margin: 0;
-    font-size: var(--ct-text-sm);
-    color: var(--ct-muted);
-    border-left: 3px solid var(--ct-role-correction);
-    padding-left: var(--ct-space-3);
   }
   .tabs {
     display: flex;
