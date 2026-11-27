@@ -72,3 +72,18 @@ def test_slider_does_not_shift_draws() -> None:
     a = runner.run(spec, EngineState(hypotheses={"hetero": 0.2}))
     b = runner.run(spec, EngineState(hypotheses={"hetero": 0.8}))
     assert a.measures["coverage"].baseline == b.measures["coverage"].baseline
+
+
+def test_intervals_view_keeps_every_method_even_with_identical_estimates() -> None:
+    """MCO, HC3 et Newey-West ont la même estimation de pente mais des intervalles différents."""
+    res = runner.run(_spec("regression_lineaire"), EngineState(hypotheses={"hetero": 0.8}))
+    ic = next(v for v in res.views if v.id == "ic")
+    methods = [s.method for s in ic.series if s.slot == "est"]
+    assert methods == ["ols", "hc3", "nw"]
+    widths = [sum(h - lo for lo, h in zip(s.low, s.high, strict=True)) for s in ic.series if s.slot == "est"]
+    assert len(set(round(w, 6) for w in widths)) == 3
+
+
+def test_view_axis_titles_come_from_the_yaml() -> None:
+    res = runner.run(_spec("regression_lineaire"))
+    assert next(v for v in res.views if v.id == "residus").ui == {"x_title": "x", "y_title": "Résidu"}

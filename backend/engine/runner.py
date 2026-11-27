@@ -413,7 +413,13 @@ def _build_view(
             yv = _arr(_path(comp, m.id, path, rs))
             if yv is None:
                 continue
-            fingerprint = (slot, np.ascontiguousarray(yv).tobytes())
+            # Intervalles : `est` identique ne suffit pas (low / high / hit diffèrent selon la méthode).
+            extra = b"".join(
+                np.ascontiguousarray(arr).tobytes()
+                for key in ("low", "high", "hit")
+                if is_intervals and key in paths and (arr := _path(comp, m.id, paths[key], rs)) is not None
+            )
+            fingerprint = (slot, np.ascontiguousarray(yv).tobytes() + extra)
             if fingerprint in seen:  # même tableau produit par une autre méthode : dessiné une seule fois
                 continue
             seen.add(fingerprint)
