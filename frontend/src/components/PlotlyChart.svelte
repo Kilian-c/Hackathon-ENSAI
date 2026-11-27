@@ -4,18 +4,21 @@
   Dessine n'importe quelle vue du moteur. La construction des traces est dans lib/plot.ts
   (fonctions pures, testées) ; ce composant ne fait que :
   - appeler Plotly.react() à chaque changement (jamais newPlot : la caméra et le zoom restent) ;
-  - afficher le titre, la légende du bas (« 100 affichés sur 500 calculés ») et la vue de secours.
+  - afficher le titre, la légende du bas (« 100 affichés sur 500 calculés ») et, si la vue ne peut pas
+    être dessinée, la vue de secours (tableau des mesures, quand `result` est fourni).
 
   Usage :
-    <PlotlyChart view={result.views[0]} methodsOn={ui.methodsOn} />
+    <PlotlyChart view={result.views[0]} {result} methodsOn={ui.methodsOn} />
     Vue Sensibilité : ajouter sweep, measure, roles={displayRoles(result.methods)} et methodLabels.
 -->
 <script lang="ts">
   import Plotly from 'plotly.js-dist-min'
   import { onMount } from 'svelte'
+  import MeasuresTable from './MeasuresTable.svelte'
   import { buildFigure, type ChartOptions } from '../lib/plot'
   import { PLOTLY_FR } from '../lib/plotlyLocale'
   import type { DisplayRole } from '../lib/roles'
+  import type { RunResult } from '../lib/types.gen'
   import type { MeasureFormat, SweepResult, ViewResult } from '../lib/views'
 
   interface Props {
@@ -27,6 +30,8 @@
     measure?: MeasureFormat | null
     roles?: Readonly<Record<string, DisplayRole>>
     methodLabels?: Readonly<Record<string, string>>
+    /** Mesures de l'état actuel, pour la vue de secours. */
+    result?: Pick<RunResult, 'methods' | 'measures'> | null
     axisLabel?: string
     height?: number
   }
@@ -39,6 +44,7 @@
     sweep = null,
     measure = null,
     methodLabels = {},
+    result = null,
     height = 340,
     axisLabel,
   }: Props = $props()
@@ -76,8 +82,12 @@
       <p class="caption">{figure.caption.join(' · ')}</p>
     {/if}
   {:else}
-    <!-- TODO(passation) : remplacer par la vue de secours measures_table quand elle existera. -->
-    <p class="fallback">Cette vue ne peut pas encore être affichée ({view.type}).</p>
+    {#if result}
+      <p class="fallback">Ce graphique n'est pas encore disponible : voici les mesures de l'état actuel.</p>
+      <MeasuresTable {result} {methodsOn} />
+    {:else}
+      <p class="fallback">Ce graphique n'est pas encore disponible.</p>
+    {/if}
   {/if}
 </figure>
 

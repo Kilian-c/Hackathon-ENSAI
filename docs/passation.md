@@ -11,6 +11,14 @@
 - Chiffres (graine 42, 300 études de 600 patients) : sensibilité du seuil « qui se trompe le moins » 77 % (50 % de malades), 44 % (1 sur 5), 1,2 % (1 sur 100) ; exactitude 77 %, 85 %, 99 %. Seuils 0,10 / 0,30 ; « un malade sur 5 » est Rompu avec 0,03 de marge : ne pas les changer sans rejouer la simulation.
 - **R3** : pas de ligne de seuil dans la vue `distribution` (le seuil dépend de `h.rarete` et `p.ecart`, et `bind.threshold` n'accepte qu'un `p.<id>`) ; pas de courbe ROC (indépendante du seuil).
 
+## H6,5 (18 h 30) : planning revu, on a de l'avance (pas une relève)
+- Décision de Kilian : le P0 est presque vert, donc **jalon P0 avancé à H9 (21 h)**, P1 ouvert tout de suite, priorités P1 : mécaniques visuelles puis Import + Supabase. Coupes appliquées au P1 à H17. Détail et tâches dans l'ordre : **CLAUDE.md, section 2**.
+- R3 (jusqu'à 21 h) : niveaux en mots, `segments` dans `plot.ts`, puis banc de méthodes, trajectoires du TCL, ajout de points par clic.
+- R2 (jusqu'à 21 h) : Student et pendule vers `experiments/archives/` (tests mis à jour), `Dockerfile`, `paths` du TCL et `auto_sweep` dans les YAML, puis une expérience de plus du catalogue.
+- R1 (21 h) : relire tout ce qui a été fusionné sans vous (liste en section 2), puis `POST /api/validate`, `draw_log`, tests P1.
+- R4 (22 h) : galerie, lien vers le Bilan en fin de série, relecture du Bilan, écran Import, partage Supabase (`supabase/schema.sql` : prévenir Kilian).
+- Pitch : le pendule est abandonné, donc le passage de 2:45 à 3:30 est à refaire (TCL sous Cauchy ou tests multiples) : R3 + R2, entre H19 et H23.
+
 ## H6 (18 h 30) : décision, `level` = difficulté 1, 2, 3 (pas une relève)
 - Décision de R2 : `level` vaut « 1 » (Découverte), « 2 » (Intermédiaire) ou « 3 » (Avancé), comme le propose le catalogue ; l'année (« 1A », « 2A ») disparaît. Niveaux repris des tableaux du catalogue : 1 = somme de dés, seuil et ROC, carrés des résidus ; 2 = TCL, tests multiples, pendule ; 3 = régression, Student, multicolinéarité (absente du catalogue : rangée comme « Variable omise »).
 - `tests/test_engine.py` (R1) : la chaîne repérée dans la régression passe de `level: "1A/2A"` à `level: "3"`.
@@ -23,6 +31,9 @@
 - **R1, à relire** (`runner.py`) : emplacements de l'annexe E servis : `threshold` (scalaire, rôle `rupture`), `h1` et `observed` (méthode principale, rôle `truth`), `segments` (série `x`, `low` = from, `high` = to, `layer`) ; libellés des séries lus dans `ui.labels` (champ libre) et dans les `label` de `series`. Le runner importe tout `backend.methods`.
 - **R3, interface (non fait, fichiers de Kilian)** : (1) `plot.ts` ne dessine pas encore les `segments` (séries sans `y` : ignorées sans erreur) ; (2) dans `distribution`, `h1` (rôle `truth`) sort en orange : à vérifier à l'œil ; (3) `theory` (courbe sur un histogramme) n'est pas servi : il serait dessiné comme un histogramme.
 - Convention de `level` : tranchée à 18 h 30 (note ci-dessus).
+
+## H5 (17 h) : écran Bilan fait par R3 (pas une relève)
+- **R4 : n'écrivez pas le Bilan, il est fait** et fusionné dans `main` à la demande de R3, **sans votre relecture : relisez après coup**, ce sont vos fichiers : `lib/calibration.ts`, `lib/calibration.test.ts`, `components/summary/CalibrationSummary.svelte`. Ouverture : `?bilan`. Votre galerie devra garder ce lien.
 
 ## H5 (17 h) : Entraînement côté moteur, branche `r2/training` (pas une relève)
 - Fusionné dans `main` à la demande de R2, **sans relecture de R1 : R1, relisez après coup** (les 4 vérifications de la section 4 étaient vertes). Fait par R2, dans des fichiers de R1 : `backend/engine/training.py` et `POST /api/training/session` (`backend/api/routes.py`), empreinte des YAML dans `backend/api/registry.py` (`content_digest`). Tests : `tests/test_training.py`, tests d'API de la section 12 ajoutés à `tests/test_api.py`. 227 tests verts.

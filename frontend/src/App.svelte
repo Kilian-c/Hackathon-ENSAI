@@ -1,15 +1,18 @@
 <script lang="ts">
   // Navigation par l'URL (lib/state.ts, parseLink) : ?exp=... ouvre le Laboratoire, ?train=... l'Entraînement.
   // L'accueil ci-dessous est PROVISOIRE (une liste simple) : la galerie de R4 (components/home/) le remplacera.
-  // ?dev=charts ouvre le banc d'essai des graphiques et la palette.
+  // ?bilan ouvre l'écran Bilan ; ?dev=charts ouvre le banc d'essai des graphiques et la palette.
   import LabView from './components/lab/LabView.svelte'
+  import CalibrationSummary from './components/summary/CalibrationSummary.svelte'
   import TrainingView from './components/training/TrainingView.svelte'
   import { listExperiments } from './lib/labSource'
   import { LINK_VERSION, parseLink } from './lib/state'
   import type { ExperimentSummary } from './lib/types.gen'
 
   const link = parseLink(location.search)
-  const dev = new URLSearchParams(location.search).get('dev')
+  const query = new URLSearchParams(location.search)
+  const dev = query.get('dev')
+  const summary = query.has('bilan')
 
   let experiments = $state<ExperimentSummary[] | null>(null)
   let listKind = $state<'api' | 'fixtures'>('api')
@@ -27,7 +30,7 @@
   }
 
   $effect(() => {
-    if (link.kind === 'home' && !dev) loadList()
+    if (link.kind === 'home' && !dev && !summary) loadList()
   })
 </script>
 
@@ -35,6 +38,8 @@
   {#await import('./dev/DevPage.svelte') then m}
     <m.default />
   {/await}
+{:else if summary}
+  <CalibrationSummary />
 {:else if link.kind === 'lab'}
   <LabView {link} />
 {:else if link.kind === 'error'}
@@ -50,6 +55,7 @@
     <h1>Crash-Test</h1>
     <p>Cassez une hypothèse, mesurez ce qui cède, puis réparez.</p>
     <p><a href="?train=toutes&v={LINK_VERSION}">S'entraîner avec des questions →</a></p>
+    <p><a href="?bilan">Voir mon bilan →</a></p>
     {#if listError}
       <p class="error" role="alert">{listError}</p>
       <p><button type="button" onclick={loadList}>Réessayer</button></p>

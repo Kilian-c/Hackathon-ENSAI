@@ -5,9 +5,6 @@
   correction validée par simulation, puis résultat. Les réponses sont enregistrées dans localStorage
   par identifiant de série : recharger la page reprend la série là où elle en était.
   Le lien ?train=<filtre>&seed=<graine>&v=1 redonne la même série.
-
-  TODO(passation) : lien vers l'écran Bilan (R4, components/summary/) sur l'écran de fin ; il lit
-  l'historique avec loadHistory() de lib/training.ts.
 -->
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte'
@@ -174,6 +171,7 @@
           {:else}
             <button type="button" class="primary" onclick={restart}>Recommencer la série</button>
           {/if}
+          <a class="summary-link" href="?bilan">Voir mon bilan →</a>
         </p>
       </section>
     {/if}
@@ -261,6 +259,11 @@
   }
   .end h2 {
     margin: 0;
+  }
+  .summary-link {
+    margin-left: var(--ct-space-4);
+    color: var(--ct-role-method);
+    font-weight: 600;
   }
   .score {
     font-size: var(--ct-text-xl);
