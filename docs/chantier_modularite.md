@@ -20,7 +20,7 @@ Quand une ligne est terminée et fusionnée sur `main`, rayez-la (`~~...~~`) : l
 | `backend/engine/expr.py` | non | liste blanche : `sort`, `quantile`, `cumprod` | R3 |
 | `backend/engine/validate.py` | non | `/api/validate` propose des seuils (`ok_within`, `broken_beyond`) d'après la simulation | R3 |
 | `backend/engine/runner.py` | non | `_build_view` : vue `heatmap` (afficher une matrice) | R3 |
-| `scripts/gen_catalog.py` | oui | lit les registres (méthodes, lois, fonctions, vues), puis écrit `frontend/src/lib/catalog.gen.ts` et `docs/catalogue.md` | R3 |
+| ~~`scripts/gen_catalog.py`~~ | oui | ~~lit les registres (méthodes, lois, fonctions, vues), puis écrit `frontend/src/lib/catalog.gen.ts` et `docs/catalogue.md`~~ **Fait** (`--check` pour la fraîcheur, `tests/test_catalog.py`). Il reste à R3 : brancher `importPrompt.ts` sur `CATALOG` | R3 |
 | `scripts/new_experiment.py` | oui | crée un YAML à partir d'un modèle (statistique, régression, classifieur, algèbre) | R2 |
 | `experiments/matrices_wigner.yaml` | oui | expérience pilote de l'algèbre, simulée avant d'écrire les seuils | R2 |
 | `tests/test_formula.py` | oui | tests des méthodes `formula_*` | |
