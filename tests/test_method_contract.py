@@ -281,7 +281,27 @@ def test_aggregators_edge_cases() -> None:
 
 # À compléter au fur et à mesure que tu codes ols_ci, one_sample_test, integrate.
 # Chaque entrée associe le nom de la méthode à (kwargs, repeat_attendu, n_attendu).
-_SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {}
+_X0 = np.random.default_rng(0).standard_normal((20, 15))
+_SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
+    "one_sample_test": (
+        {"x0": _X0, "x1": _X0 + 0.5, "alpha": 0.05, "kind": "student"},
+        20,
+        15,
+    ),
+    "integrate": (
+        {
+            "system": {
+                "rhs": lambda y: np.array([y[1], -9.81 * np.sin(y[0])]),
+                "y0": [1.2, 0.0],
+                "t_end": 2.0,
+            },
+            "dt": 0.01,
+            "scheme": "rk4",
+        },
+        None,
+        None,
+    ),
+}
 
 
 def test_all_registered_methods_respect_contract() -> None:
