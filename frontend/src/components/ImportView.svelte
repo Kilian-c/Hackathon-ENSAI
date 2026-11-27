@@ -11,6 +11,7 @@
   import { importPrompt } from '../lib/importPrompt'
   import { loadDraft, saveDraft, saveShared, ShareError, shareUrl, sharingAvailable } from '../lib/share'
   import type { ValidateIssue, ValidateResponse } from '../lib/types.gen'
+  import { frThreshold, splitWarnings } from './import/proposals'
   import exampleYaml from '../../../experiments/somme_des.yaml?raw'
 
   const MAX_BYTES = 64 * 1024
@@ -36,6 +37,8 @@
   const schemaOk = $derived(upToDate && report !== null && report.errors.length === 0)
   const errorLines = $derived(new Set((upToDate ? (report?.errors ?? []) : []).map((e) => e.line).filter((l) => l)))
   const canShare = $derived(schemaOk && sharingAvailable() && !sharing)
+  // Seuils proposés par /api/validate : rangés par le moteur dans `warnings`, affichés à part (aide, pas problème).
+  const warningGroups = $derived(splitWarnings(report?.warnings ?? []))
 
   // Brouillon gardé à chaque modification (léger : un seul appel à localStorage).
   $effect(() => {
@@ -293,10 +296,10 @@
           <p class="banner ok">✓ Le format est valide.</p>
         {/if}
 
-        {#if report.warnings.length > 0}
+        {#if warningGroups.others.length > 0}
           <h3>Avertissements</h3>
           <ul class="issues">
-            {#each report.warnings as issue, i (i)}
+            {#each warningGroups.others as issue, i (i)}
               <li class="issue warn">
                 <button type="button" class="link" onclick={() => goToLine(issue.line)} disabled={!issue.line}>
                   <span class="icon" aria-hidden="true">!</span>
@@ -327,6 +330,40 @@
               L'expérience s'ouvre quand même, mais ses verdicts ne démontrent pas encore ce qu'elle annonce.
             </p>
           {/if}
+        {/if}
+
+        {#if warningGroups.proposals.length > 0}
+          <h3>Seuils suggérés par la simulation <span class="muted small">(facultatif)</span></h3>
+          <p class="muted small">
+            Écart toléré pour Fiable (<code>ok_within</code>) et au-delà duquel le verdict est Rompu
+            (<code>broken_beyond</code>), d'après le bruit de la simulation et vos contre-exemples. Votre fichier
+            reste valable tel quel.
+          </p>
+          <div class="table-scroll">
+            <table class="proposals">
+              <thead>
+                <tr>
+                  <th scope="col">Mesure</th>
+                  <th scope="col">Votre fichier</th>
+                  <th scope="col">Suggéré</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each warningGroups.proposals as p (p.measure)}
+                  <tr>
+                    <th scope="row">
+                      <button type="button" class="link" onclick={() => goToLine(p.line)} disabled={!p.line}>
+                        <span class="where">{p.measure}</span>
+                      </button>
+                    </th>
+                    <td>{frThreshold(p.fileOk)} / {frThreshold(p.fileBroken)}</td>
+                    <td>{frThreshold(p.ok)} / {frThreshold(p.broken)}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+          <p class="muted small">Format : <code>ok_within</code> / <code>broken_beyond</code> ; « — » : pas de suggestion.</p>
         {/if}
       {/if}
 
@@ -614,6 +651,26 @@
   }
   .tests .failed .icon {
     color: var(--ct-verdict-broken);
+  }
+  .table-scroll {
+    overflow-x: auto;
+  }
+  .proposals {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--ct-text-sm);
+    font-variant-numeric: tabular-nums;
+  }
+  .proposals th,
+  .proposals td {
+    padding: var(--ct-space-1) var(--ct-space-2);
+    border-bottom: 1px solid var(--ct-border);
+    text-align: left;
+    white-space: nowrap;
+  }
+  .proposals thead th {
+    color: var(--ct-muted);
+    font-weight: 600;
   }
   .detail {
     display: block;
