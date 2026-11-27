@@ -2,7 +2,8 @@
   ChallengesPanel.svelte : l'onglet Défis (R3). Cahier, section 3.2.
   Le moteur évalue chaque condition (`when`) et renvoie RunResult.challenges[].passed ; l'interface
   affiche l'objectif, l'indice sur demande, et le message `unlock` une fois le défi réussi.
-  Un défi réussi le reste pendant la visite (on ne l'« oublie » pas en bougeant un curseur).
+  Un défi réussi le reste pendant la visite : la liste des défis réussis (`won`) est tenue par
+  LabView, car ce panneau est détruit dès qu'on change d'onglet.
 -->
 <script lang="ts">
   import { SvelteSet } from 'svelte/reactivity'
@@ -11,16 +12,13 @@
   interface Props {
     challenges: Challenge[]
     results: ChallengeResult[]
+    /** Défis réussis depuis l'ouverture de l'expérience. */
+    won: ReadonlySet<string>
   }
 
-  let { challenges, results }: Props = $props()
+  let { challenges, results, won }: Props = $props()
 
-  const won = new SvelteSet<string>()
   const hints = new SvelteSet<string>()
-
-  $effect(() => {
-    for (const r of results) if (r.passed) won.add(r.id)
-  })
 
   const passedNow = $derived(new Set(results.filter((r) => r.passed).map((r) => r.id)))
 </script>

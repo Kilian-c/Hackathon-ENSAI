@@ -240,7 +240,7 @@
   {
    "id": "anscombe-courbe",
    "label": "Anscombe : relation courbe",
-   "explain": "Même pente et même R2 que le cas linéaire, mais des résidus en arc.",
+   "explain": "Même pente et même R2 que le cas linéaire : les chiffres ne voient rien. Regardez le nuage et les résidus : ils dessinent un arc, la droite ne convient pas. La couverture reste de 100 % ici parce que la pente est calée, pas parce que le modèle est bon.",
    "state": {
     "params": {
      "match_summary": true
@@ -254,7 +254,7 @@
   {
    "id": "anscombe-levier",
    "label": "Anscombe : un point levier",
-   "explain": "Même pente et même R2, mais un seul point porte tout l'ajustement.",
+   "explain": "Même pente et même R2 que le cas sain : les chiffres ne voient rien. Regardez le nuage : un seul point isolé, loin des autres, tire la droite à lui. La couverture reste de 100 % ici parce que la pente est calée, pas parce que le modèle est bon.",
    "state": {
     "params": {
      "match_summary": true
@@ -647,7 +647,7 @@
    "view": "residus",
    "state": null,
    "pathologies": {
-    "from_": [
+    "from": [
      "hetero",
      "add_leverage",
      "relation.quadratic"
@@ -674,7 +674,7 @@
    },
    "sweep": {
     "target": "p.n",
-    "from_": "{n}",
+    "from": "{n}",
     "to": "{n} * 2"
    },
    "measure": "coverage"

@@ -9,7 +9,8 @@ Ce fichier en résume tout ce dont tu as besoin pour coder. En cas de doute, le 
 - **Planning** : le cahier suppose 30 h à partir de 9 h. Ici, le départ est à **12 h**, le code s'arrête le lendemain à **13 h (H25)** et le pitch a lieu à **17 h (H29)**. Les créneaux de la section 2 sont recalculés.
 - **Entraînement** : une seule route `POST /api/training/session`, `seed` facultative, pas de réserve de séries en P0, `count = min(10, questions disponibles)`. Le cahier (tableau des routes, annexe C.5 et arborescence) décrit encore deux routes `GET /api/training/next` et `GET /api/training/session` avec une réserve : **ignore-les**, voir section 8.
 - **Les 3 YAML de référence sont déjà dans `experiments/`**, extraits du `.tex` (annexe B.1 à B.3). Ne les recopie pas une seconde fois : pars de ces fichiers. Seul changement par rapport au cahier : le `explain` du contre-exemple `cauchy-petit-n` ne contient plus de chiffre écrit en dur.
-- **Nombre de questions** : le cahier n'en donne que 3 (régression), 2 (Student) et 1 (pendule). R2 en ajoute pour atteindre au moins 3 par expérience (section 9).
+- **Nombre de questions** : le cahier n'en donne que 3 (régression), 2 (Student) et 1 (pendule). R2 a complété pour atteindre 3 par expérience (section 9).
+- **Seuil de Student** : la puissance de `test_student.yaml` a `broken_beyond: 0.30` (0,25 dans le cahier), après simulation (section 9).
 
 ### Rôles et entraide
 
@@ -252,16 +253,16 @@ def ols_ci(*, x, y, truth, alpha, se_type, rng) -> MethodResult:
 - **Règle de R2** : toute paire méthode/correction est **simulée avant d'être écrite** dans un YAML. Rappel : Wilcoxon teste le centre de symétrie, pas la moyenne ; il ne corrige pas l'asymétrie (15 % de rejets à tort sous loi exponentielle à n = 25).
 
 **Chiffres de référence vérifiés par simulation** (graine 42, 500 répétitions ; ce sont des ordres de grandeur, pas des tests exacts) :
-- Régression, n = 150 : couverture classique 94 % à l'état sain, environ 75 % à `hetero = 0.8` (HC3 vers 94 %) ; loi des erreurs sans effet (robust_expected) ; x et erreurs en AR(1) : classique et HC3 vers 75 %, Newey-West vers 87 % ; défi Breusch-Pagan : à n = 30 et `hetero = 0.7`, environ 1 échantillon sur 5 a une p-value > 0,05.
-- Student, n = 25 : puissance d'environ 67 % (normale) contre 11 à 13 % (Cauchy) ; Wilcoxon d'environ 64 % contre 44 %. Le cahier donne 13 %, une autre simulation 11 % : **ne recopiez aucun de ces chiffres**. R2 simule avec l'implémentation réelle (graine 42, 500 répétitions) et en tire les tolérances. Les textes de mesures utilisent `{value}`, jamais un chiffre écrit en dur. À n = 200, Student reste bas sous Cauchy (environ 13 %), Wilcoxon monte vers 100 %.
+- Régression, n = 150 : couverture classique 95 % à l'état sain, environ 80 % à `hetero = 0.8` (HC3 vers 97 %) ; loi des erreurs sans effet (robust_expected) ; x et erreurs en AR(1) : classique et HC3 vers 75 %, Newey-West vers 87 % ; défi Breusch-Pagan : à n = 30 et `hetero = 0.7`, environ 1 échantillon sur 5 a une p-value > 0,05.
+- Student, n = 25, implémentation réelle : puissance de 67 % (normale) contre 11 % (Cauchy) ; Wilcoxon 66 % contre 39 %. À n = 200, Student reste bas sous Cauchy (environ 14 %), Wilcoxon monte à 100 %. Les textes de mesures utilisent `{value}`, jamais un chiffre écrit en dur.
 - Pendule, θ0 = 1,2 rad, 5 s, `dt = 10 ** (-3.5 + 2.5 * h.pas)` : erreur d'Euler 1,2 % à h = 0, 45 % à h = 0,6, tour complet à partir de h = 0,9 ; RK4 exact partout.
 
-**`test_student.yaml`** (dans `experiments/`, version de l'annexe B.2 du cahier, qui fait foi) :
+**`test_student.yaml`** (dans `experiments/`, version de l'annexe B.2 du cahier, qui fait foi sauf pour `broken_beyond` et la troisième question) :
 - Noms : hypothèse `h.loi` (5 lois symétriques), paramètres `p.n` et `p.delta` ; générateur `x0 = @h.loi`, `x1 = x0 + p.delta`.
 - Méthodes : `student` (principale) et `wilcoxon` (correction, `repairs: [loi]`), appel `one_sample_test`.
-- Mesure primaire : puissance `rate(reps.reject_h1)`, `target: base`, `direction: below`, `ok_within: 0.10`, `broken_beyond: 0.25`.
-- **Point de vigilance pour R2** : sous Cauchy à n = 25, Wilcoxon perd environ 0,20 de puissance par rapport à son état sain. Avec `broken_beyond: 0.25`, il reste Fragile (test 3 accepté), mais la marge n'est que de 0,05, soit environ 2 erreurs Monte Carlo. Si la simulation réelle donne une perte supérieure à 0,22, passer à `0.30` (Student reste Rompu, il perd plus de 0,50).
-- Chaque expérience contient au moins 3 questions : à ajouter dans Student (1 de plus) et le pendule (2 de plus, avec des `procedural_params` sur `t_end` ou `theta0`).
+- Mesure primaire : puissance `rate(reps.reject_h1)`, `target: base`, `direction: below`, `ok_within: 0.10`, `broken_beyond: 0.30`.
+- **Point de vigilance** (graine 42) : sous Cauchy à n = 25, Wilcoxon perd 0,27 de puissance et reste Fragile (test 3 accepté). Sous Student à 2 ddl, Student perd 0,32 et reste Rompu, avec seulement 0,02 de marge : sur 100 graines, il est Fragile 13 fois. Ne changez ni ce seuil ni la graine par défaut sans rejouer la simulation.
+- Chaque expérience contient au moins 3 questions.
 
 ---
 

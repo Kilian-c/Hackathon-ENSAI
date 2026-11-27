@@ -59,7 +59,8 @@
       </p>
     {/if}
   {/each}
-  {#each result.warnings as w (w.code)}
+  <!-- Clé par position : le moteur peut envoyer plusieurs avertissements de même code. -->
+  {#each result.warnings as w, i (i)}
     <p class="warn">{w.text}</p>
   {/each}
   <p class="foot">
