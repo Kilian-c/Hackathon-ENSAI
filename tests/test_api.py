@@ -153,3 +153,17 @@ def test_caps_on_requests() -> None:
     assert client.post("/api/run", json={"raw_content": big}).status_code == 422
     assert client.post("/api/validate", json={"raw_content": big}).status_code == 422
     assert client.post("/api/training/session", json={"filter": "toutes", "count": 11}).status_code == 422
+
+
+def test_validate_proposes_thresholds_without_changing_the_contract() -> None:
+    raw = (Path(__file__).resolve().parent.parent / "experiments" / "regression_lineaire.yaml").read_text(
+        encoding="utf-8"
+    )
+    body = client.post("/api/validate", json={"raw_content": raw}).json()
+    proposed = [w for w in body["warnings"] if w["message"].startswith("Seuils proposés : ok_within = ")]
+    by_path = {w["path"]: w["message"] for w in proposed}
+    assert "measures.coverage" in by_path and "broken_beyond = " in by_path["measures.coverage"]
+    ok = float(by_path["measures.coverage"].split("ok_within = ")[1].split(" ")[0])
+    broken = float(by_path["measures.coverage"].split("broken_beyond = ")[1].split(" ")[0])
+    assert 0 < ok < broken  # la couverture est bruitée : tolérance de quelques points, rupture plus loin
+    assert all(w["path"].startswith("measures.") for w in proposed)
