@@ -164,7 +164,9 @@
     activeViewRaw && frozenAxes?.[activeViewRaw.id] ? { ...activeViewRaw, axes: frozenAxes[activeViewRaw.id] } : activeViewRaw,
   )
   const sweepTargets = $derived(
-    activeView?.type === 'sensitivity' ? (spec?.views.find((v) => v.id === activeView.id)?.sweep?.axes ?? []) : [],
+    activeView?.type === 'sensitivity' || activeView?.type === 'validity_domain'
+      ? (spec?.views.find((v) => v.id === activeView.id)?.sweep?.axes ?? [])
+      : [],
   )
 
   // --- Balayage de la vue Sensibilité (seulement quand elle est ouverte) ---
@@ -190,8 +192,12 @@
     )
   })
 
+  // Seulement le balayage de la vue ouverte : celui d'une autre vue (1 axe ou 2) ne s'affiche jamais.
+  const sweepMatches = $derived(
+    !!sweep && sweep.axes.length === sweepTargets.length && sweep.axes.every((a, i) => a.target === sweepTargets[i]),
+  )
   const sweepShown = $derived(
-    sweep && engine && sweepTargets.length > 0 ? { ...sweep, current: currentOnAxes(engine, sweepTargets) } : null,
+    sweep && engine && sweepMatches ? { ...sweep, current: currentOnAxes(engine, sweepTargets) } : null,
   )
 
   // --- Dérivés d'affichage ---
@@ -267,6 +273,20 @@
   function sweepPlaying(target: string | null): void {
     animating = target
     if (target === null) frozenAxes = null
+  }
+
+  // --- Domaine de validité : un clic sur une case règle les deux contrôles ---
+  function pickCell(i: number, j: number): void {
+    if (!spec || !engine || !sweepShown || sweepShown.axes.length < 2) return
+    let next = engine
+    for (const [axis, k] of [[sweepShown.axes[0], i], [sweepShown.axes[1], j]] as const) {
+      const v = axis.values[k]
+      if (v === undefined) continue
+      const [kind, id] = axis.target.split('.', 2) as ['h' | 'p', string]
+      next = setValue(spec, next, kind, id, v)
+    }
+    engine = next
+    activeCounterexample = null
   }
 
   function newDraw(): void {
@@ -399,7 +419,7 @@
           {#if activeTab === CHALLENGES_TAB}
             <ChallengesPanel challenges={spec.challenges} results={result?.challenges ?? []} won={wonChallenges} />
           {:else if activeView}
-            {#if activeView.type === 'sensitivity' && !sweepShown}
+            {#if (activeView.type === 'sensitivity' || activeView.type === 'validity_domain') && !sweepShown}
               <p class="muted">
                 {sweepStatus === 'loading'
                   ? 'Balayage en cours…'
@@ -440,6 +460,10 @@
                   injected={pointsHere ? placed : []}
                   onaddpoint={pointsHere ? placePoint : undefined}
                   onremovepoint={pointsHere ? unplacePoint : undefined}
+                  axisLabels={sweepShown && sweepShown.axes.length >= 2
+                    ? [axisTitle(spec, sweepShown.axes[0].target), axisTitle(spec, sweepShown.axes[1].target)]
+                    : undefined}
+                  onpickcell={activeView.type === 'validity_domain' ? pickCell : undefined}
                 />
               {/key}
             {/if}

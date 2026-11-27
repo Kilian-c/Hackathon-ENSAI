@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pendulumFixture, regressionFixture, regressionMethods, regressionSweep } from '../dev/fakeViews'
-import { buildFigure, clampPoints, isVisible, withAlpha, type ChartOptions } from './plot'
+import { buildFigure, clampPoints, gridPosition, isVisible, withAlpha, type ChartOptions } from './plot'
 import { displayRoles } from './roles'
 import type { RunResult, SweepResult } from './types.gen'
 import type { Series, ViewResult } from './views'
@@ -225,5 +225,52 @@ describe('trajectoires', () => {
   })
   it('masquer la méthode masque ses trajectoires', () => {
     expect(buildFigure(view, { methodsOn: new Set(), showReference: false })!.data).toHaveLength(0)
+  })
+})
+
+describe('Domaine de validité', () => {
+  const view = { id: 'validite', type: 'validity_domain', series: [], axes: null } as unknown as ViewResult
+  const sweep = {
+    axes: [
+      { target: 'h.hetero', values: [0, 0.5, 1], labels: ['0', '0,5', '1'] },
+      { target: 'p.n', values: [30, 300], labels: ['30', '300'] },
+    ],
+    measure: 'coverage',
+    values: { ols: [[0.95, 0.9, 0.8], [0.95, 0.88, 0.7]], hc3: [[0.95, 0.95, 0.94], [0.95, 0.95, 0.95]] },
+    mc_se: {},
+    states: { ols: [['ok', 'warning', 'broken'], ['ok', 'broken', 'broken']], hc3: [['ok', 'ok', 'ok'], ['ok', 'ok', 'ok']] },
+    critical: null, target: 0.95, ok_within: 0.03, broken_beyond: 0.1, direction: 'below',
+    current: { 'h.hetero': 0.25, 'p.n': 300 }, repeat_used: 500, reduced: false, compute_ms: 1,
+  } as unknown as SweepResult
+  const fig = buildFigure(view, {
+    methodsOn: new Set(['ols']), showReference: false, sweep,
+    roles: { ols: 'method', hc3: 'correction' }, measure: { label: 'Couverture', unit: '%', scale: 100, decimals: 0 },
+  })!
+  const map = fig.data[0] as { uid: string; z: number[][]; text: string[][] }
+
+  it('une case par couple, colorée par le verdict de la méthode principale', () => {
+    expect(map.uid).toBe('validite.domaine')
+    expect(map.z).toEqual([[0, 1, 2], [0, 2, 2]])
+  })
+  it('chaque case porte l’icône et la valeur (jamais la couleur seule)', () => {
+    expect(map.text[0][0]).toMatch(/^✓ 95/)
+    expect(map.text[1][2]).toMatch(/^✕ 70/)
+  })
+  it('l’état actuel est placé entre les cases', () => {
+    const cur = fig.data[1] as { x: number[]; y: number[] }
+    expect(cur.x).toEqual([0.5])
+    expect(cur.y).toEqual([1])
+  })
+  it('sans balayage à deux axes : en attente', () => {
+    expect(buildFigure(view, { methodsOn: new Set(), showReference: false, sweep: null })!.caption).toEqual(['Balayage en cours…'])
+  })
+})
+
+describe('gridPosition', () => {
+  it('exacte, interpolée, ou hors grille', () => {
+    expect(gridPosition([30, 100, 300], 100)).toBe(1)
+    expect(gridPosition([30, 100, 300], 200)).toBe(1.5)
+    expect(gridPosition([30, 100, 300], 5000)).toBeNull()
+    expect(gridPosition(['normal', 'cauchy'], 'cauchy')).toBe(1)
   })
 })

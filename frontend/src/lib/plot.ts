@@ -12,7 +12,8 @@
  * - identifiants de traces stables (uid = id de la série) pour que Plotly anime proprement.
  */
 
-import { cssVar, plotlyStyle, roleColor, verdictColor, type DisplayRole } from './roles'
+import { formatMeasure } from './format'
+import { cssVar, plotlyStyle, roleColor, verdictColor, verdictIcon, verdictLabel, type DisplayRole, type Verdict } from './roles'
 import {
   axisRange,
   bools,
@@ -57,6 +58,8 @@ export interface ChartOptions {
    * par-dessus l'échantillon. Seulement pour une vue qui autorise l'ajout de points.
    */
   injected?: ReadonlyArray<{ x: number; y?: number | null }>
+  /** Domaine de validité : titres des deux axes balayés (lab.axisTitle). */
+  axisLabels?: readonly [string, string]
 }
 
 /** Identifiant de la trace des points posés : PlotlyChart le reconnaît au clic (pour un retrait). */
@@ -677,12 +680,120 @@ function sensitivityFigure(view: ViewResult, opts: ChartOptions): Figure {
   return { data, layout, caption: [] }
 }
 
+/** Identifiant de la carte du Domaine de validité : PlotlyChart le reconnaît au clic (choix d'une case). */
+export const DOMAIN_SUFFIX = '.domaine'
+
+const VERDICT_CODE: Record<Verdict, number> = { ok: 0, warning: 1, broken: 2 }
+
+/**
+ * Position (indice éventuellement fractionnaire) d'une valeur sur une grille : interpolée entre deux
+ * valeurs numériques voisines, exacte pour une option ou un booléen ; null hors de la grille.
+ */
+export function gridPosition(values: readonly (number | boolean | string)[], v: number | boolean | string | undefined): number | null {
+  if (v === undefined) return null
+  const exact = values.findIndex((x) => x === v)
+  if (exact >= 0) return exact
+  if (typeof v !== 'number' || !values.every((x) => typeof x === 'number')) return null
+  const nums = values as number[]
+  for (let i = 0; i < nums.length - 1; i++) {
+    const [a, b] = [nums[i], nums[i + 1]]
+    if ((v - a) * (v - b) <= 0 && a !== b) return i + (v - a) / (b - a)
+  }
+  return null
+}
+
+/** Grille 2D d'un balayage à deux axes, indexée [axe 2][axe 1] ; [] sinon. */
+function grid2<T>(g: T[] | T[][] | undefined): T[][] {
+  return g && g.length > 0 && Array.isArray(g[0]) ? (g as T[][]) : []
+}
+
+/**
+ * Domaine de validité : carte des verdicts de la méthode principale sur une grille à deux axes
+ * (cases d'au plus 12 × 12). Chaque case porte l'icône du verdict et la valeur : la couleur n'est
+ * jamais le seul indice. L'état actuel est marqué d'un repère, placé entre les cases au besoin.
+ */
+function validityFigure(view: ViewResult, opts: ChartOptions): Figure {
+  const sweep = opts.sweep
+  if (!sweep || sweep.axes.length < 2) {
+    return { data: [], layout: baseLayout(view), caption: ['Balayage en cours…'] }
+  }
+  const [ax1, ax2] = sweep.axes
+  const roles = opts.roles ?? {}
+  const principal = Object.keys(sweep.values).find((m) => roles[m] === 'method') ?? Object.keys(sweep.values)[0]
+  const states = grid2(sweep.states[principal] as (Verdict | null)[] | (Verdict | null)[][])
+  const values = grid2(sweep.values[principal] as Num[] | Num[][])
+  const scale = opts.measure?.scale ?? 1
+  const decimals = opts.measure?.decimals ?? 2
+  const unit = opts.measure?.unit ?? ''
+  const fmt = (v: Num) => formatMeasure(v, { unit, scale, decimals })
+
+  const z = states.map((row) => row.map((st) => (st ? VERDICT_CODE[st] : null)))
+  const text = states.map((row, j) => row.map((st, i) => (st ? `${verdictIcon(st)} ${fmt(values[j]?.[i] ?? null)}` : '')))
+  const hover = states.map((row, j) =>
+    row.map((st, i) => `${ax1.labels[i]} · ${ax2.labels[j]} : ${fmt(values[j]?.[i] ?? null)}${st ? ` (${verdictLabel(st)})` : ''}`),
+  )
+  const [ok, warn, broken] = (['ok', 'warning', 'broken'] as const).map((v) => withAlpha(verdictColor(v), 0.55))
+  const data: Trace[] = [
+    {
+      type: 'heatmap',
+      uid: `${view.id}${DOMAIN_SUFFIX}`,
+      name: opts.methodLabels?.[principal] ?? principal,
+      x: ax1.values.map((_, i) => i),
+      y: ax2.values.map((_, j) => j),
+      z,
+      zmin: 0,
+      zmax: 2,
+      colorscale: [[0, ok], [1 / 3, ok], [1 / 3, warn], [2 / 3, warn], [2 / 3, broken], [1, broken]],
+      showscale: false,
+      xgap: 2,
+      ygap: 2,
+      text,
+      texttemplate: '%{text}',
+      textfont: { size: ax1.values.length * ax2.values.length > 60 ? 9 : 11, color: cssVar('--ct-text') },
+      customdata: hover,
+      hovertemplate: '%{customdata}<extra>Cliquez pour régler les deux contrôles</extra>',
+      showlegend: false,
+    },
+  ]
+  const cx = gridPosition(ax1.values, sweep.current[ax1.target])
+  const cy = gridPosition(ax2.values, sweep.current[ax2.target])
+  const caption = ['✓ Fiable · ! Fragile · ✕ Rompu', 'Cliquez sur une case pour régler les deux contrôles']
+  if (cx !== null && cy !== null) {
+    data.push({
+      type: 'scatter',
+      uid: `${view.id}.etat-actuel`,
+      name: 'État actuel',
+      mode: 'markers',
+      x: [cx],
+      y: [cy],
+      marker: { symbol: 'circle-open', size: 22, color: cssVar('--ct-text'), line: { width: 3 } },
+      hovertemplate: 'État actuel<extra></extra>',
+      showlegend: true,
+    })
+  } else {
+    caption.push("L'état actuel est en dehors de la grille")
+  }
+  const axis = (ax: typeof ax1, title: string) => ({
+    ...axisLayout([-0.5, ax.values.length - 0.5], title),
+    tickmode: 'array',
+    tickvals: ax.values.map((_, i) => i),
+    ticktext: ax.labels,
+    showgrid: false,
+    zeroline: false,
+  })
+  const layout = baseLayout(view, {
+    xaxis: axis(ax1, opts.axisLabels?.[0] ?? ax1.target),
+    yaxis: axis(ax2, opts.axisLabels?.[1] ?? ax2.target),
+  })
+  return { data, layout, caption }
+}
+
 /**
  * Figure d'une vue ; null si elle ne peut pas être dessinée (type non géré, ou aucune série hors
  * Sensibilité, dont les données viennent du balayage) : afficher la vue de secours.
  */
 export function buildFigure(view: ViewResult, opts: ChartOptions): Figure | null {
-  if (view.type !== 'sensitivity' && view.series.length === 0) return null
+  if (view.type !== 'sensitivity' && view.type !== 'validity_domain' && view.series.length === 0) return null
   switch (view.type) {
     case 'scatter':
     case 'residuals':
@@ -694,8 +805,10 @@ export function buildFigure(view: ViewResult, opts: ChartOptions): Figure | null
       return distributionFigure(view, opts)
     case 'sensitivity':
       return sensitivityFigure(view, opts)
+    case 'validity_domain':
+      return validityFigure(view, opts)
     default:
-      // validity_domain (P1), surface_3d (P1), vector_space (P2), measures_table : autres composants.
+      // surface_3d (P1), vector_space (P2), measures_table : autres composants.
       return null
   }
 }
