@@ -51,3 +51,51 @@ def test_run_errors_are_french_and_422() -> None:
     assert bad_yaml.status_code == 422 and bad_yaml.json()["detail"]["issues"]
     both = client.post("/api/run", json={"experiment_id": "test-student", "raw_content": "x"})
     assert both.status_code == 422
+
+
+# --- POST /api/training/session (CLAUDE.md, section 12) -------------------------------------------------
+
+
+def _session(**body):
+    r = client.post("/api/training/session", json=body)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_training_count_is_min_of_10_and_available() -> None:
+    from backend.api.registry import official
+    from backend.engine.training import _pool, select_experiments
+
+    for filter_ in ("toutes", "regression-lineaire", "tests-multiples"):
+        available = len(_pool(select_experiments(official(), filter_)))
+        s = _session(filter=filter_, seed=11)
+        assert len(s["questions"]) + len(s["dropped"]) >= min(10, available)
+        assert len(s["questions"]) <= min(10, available)
+    assert len(_session(filter="tests-multiples", count=2, seed=11)["questions"]) == 2
+
+
+def test_training_misconception_never_twice() -> None:
+    for seed in (1, 2, 3):
+        s = _session(filter="toutes", seed=seed)
+        ids = [q["qid"].rsplit("/", 1)[0] for q in s["questions"] if q["type"] == "misconception"]
+        assert len(ids) == len(set(ids))
+        qids = [q["qid"] for q in s["questions"]]
+        assert len(qids) == len(set(qids))
+
+
+def test_training_seed_is_returned_when_absent() -> None:
+    s = _session(filter="theoreme-central-limite")
+    assert isinstance(s["seed"], int) and s["id"] == f"theoreme-central-limite~{s['seed']}"
+
+
+def test_training_same_seed_same_series() -> None:
+    a = _session(filter="regression-lineaire", seed=99)
+    b = _session(filter="regression-lineaire", seed=99)
+    assert a == b
+    c = _session(filter="regression-lineaire", seed=100)
+    assert [q["prompt"] for q in a["questions"]] != [q["prompt"] for q in c["questions"]] or a != c
+
+
+def test_training_unknown_filter_is_french_422() -> None:
+    r = client.post("/api/training/session", json={"filter": "nexiste-pas"})
+    assert r.status_code == 422 and "Aucune expérience" in r.json()["detail"]

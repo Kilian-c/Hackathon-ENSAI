@@ -1,19 +1,29 @@
-"""Routes P0 de l'API (R1/R2) : liste et lecture des expériences, `POST /api/run`.
+"""Routes P0 de l'API (R1/R2) : expériences, `/api/run`, `/api/sweep`, `/api/training/session`.
 
 Toutes en `def` (pas `async def`) : le calcul NumPy est bloquant, FastAPI les passe dans un pool de threads.
 """
 
+import secrets
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.api import registry
-from backend.contracts import ExperimentSummary, RunRequest, RunResult, SweepRequest, SweepResult
+from backend.contracts import (
+    ExperimentSummary,
+    RunRequest,
+    RunResult,
+    SweepRequest,
+    SweepResult,
+    TrainingRequest,
+    TrainingSessionResponse,
+)
 from backend.engine.loader import ExperimentError
 from backend.engine.runner import RunError, run
 from backend.engine.schema import ExperimentSpec
 from backend.engine.state import StateError
 from backend.engine.sweep import sweep
+from backend.engine.training import SEED_RANGE, build_session
 
 router = APIRouter(prefix="/api")
 
@@ -83,4 +93,16 @@ def post_sweep(request: SweepRequest) -> SweepResult:
     try:
         return sweep(spec, request.state, [a.target for a in request.axes], request.measure)
     except (StateError, RunError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/training/session", response_model=TrainingSessionResponse)
+def post_training_session(request: TrainingRequest) -> TrainingSessionResponse:
+    """Série vérifiée. Sans `seed`, le serveur en tire une (hors calcul : elle ne fixe que la série)."""
+    seed = request.seed if request.seed is not None else secrets.randbelow(SEED_RANGE)
+    try:
+        return build_session(
+            registry.official(), registry.content_digest(), request.filter, request.count, seed
+        )
+    except RunError as exc:
         raise HTTPException(422, str(exc)) from exc
