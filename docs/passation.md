@@ -1,5 +1,8 @@
 # Notes de passation (la plus récente en haut)
 
+## H7 (20 h 30) : suite des théorèmes, `docs/theoremes_restants.md` (pas une relève)
+- Pour la personne qui continue les expériences : `docs/theoremes_restants.md` (ce qui est fait, ce qu'il reste, cas YAML seul / méthode / vue, marche à suivre, pièges) et `docs/catalogue_experiences.md` (copie du catalogue de Kilian).
+
 ## H7 (20 h) : Student et pendule archivés, branche `r2/archives` (pas une relève)
 - `experiments/test_student.yaml` et `experiments/pendule_euler.yaml` sont dans `experiments/archives/` (`git mv`) : le registre ne lit pas les sous-dossiers, donc ils ont quitté l'accueil et les séries « toutes ». `README.md` mis à jour.
 - Tests (fichiers de R1, adaptés par R2, à relire) : `test_runner.py` lit Student et le pendule dans `ARCHIVES` (ils testent toujours `draw_log`, le générateur `ode` et l'axe du temps) ; `test_api.py` : liste, lecture et erreurs sur `multicolinearite`, le YAML brut vient de `archives/` ; `test_sweep.py` : axe de choix sur le TCL, cible `base` sur la multicolinéarité (`h.rho` et `p.n`), grille 2D sur le TCL. pytest et ruff verts.
