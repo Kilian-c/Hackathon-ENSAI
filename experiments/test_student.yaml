@@ -98,7 +98,7 @@ measures:
     target: 0.05
     direction: both
     ok_within: 0.025             # au moins 2,5 erreurs Monte Carlo : le hasard seul ne change pas le verdict
-    broken_beyond: 0.04          # Cauchy : 1,8 % à n = 25 (Fragile), 0,4 % à n = 200 (Rompu)
+    broken_beyond: 0.04          # Cauchy, Student : environ 1,0 % à n = 25 (pile à la limite, Fragile) et 1,6 % à n = 200 (Fragile)
 
 draw_log: { reject: reps.reject, pvalue: reps.pvalue, reject_label: "faux positif" }   # P1
 
