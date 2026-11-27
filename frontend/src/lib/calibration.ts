@@ -15,11 +15,23 @@ export const MIN_FOR_CURVE = 20
 /** Écart moyen entre confiance et réussite en dessous duquel on se dit bien calibré. */
 export const CALIBRATED_WITHIN = 0.1
 
-/** Toutes les réponses enregistrées, de la plus ancienne à la plus récente. Entrées abîmées écartées. */
+const KNOWN_LEVELS = new Set<string>(CONFIDENCE_LEVELS.map((l) => l.id))
+
+/**
+ * Toutes les réponses enregistrées, de la plus ancienne à la plus récente. Entrées abîmées écartées,
+ * y compris un cran inconnu : sinon la réponse compterait dans le score sans apparaître sur aucun bouton.
+ */
 export function allAnswers(history: History): Answer[] {
   return Object.values(history.series)
     .flatMap((s) => (Array.isArray(s?.answers) ? s.answers : []))
-    .filter((a) => typeof a?.correct === 'boolean' && Number.isFinite(a.p) && a.p >= 0 && a.p <= 1)
+    .filter(
+      (a) =>
+        typeof a?.correct === 'boolean' &&
+        KNOWN_LEVELS.has(a.level) &&
+        Number.isFinite(a.p) &&
+        a.p >= 0 &&
+        a.p <= 1,
+    )
     .sort((a, b) => String(a.at).localeCompare(String(b.at)))
 }
 
