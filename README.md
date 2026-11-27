@@ -1,0 +1,120 @@
+# Crash-Test
+
+Des QCM de révision où la correction est une expérience : **casser une hypothèse d'un théorème, mesurer ce qui cède, appliquer la correction.** Projet du hackathon ENSAI.
+
+- **Référence complète** : [docs/cahier_crash_test.pdf](docs/cahier_crash_test.pdf) (source `.tex` à côté).
+- **Règles de travail et formats** : [CLAUDE.md](CLAUDE.md), à lire en entier (il fait foi sur les écarts avec le cahier).
+- **Où en est-on** : [docs/passation.md](docs/passation.md) (note de relève la plus récente en haut) et [docs/notes/](docs/notes/) (une note par rôle).
+
+---
+
+## Installation (une fois)
+
+Prérequis : **git**, **Node.js 20 ou plus**, **uv** (gestionnaire Python ; il installe lui-même Python 3.12).
+
+```bash
+# uv, s'il manque (Windows PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# uv (macOS, Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+git clone https://github.com/Kilian-c/Hackathon-ENSAI.git
+cd Hackathon-ENSAI
+uv sync                          # moteur : crée .venv avec les versions fixées dans uv.lock
+cd frontend && npm install       # interface
+```
+
+## Commandes
+
+| But | Commande | Où |
+|---|---|---|
+| Lancer le moteur (port 8000) | `uv run uvicorn backend.main:app --reload --port 8000` | racine |
+| Lancer l'interface (port 5173, relaie `/api` vers 8000) | `npm run dev` | `frontend/` |
+| Tests du moteur | `uv run pytest -q` | racine |
+| Style Python | `uv run ruff check .` | racine |
+| Types de l'interface | `npm run check` | `frontend/` |
+| Tests de l'interface | `npm test` | `frontend/` |
+| Construire l'interface | `npm run build` | `frontend/` |
+| Contexte pour un LLM de discussion | `node scripts/pack.mjs <r1\|r2\|r3\|r4> [--diff]` | racine |
+
+**Rien n'entre dans `main` sans les quatre vérifications au vert** : `pytest`, `ruff check`, `npm run check`, `npm test`.
+
+---
+
+## Travailler avec un LLM de discussion (sans accès au dépôt)
+
+Pour R2 et R4, qui codent avec un LLM en conversation. Le but : lui donner **le strict nécessaire**, pas tout le dépôt (l'export complet fait environ 90 000 tokens, dont la moitié est le cahier et les fichiers de verrouillage).
+
+1. **Début de conversation** : `node scripts/pack.mjs r2` (ou `r4`) crée `context/r2.md` (20 000 à 30 000 tokens) : `CLAUDE.md`, la dernière passation, vos notes, vos fichiers et les contrats que vous lisez. Collez-le en premier message, avec : « Je suis R2. Lis ce contexte, puis attends ma demande. »
+2. **En cours de conversation** : après un `git pull` ou vos propres changements, `node scripts/pack.mjs r2 --diff` crée `context/r2-diff.md` avec **seulement les fichiers modifiés** depuis le dernier pack (souvent moins de 5 000 tokens). Collez-le en disant « Voici les fichiers qui ont changé ».
+3. **Nouvelle conversation** quand le LLM commence à oublier ou à se contredire : refaites un pack complet. C'est moins cher que de traîner un long historique.
+4. **Pour une question précise**, ne collez que le fichier concerné : souvent suffisant et bien moins cher.
+
+Le code renvoyé par le LLM : collez-le dans le bon fichier, lancez les tests, puis commitez sur une branche (`r2/methodes-ols`). Le dossier `context/` n'est jamais commité.
+
+---
+
+## Arborescence
+
+Propriétaires : **R1** moteur et API · **R2** maths et contenu · **R3** (Kilian) interface · **R4** écrans secondaires et qualité. Chacun ne modifie que ses fichiers (détail : [CLAUDE.md](CLAUDE.md), section 3). **[Contrat]** : figé après le tag `contracts-v1` (H4). *(à venir)* : prévu, pas encore créé.
+
+```text
+Hackathon-ENSAI/
+├── CLAUDE.md                       Règles pour les assistants IA et l'équipe                 R3
+├── README.md                       Ce fichier                                               R3
+├── pyproject.toml, uv.lock         Dépendances Python (versions fixées)                      R1
+├── Dockerfile                      Image du moteur (à venir)                                 R1
+├── docs/
+│   ├── cahier_crash_test.{tex,pdf} Cahier de cadrage (référence)
+│   ├── passation.md                Notes de relève (H9, H17, H23), la plus récente en haut  tous
+│   └── notes/r1.md … r4.md         Notes personnelles, une par rôle                         chacun
+├── experiments/                    Une expérience = un fichier YAML                          R2
+│   ├── regression_lineaire.yaml    P0, modèle du générateur random
+│   ├── test_student.yaml           P0, cible relative (puissance)
+│   └── pendule_euler.yaml          P0, modèle du générateur ode
+├── backend/
+│   ├── main.py                     Point d'entrée FastAPI                                    R1
+│   ├── contracts.py                [Contrat] Requêtes et réponses de l'API (à venir)         R1
+│   ├── api/                        Routes /api/run, /api/sweep, /api/training/session        R1
+│   ├── engine/
+│   │   ├── schema.py               [Contrat] Schéma YAML v1                                  R1
+│   │   ├── loader.py               Lecture du YAML, erreurs avec numéro de ligne             R1
+│   │   ├── method_contract.py      [Contrat] Décorateur et MethodResult (à venir)            R2
+│   │   ├── laws.py, aggregators.py Lois et agrégateurs (à venir)                             R2
+│   │   ├── expr, rng, sanitize, runner, training .py  (à venir)                              R1
+│   │   └── generators/             random, ode                                               R1
+│   └── methods/                    ols_ci, one_sample_test, integrate (à venir)              R2
+├── tests/                          test_engine, test_loader (R4), test_experiments (R2)…
+├── scripts/
+│   ├── pack.mjs                    Contexte pour LLM de discussion                           R3
+│   ├── gen_types.sh                contracts.py vers types.gen.ts (à venir)                  R3
+│   └── make_fixtures.py            Vrais résultats vers frontend/src/fixtures (à venir)      R1
+└── frontend/                       Vite + Svelte 5 + TypeScript                              R3
+    ├── scripts/test.mjs            Lanceur de Vitest (corrige c: en C: sous Windows)
+    └── src/
+        ├── main.ts, App.svelte     Point d'entrée, navigation
+        ├── styles/tokens.css       Seule source des couleurs et espacements
+        ├── lib/
+        │   ├── roles.ts            Style de chaque rôle et verdict (trait, marqueur)
+        │   ├── equation.ts         Règle de couleur des termes de l'équation
+        │   ├── views.ts            Format des vues attendu du moteur
+        │   ├── plot.ts             Construction des graphiques Plotly
+        │   ├── types.gen.ts        Généré depuis contracts.py, jamais à la main (à venir)
+        │   ├── executor.ts, state.ts, share.ts  Client API, état et URL (à venir)
+        │   └── calibration.ts      Crans de confiance, score de Brier (à venir)            R4
+        ├── components/
+        │   ├── PlotlyChart.svelte  Le composant graphique unique
+        │   ├── lab/, training/     Laboratoire, Entraînement (à venir)
+        │   └── home/, summary/, ImportView.svelte  Accueil, Bilan, Import (à venir)         R4
+        ├── fixtures/               Faux résultats JSON, puis vrais (make_fixtures)          R1
+        └── dev/                    Fixture provisoire et banc d'essai des graphiques (à supprimer)
+```
+
+---
+
+## Git en bref
+
+- Petites branches nommées par rôle (`r1/runner-cache`, `r4/galerie`), petits commits fréquents.
+- Avant de pousser : `git pull --rebase`, puis les quatre vérifications.
+- La nuit, l'interface avance sur des branches relues par Kilian ; R1 fusionne le moteur sur `main` dès que les tests passent.
+- Ne commitez jamais `context/`, `repomix-output.*`, `.env`.
