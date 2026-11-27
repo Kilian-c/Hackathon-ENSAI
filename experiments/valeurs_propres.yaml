@@ -1,0 +1,185 @@
+# yaml-language-server: $schema=./schema.json
+schema_version: 1
+id: "valeurs-propres"
+title: "Méthode de la puissance : quand trouve-t-elle la valeur propre dominante ?"
+discipline: "algèbre linéaire"
+level: "3"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé
+concepts: ["valeur propre", "méthode de la puissance", "algorithme QR", "écart spectral"]
+
+theorem:
+  name: "Convergence de la méthode de la puissance"
+  statement: |
+    Soit A une matrice symétrique dont la valeur propre de plus grand module, lambda_1, est isolée :
+    |lambda_1| > |lambda_2| >= ... La méthode de la puissance, qui remplace v par A v / ||A v||, converge
+    alors vers un vecteur propre associé à lambda_1, à la vitesse |lambda_2 / lambda_1| par itération, et
+    le quotient de Rayleigh converge vers lambda_1 à la vitesse |lambda_2 / lambda_1|^2. Quand deux valeurs
+    propres ont presque le même module, la convergence est très lente ; quand elles sont opposées, le
+    vecteur oscille entre deux directions et seule l'estimation de la valeur propre progresse, lentement.
+    L'algorithme QR a la même vitesse. Un calcul direct (LAPACK) n'a pas cette limite.
+
+equation:
+  tex: '\hat{\lambda}_k \;\longrightarrow\; {{limite}}'
+  terms:
+    limite:
+      ok: '\lambda_1 \quad \text{à la vitesse} \quad \left|\dfrac{\lambda_2}{\lambda_1}\right|^{2k}'
+      corrected: '\lambda_1 \quad \text{(calcul direct : sans condition d''écart)}'
+
+params:
+  d:     { type: number, label: "Taille de la matrice d", min: 10, max: 20, step: 2, default: 12,
+           sweep_values: [10, 12, 16, 20] }
+  iters: { type: number, label: "Nombre d'itérations", min: 5, max: 60, step: 5, default: 20,
+           sweep_values: [5, 10, 20, 40, 60] }
+
+hypotheses:
+  separation:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Valeur propre dominante isolée"
+    category: "spectre"
+    ok_label: "Isolée"
+    broken_label: "Noyée dans le spectre"
+    statement_tex: '|\lambda_1| > |\lambda_2|'
+    why: "Chaque itération multiplie les autres composantes du vecteur par |lambda_2 / lambda_1| : elles disparaissent seulement si ce rapport est nettement inférieur à 1."
+    when_broken: "Quand la valeur propre dominante est noyée dans le spectre (rapport proche de 1, ou deux valeurs propres opposées de même module), les autres composantes ne s'éteignent presque plus : l'estimation reste imprécise, même après beaucoup d'itérations."
+    affects: [limite]
+
+counterexamples:
+  - id: "sans-pic"
+    label: "Aucune valeur propre isolée"
+    explain: "Le spectre remplit [-2, 2] et les plus grandes valeurs propres, proches de +2 et de -2, ont presque le même module : la puissance n'arrive pas à trancher."
+    state: { hypotheses: { separation: 1.0 } }
+  - id: "pic-faible"
+    label: "Pic à peine séparé"
+    explain: "La valeur propre dominante est à peine plus grande que le bord du spectre : le rapport |lambda_2 / lambda_1| est proche de 1, et l'erreur reste grande."
+    state: { hypotheses: { separation: 0.8 } }
+
+generator:
+  type: random
+  n: p.d * p.d                    # une matrice d x d par répétition, rangée en d * d entrées
+  repeat: 80
+  variables:
+    a: { expr: "normal()" }
+
+methods:
+  - id: puissance
+    role: method
+    call: eigen
+    label: "Méthode de la puissance"
+    args: { a: a, d: p.d, spike: "3 - 3 * h.separation", kind: "power", iters: p.iters }
+  - id: qr
+    role: alternative
+    call: eigen
+    label: "Algorithme QR"
+    explain: "L'algorithme QR calcule toutes les valeurs propres à la fois, mais il converge à la même vitesse que la puissance : quand la valeur propre dominante n'est pas isolée, il est aussi lent."
+    args: { a: a, d: p.d, spike: "3 - 3 * h.separation", kind: "qr", iters: p.iters }
+  - id: directe
+    role: correction
+    call: eigen
+    label: "Calcul direct (LAPACK)"
+    explain: "Le calcul direct n'itère pas à partir d'un vecteur de départ : il diagonalise la matrice par transformations orthogonales et donne les valeurs propres à l'erreur d'arrondi près, quel que soit l'écart du spectre."
+    repairs: [separation]
+    args: { a: a, d: p.d, spike: "3 - 3 * h.separation", kind: "numpy", iters: p.iters }
+
+measures:
+  erreur:
+    agg: "median(reps.log_error)"
+    label: "Erreur relative sur la valeur propre dominante (puissance de 10)"
+    decimals: 1
+    primary: true
+    target: -8
+    direction: above
+    ok_within: 2.5
+    broken_beyond: 5
+    texts:
+      ok: "Valeur propre précise : erreur relative de 10^{value}."
+      warning: "Valeur propre peu précise : erreur relative de 10^{value}."
+      broken: "Valeur propre fausse : erreur relative de 10^{value}."
+
+challenges:
+  - id: "puissance-echoue"
+    goal: "Mettez la méthode de la puissance en échec (verdict Rompu) alors que le calcul direct reste Fiable."
+    when: "s.erreur == 'broken' and s.erreur.directe == 'ok'"
+    unlock: "Sans valeur propre dominante isolée, seule la méthode directe ne dépend pas de l'écart du spectre."
+  - id: "plus-d-iterations"
+    goal: "Avec une valeur propre dominante un peu noyée, retrouvez un verdict Fiable en augmentant le nombre d'itérations."
+    when: "h.separation >= 0.4 and p.iters >= 40 and s.erreur == 'ok'"
+    unlock: "Tant que |lambda_2 / lambda_1| reste sous 1, plus d'itérations réduisent encore l'erreur : plus le rapport est proche de 1, plus il en faut."
+
+auto_sweep: [h.separation]
+
+views:
+  - id: convergence
+    type: curves
+    title: "Erreur au fil des itérations (médiane)"
+    ui: { x_title: "Itération", y_title: "Erreur relative (puissance de 10)" }
+    bind: { t: curves.k, series: [ { y: curves.history, label: "Erreur" } ] }
+  - id: matrice
+    type: heatmap
+    title: "La matrice A de la première répétition"
+    bind: { matrix: curves.matrix }
+    ui: { decimals: 1 }
+  - id: erreurs
+    type: distribution
+    title: "Erreur sur 80 matrices"
+    bind: { stat: reps.log_error }
+    ui: { x_title: "Erreur relative (puissance de 10)" }
+  - id: sens-separation
+    type: sensitivity
+    title: "Selon l'isolement de la valeur propre"
+    sweep: { axes: [h.separation] }
+  - id: sens-iters
+    type: sensitivity
+    title: "Selon le nombre d'itérations"
+    sweep: { axes: [p.iters] }
+
+questions:
+  - id: "vp-q1-puissance"
+    type: misconception
+    prompt: "La matrice est symétrique. La méthode de la puissance donne-t-elle toujours sa valeur propre de plus grand module, avec le même nombre d'itérations ?"
+    hypothesis: "separation"
+    choices:
+      - id: "a"
+        label: "Oui : pour une matrice symétrique, la puissance converge toujours aussi vite."
+        correct: false
+        reveal_state: { hypotheses: { separation: 1.0 } }
+        verify: "s.erreur == 'broken' and s.erreur.directe == 'ok'"
+        focus_view: "convergence"
+        explain: "La vitesse est |lambda_2 / lambda_1| par itération. Quand la valeur propre dominante n'est pas isolée, ce rapport est proche de 1 et l'erreur reste grande."
+      - id: "b"
+        label: "Non : elle est lente quand la valeur propre dominante n'est pas isolée."
+        correct: true
+        reveal_state: { hypotheses: { separation: 1.0 } }
+        verify: "s.erreur == 'broken' and s.erreur.directe == 'ok'"
+        focus_view: "convergence"
+        explain: "Exact : la vitesse dépend de l'écart entre les deux plus grands modules. Le calcul direct n'a pas cette limite."
+
+  - id: "vp-q2-qr"
+    type: misconception
+    prompt: "L'algorithme QR calcule toutes les valeurs propres à la fois. Évite-t-il le problème d'une valeur propre dominante non isolée ?"
+    hypothesis: "separation"
+    choices:
+      - id: "a"
+        label: "Oui : il converge vite, quel que soit le spectre."
+        correct: false
+        reveal_state: { hypotheses: { separation: 1.0 } }
+        verify: "s.erreur.qr == 'broken'"
+        focus_view: "convergence"
+        explain: "Sans décalage, l'algorithme QR converge à la même vitesse que la puissance, déterminée par les rapports entre valeurs propres consécutives."
+      - id: "b"
+        label: "Non : il est aussi lent quand les plus grands modules sont proches."
+        correct: true
+        reveal_state: { hypotheses: { separation: 1.0 } }
+        verify: "s.erreur.qr == 'broken'"
+        focus_view: "convergence"
+        explain: "Exact : calculer toutes les valeurs propres ne change pas la vitesse. Seul un calcul direct, ou un décalage bien choisi, en vient à bout."
+
+  - id: "vp-q3-iterations"
+    type: prediction
+    prompt: "La valeur propre dominante est un peu noyée. Si le nombre d'itérations passe de {k} au double, que devient l'erreur ?"
+    procedural_params:
+      k: { min: 10, max: 20, step: 5 }
+    state: { hypotheses: { separation: 0.4 } }
+    sweep: { target: p.iters, from: "{k}", to: "{k} * 2" }
+    measure: erreur

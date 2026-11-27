@@ -13,7 +13,7 @@ Quand une ligne est terminée et fusionnée sur `main`, rayez-la (`~~...~~`) : l
 | ~~`backend/methods/formula.py`~~ | oui | ~~méthodes génériques `formula_estimate`, `formula_test`, `formula_interval`~~ **Fait** (arguments = expressions réduisant l'axe des observations, ex. `mean(x, axis=1)`) ; 3 exemples ajoutés dans `tests/test_method_contract.py` (R2) | R2 |
 | ~~`backend/methods/linalg/__init__.py`~~ | oui | ~~paquet de l'algèbre linéaire~~ **Fait** | R2 |
 | ~~`backend/methods/linalg/linsolve.py`~~ | oui | ~~`linsolve` (gauss, gauss_pivot, cholesky, jacobi, gauss_seidel, cg)~~ **Fait** + `experiments/systemes_lineaires.yaml` (Jacobi contre diagonale faible ; Gauss-Seidel en alternative, pivot de Gauss en correction) | R2 |
-| `backend/methods/linalg/eigen.py` | oui | `eigen` (power, qr, numpy) | R2 |
+| ~~`backend/methods/linalg/eigen.py`~~ | oui | ~~`eigen` (power, qr, numpy)~~ **Fait** + `experiments/valeurs_propres.yaml` (puissance contre valeur propre dominante noyée dans le spectre ; QR en alternative, calcul direct en correction) | R2 |
 | `backend/methods/linalg/orthonormalize.py` | oui | `orthonormalize` (cgs, mgs, householder) | R2 |
 | ~~`backend/methods/linalg/spectrum.py`~~ | oui | ~~`spectrum` (spectre de matrices aléatoires)~~ **Fait** (Wigner : `reps` lmax, lmin, radius ; `curves` matrix, eigenvalues ; `summary` semicircle_ks) | R2 |
 | ~~`backend/methods/__init__.py`~~ | non | ~~découverte automatique (`pkgutil`)~~ **Fait** | R2 |

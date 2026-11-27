@@ -332,6 +332,18 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         15,
     ),
+    "eigen": (
+        {
+            "a": np.random.default_rng(4).standard_normal((20, 9)),
+            "d": 3,
+            "spike": 3.0,
+            "kind": "power",
+            "iters": 10,
+            "rng": np.random.default_rng(0),
+        },
+        20,
+        None,
+    ),
     "linsolve": (
         {
             "a": np.random.default_rng(2).standard_normal((20, 9)),

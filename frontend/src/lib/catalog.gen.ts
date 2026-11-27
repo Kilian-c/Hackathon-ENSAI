@@ -133,6 +133,50 @@ export const CATALOG: Catalog = {
       "doc": "Statistique z par répétition ; `inside` vaut 1 si |z| ne dépasse pas le quantile normal."
     },
     {
+      "name": "eigen",
+      "args": [
+        {
+          "name": "a",
+          "default": null
+        },
+        {
+          "name": "d",
+          "default": null
+        },
+        {
+          "name": "spike",
+          "default": "3.0"
+        },
+        {
+          "name": "kind",
+          "default": "'numpy'"
+        },
+        {
+          "name": "iters",
+          "default": "60"
+        }
+      ],
+      "kinds": [
+        "power",
+        "qr",
+        "numpy"
+      ],
+      "provides": {
+        "reps": [
+          "log_error",
+          "estimate",
+          "failed"
+        ],
+        "curves": [
+          "matrix",
+          "k",
+          "history"
+        ]
+      },
+      "cost": "repeat * iters * d**3",
+      "doc": "Estime la valeur propre de plus grand module de A = Wigner + spike v vᵀ."
+    },
+    {
       "name": "formula_estimate",
       "args": [
         {
