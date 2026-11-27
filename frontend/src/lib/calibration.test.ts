@@ -74,7 +74,7 @@ describe('calibration : crans et expériences', () => {
     const history: History = {
       version: 1,
       series: {
-        s1: { filter: 'toutes', seed: 1, contentHash: 'x', size: 3, answers: [...good, { ...good[0], p: Number.NaN }] },
+        s1: { filter: 'toutes', seed: 1, contentHash: 'x', size: 3, answers: [...good, { ...good[0], p: Number.NaN }, { ...good[1], level: 'certain' as ConfidenceLevel }] },
         s2: { filter: 'toutes', seed: 2, contentHash: 'x', size: 1, answers: answers('sure', 0.95, 1, 1, 'b') },
       },
     }
