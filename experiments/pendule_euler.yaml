@@ -138,3 +138,47 @@ questions:
         verify: "s.err_angle == 'broken' and m.err_angle.rk4 < 0.05"
         focus_view: "trajectoire"
         explain: "Exact : l'erreur de RK4 est proportionnelle à la puissance 4 du pas."
+
+  - id: "pend-q2-duree"
+    type: misconception
+    prompt: "Un pas pour lequel Euler reste fiable sur 5 s le reste-t-il quand on simule {t_end} s ?"
+    hypothesis: "pas"
+    procedural_params:
+      t_end: { min: 8, max: 10, step: 1 }
+    choices:
+      - id: "a"
+        label: "Oui : l'erreur de chaque pas ne dépend pas de la durée."
+        correct: false
+        reveal_state: { params: { t_end: "{t_end}" }, hypotheses: { pas: 0.4 } }
+        verify: "s.err_angle == 'broken' and m.err_angle.rk4 < 0.05"
+        focus_view: "trajectoire"
+        explain: "L'erreur de chaque pas s'ajoute à la précédente : plus la simulation est longue, plus l'écart avec la solution de référence grandit."
+      - id: "b"
+        label: "Non : les erreurs s'accumulent, il faut un pas plus fin quand la durée augmente."
+        correct: true
+        reveal_state: { params: { t_end: "{t_end}" }, hypotheses: { pas: 0.4 } }
+        verify: "s.err_angle == 'broken' and m.err_angle.rk4 < 0.05"
+        focus_view: "trajectoire"
+        explain: "Exact : le même pas devient insuffisant sur une longue durée, alors que RK4 reste fidèle."
+
+  - id: "pend-q3-amplitude"
+    type: misconception
+    prompt: "Avec une amplitude initiale de {theta0} rad, le même pas d'Euler donne-t-il la même précision qu'à petite amplitude ?"
+    hypothesis: "pas"
+    procedural_params:
+      theta0: { min: 2.0, max: 2.5, step: 0.1 }
+    choices:
+      - id: "a"
+        label: "Oui : seul le pas de temps fixe l'erreur."
+        correct: false
+        reveal_state: { params: { theta0: "{theta0}" }, hypotheses: { pas: 0.4 } }
+        verify: "s.err_angle == 'broken' and m.err_angle.rk4 < 0.05"
+        focus_view: "trajectoire"
+        explain: "Le pendule accélère davantage à grande amplitude : l'erreur par pas est plus forte et le même pas devient trop grossier."
+      - id: "b"
+        label: "Non : une grande amplitude demande un pas plus fin."
+        correct: true
+        reveal_state: { params: { theta0: "{theta0}" }, hypotheses: { pas: 0.4 } }
+        verify: "s.err_angle == 'broken' and m.err_angle.rk4 < 0.05"
+        focus_view: "trajectoire"
+        explain: "Exact : la précision dépend du pas, mais aussi de la dynamique simulée."

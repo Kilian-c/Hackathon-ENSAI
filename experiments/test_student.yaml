@@ -84,7 +84,7 @@ measures:
     target: base                 # la cible est la puissance de la même méthode sous loi normale
     direction: below
     ok_within: 0.10
-    broken_beyond: 0.29          # n = 25 : Student Rompu sous Student à 2 ddl et Cauchy ; Wilcoxon Fragile sous Cauchy
+    broken_beyond: 0.30          # n = 25 : Student Rompu sous Student à 2 ddl et Cauchy ; Wilcoxon Fragile sous Cauchy
     texts:
       ok: "Puissance préservée : {value}."
       warning: "Puissance entamée : {value}."
@@ -163,3 +163,25 @@ questions:
     state: { params: { n: 200 } }
     pathologies:
       from: [loi.student_2, loi.cauchy]      # plus « Normale », ajoutée d'office
+
+  - id: "stu-q3-wilcoxon"
+    type: misconception
+    prompt: "Sous une loi de Cauchy (n = {n}), le test de Wilcoxon garde-t-il sa puissance ?"
+    hypothesis: "loi"
+    procedural_params:
+      n: { min: 100, max: 200, step: 50 }
+    choices:
+      - id: "a"
+        label: "Non : sous Cauchy, aucun test ne garde sa puissance."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "cauchy" } }
+        verify: "s.power == 'broken' and m.power.wilcoxon > 0.8"
+        focus_view: "pvalues"
+        explain: "Le test de Student s'effondre, mais Wilcoxon ne regarde que les rangs : une valeur extrême pèse autant qu'une autre valeur positive."
+      - id: "b"
+        label: "Oui : il ne regarde que les rangs, donc les valeurs extrêmes ne le gênent pas."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "cauchy" } }
+        verify: "s.power == 'broken' and m.power.wilcoxon > 0.8"
+        focus_view: "pvalues"
+        explain: "Exact : sous une loi symétrique, Wilcoxon retrouve sa puissance dès que n est assez grand, alors que Student reste Rompu."
