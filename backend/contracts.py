@@ -16,7 +16,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION: Literal[1] = 1
 MAX_EXTRA_POINTS = 20
 MAX_SWEEP_POINTS = 21
 MAX_TRAINING_COUNT = 10

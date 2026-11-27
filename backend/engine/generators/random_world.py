@@ -114,10 +114,12 @@ def generate(spec: ExperimentSpec, state: ResolvedState) -> World:
 
         def option(hid: str, _rng=rng, _shape=shape, _holder=holder) -> Any:
             hyp = spec.hypotheses[hid]
-            chosen = hyp.options[state.hypotheses[hid]]
+            key = state.hypotheses[hid]
+            assert hyp.options is not None and isinstance(key, str)  # `@h.` ne vise qu'un choix
+            chosen = hyp.options[key]
             if chosen.law is not None:
                 return sample_law(chosen.law, _rng, _shape)
-            return option_exprs[(hid, state.hypotheses[hid])].evaluate(_holder["env"])
+            return option_exprs[(hid, key)].evaluate(_holder["env"])
 
         env = Env(
             variables={**values, "idx": idx},

@@ -195,8 +195,9 @@ class _Checker(ast.NodeVisitor):
 
     def visit_Name(self, node: ast.Name) -> None:
         name = node.id
-        if _OPTION_TOKEN.match(name):
-            self.out.options.add(_OPTION_TOKEN.match(name).group(1))
+        match = _OPTION_TOKEN.match(name)
+        if match:
+            self.out.options.add(match.group(1))
         elif name.startswith("_"):
             raise ExprError("Un nom ne peut pas commencer par « _ ».")
         elif name in NAMESPACE_ROOTS:
@@ -317,7 +318,7 @@ class _Evaluator:
         while isinstance(cur, ast.Attribute):
             path.append(cur.attr)
             cur = cur.value
-        root = cur.id  # type: ignore[attr-defined]  (garanti par la compilation)
+        root = cur.id  # type: ignore[attr-defined]  # garanti par la compilation
         value: Any = self.env.namespaces.get(root)
         if value is None:
             raise ExprError(f"Espace de noms inconnu ou indisponible ici : « {root} ».")
@@ -380,12 +381,12 @@ class _Evaluator:
         return [self.visit(e) for e in node.elts]
 
     def visit_Call(self, node: ast.Call) -> Any:
-        name = node.func.id  # type: ignore[attr-defined]  (garanti par la compilation)
+        name = node.func.id  # type: ignore[attr-defined]  # garanti par la compilation
         fn = self.env.functions.get(name) or BASE_FUNCTIONS.get(name)
         if fn is None:
             raise ExprError(f"Fonction non autorisée ou inconnue : « {name} ».")
         args = [self.visit(a) for a in node.args]
-        kwargs = {kw.arg: self.visit(kw.value) for kw in node.keywords}
+        kwargs = {kw.arg: self.visit(kw.value) for kw in node.keywords if kw.arg is not None}
         return fn(*args, **kwargs)
 
 

@@ -566,7 +566,10 @@ class ExperimentSpec(Strict):
                 elif param.type == "boolean" and not isinstance(value, bool):
                     add((*loc, "params", name), "Ce paramètre est booléen.")
                 elif param.type == "number" and (
-                    isinstance(value, bool) or not param.min <= value <= param.max
+                    isinstance(value, bool)
+                    or param.min is None  # exclu par Param pour un nombre
+                    or param.max is None
+                    or not param.min <= value <= param.max
                 ):
                     add((*loc, "params", name), f"Valeur hors de [{param.min}, {param.max}].")
             for name, value in state.hypotheses.items():
@@ -576,7 +579,7 @@ class ExperimentSpec(Strict):
                 elif isinstance(value, str) and _PLACEHOLDER.fullmatch(value):
                     continue
                 elif hyp.type == "choice":
-                    if value not in hyp.options:
+                    if value not in (hyp.options or {}):
                         add((*loc, "hypotheses", name), f"Option inconnue : « {value} ».")
                 elif hyp.type == "boolean":
                     if not isinstance(value, bool):

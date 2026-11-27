@@ -11,6 +11,7 @@ from typing import Any
 
 import yaml
 from pydantic import ValidationError
+from pydantic_core import ErrorDetails
 
 from backend.engine.expr import BASE_FUNCTIONS, Compiled, ExprError, compile_expr
 from backend.engine.laws import list_laws
@@ -95,7 +96,7 @@ def _issues_from(exc: ValidationError, root: yaml.Node) -> list[Issue]:
     return issues
 
 
-def _message(err: dict[str, Any]) -> str:
+def _message(err: ErrorDetails) -> str:
     ctx = err.get("ctx") or {}
     kind = err["type"]
     if kind == "extra_forbidden":
@@ -249,8 +250,12 @@ def check_expressions(spec: ExperimentSpec) -> list[tuple[Loc, str]]:
             if c is not None:
                 from_options = {n for h in c.options for n in option_names.get(h, set())}
                 deps[name] = (c.names & scope_names) | from_options
-        _find_cycle(deps, lambda cycle: add(("generator", "variables", cycle[0]), "Cycle entre variables : "
-                                            + " -> ".join(cycle) + "."))
+        _find_cycle(
+            deps,
+            lambda cycle: add(
+                ("generator", "variables", cycle[0]), "Cycle entre variables : " + " -> ".join(cycle) + "."
+            ),
+        )
     elif isinstance(generator, OdeGenerator):
         if isinstance(generator.t_end, str):
             check(("generator", "t_end"), generator.t_end, ph, set())
@@ -302,7 +307,7 @@ def _find_cycle(deps: dict[str, set[str]], report) -> None:
         state[node] = 1
         for nxt in sorted(deps.get(node, ())):
             if state.get(nxt) == 1:
-                report([*path[path.index(nxt):], nxt] if nxt in path else [node, nxt])
+                report([*path[path.index(nxt) :], nxt] if nxt in path else [node, nxt])
                 return True
             if nxt not in state and nxt in deps and visit(nxt, [*path, nxt]):
                 return True

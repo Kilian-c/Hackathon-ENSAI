@@ -61,27 +61,29 @@ def resolve_state(spec: ExperimentSpec, state: EngineState) -> ResolvedState:
         else:
             if isinstance(value, bool):
                 raise StateError(f"Le paramètre « {name} » est un nombre.")
+            assert param.min is not None and param.max is not None  # garanti par le schéma
             if not param.min <= value <= param.max:
                 raise StateError(f"Le paramètre « {name} » doit être entre {param.min} et {param.max}.")
             params[name] = float(value)
 
     hypotheses: dict[str, float | bool | str] = {}
     for name, hyp in spec.hypotheses.items():
-        value = state.hypotheses.get(name, hyp.healthy_value)
+        chosen = state.hypotheses.get(name, hyp.healthy_value)
         if hyp.type == "boolean":
-            if not isinstance(value, bool):
+            if not isinstance(chosen, bool):
                 raise StateError(f"L'hypothèse « {name} » est un interrupteur (true ou false).")
-            hypotheses[name] = value
+            hypotheses[name] = chosen
         elif hyp.type == "choice":
-            if not isinstance(value, str) or value not in hyp.options:
+            assert hyp.options is not None  # garanti par le schéma
+            if not isinstance(chosen, str) or chosen not in hyp.options:
                 raise StateError(f"L'hypothèse « {name} » : options admises {sorted(hyp.options)}.")
-            hypotheses[name] = value
+            hypotheses[name] = chosen
         else:
-            if isinstance(value, bool | str):
+            if isinstance(chosen, bool | str):
                 raise StateError(f"L'hypothèse « {name} » est un nombre.")
-            if not hyp.range[0] <= value <= hyp.range[1]:
+            if not hyp.range[0] <= chosen <= hyp.range[1]:
                 raise StateError(f"L'hypothèse « {name} » doit être entre {hyp.range[0]} et {hyp.range[1]}.")
-            hypotheses[name] = _snap(float(value), hyp.step)
+            hypotheses[name] = _snap(float(chosen), hyp.step)
 
     return ResolvedState(
         params=params,
