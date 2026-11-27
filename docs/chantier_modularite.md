@@ -10,20 +10,20 @@ Quand une ligne est terminée et fusionnée sur `main`, rayez-la (`~~...~~`) : l
 
 | Fichier | Nouveau ? | Ce qui change | Relu par |
 |---|---|---|---|
-| `backend/methods/formula.py` | oui | méthodes génériques `formula_estimate`, `formula_test`, `formula_interval` : une méthode s'écrit dans le YAML, sans Python | R2 |
+| ~~`backend/methods/formula.py`~~ | oui | ~~méthodes génériques `formula_estimate`, `formula_test`, `formula_interval` : une méthode s'écrit dans le YAML, sans Python~~ **Fait** (arguments = expressions réduisant l'axe des observations, ex. `mean(x, axis=1)`) ; 3 exemples ajoutés dans `tests/test_method_contract.py` (R2) | R2 |
 | `backend/methods/linalg/__init__.py` | oui | paquet de l'algèbre linéaire | R2 |
 | `backend/methods/linalg/linsolve.py` | oui | `linsolve` (gauss, gauss_pivot, cholesky, jacobi, gauss_seidel, cg) | R2 |
 | `backend/methods/linalg/eigen.py` | oui | `eigen` (power, qr, numpy) | R2 |
 | `backend/methods/linalg/orthonormalize.py` | oui | `orthonormalize` (cgs, mgs, householder) | R2 |
 | `backend/methods/linalg/spectrum.py` | oui | `spectrum` (spectre de matrices aléatoires) | R2 |
-| `backend/methods/__init__.py` | non | les méthodes sont découvertes automatiquement (`pkgutil`), plus de liste à la main | R2 |
-| `backend/engine/expr.py` | non | liste blanche : `sort`, `quantile`, `cumprod` | R3 |
+| ~~`backend/methods/__init__.py`~~ | non | ~~les méthodes sont découvertes automatiquement (`pkgutil`), plus de liste à la main~~ **Fait** | R2 |
+| ~~`backend/engine/expr.py`~~ | non | ~~liste blanche : `sort`, `quantile`, `cumprod`~~ **Fait** | R3 |
 | ~~`backend/engine/validate.py`~~ | non | ~~`/api/validate` propose des seuils (`ok_within`, `broken_beyond`) d'après la simulation~~ **Fait** : un avertissement par mesure, `path` = `measures.<id>`, message « Seuils proposés : ok_within = x ; broken_beyond = y (fichier : ...). » ; à afficher par R3 | R3 |
 | `backend/engine/runner.py` | non | `_build_view` : vue `heatmap` (afficher une matrice) | R3 |
 | ~~`scripts/gen_catalog.py`~~ | oui | ~~lit les registres (méthodes, lois, fonctions, vues), puis écrit `frontend/src/lib/catalog.gen.ts` et `docs/catalogue.md`~~ **Fait** (`--check` pour la fraîcheur, `tests/test_catalog.py`). Il reste à R3 : brancher `importPrompt.ts` sur `CATALOG` | R3 |
 | `scripts/new_experiment.py` | oui | crée un YAML à partir d'un modèle (statistique, régression, classifieur, algèbre) | R2 |
 | `experiments/matrices_wigner.yaml` | oui | expérience pilote de l'algèbre, simulée avant d'écrire les seuils | R2 |
-| `tests/test_formula.py` | oui | tests des méthodes `formula_*` | |
+| ~~`tests/test_formula.py`~~ | oui | ~~tests des méthodes `formula_*`~~ **Fait** | |
 | `tests/test_linalg.py` | oui | tests de `linalg/` (comparaison à `np.linalg`, vectorisation, temps de calcul) | |
 | ~~`tests/test_api.py`~~ | non | ~~`/api/validate` : seuils proposés~~ **Fait** | |
 

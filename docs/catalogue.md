@@ -8,6 +8,9 @@ Fichier généré par `scripts/gen_catalog.py` : ne pas l'éditer à la main.
 |---|---|---|---|---|
 | `classifier` | score, label, threshold, kind | reps : error, best_error, excess, sens, spec, accuracy, auc ; example : score_neg, score_pos ; curves : fpr, tpr | `repeat * n` | Classe positif si `score > threshold`. Par répétition : taux d'erreur, meilleur taux atteignable par un seuil sur ce même échantillon, excès d'erreur, sensibilité, spécificité, exactitude et AUC. |
 | `clt_mean` | x, sigma, rho, kind, alpha | reps : z, inside ; example : x ; curves : k, paths | `repeat * n` | Statistique z par répétition ; `inside` vaut 1 si |z| ne dépasse pas le quantile normal. |
+| `formula_estimate` | est, truth | reps : est, error | `repeat` | `est` : l'estimation de chaque répétition (formule) ; `error` : `est - truth` (NaN sans `truth`). |
+| `formula_interval` | est, low, high, truth | reps : est, low, high, hit, width | `repeat` | Un intervalle par formule : `hit` vaut vrai si `low <= truth <= high`, `width` = `high - low`. |
+| `formula_test` | stat, pvalue, critical, alpha | reps : stat, pvalue, reject | `repeat` | Un test défini par formule. Donnez `pvalue` (rejet si `pvalue < alpha`) ou `stat` et `critical` (rejet si `|stat| > critical`). Sans `stat` (resp. `pvalue`), cette colonne vaut NaN. |
 | `integrate` | system, dt, scheme | curves : t, theta ; summary : max_rel_error | `t_end / dt` | Intègre `system` avec le pas `dt` (arrondi pour tomber pile sur t_end). |
 | `ols_ci` | x, y, truth, alpha, se_type | reps : est, low, high, hit, width, bp_pvalue ; example : x, y, y_hat, y_mean, resid, leverage, cooks_d | `repeat * n` | MCO de y sur (1, x) et IC à (1 - alpha) de la pente, par répétition. |
 | `ols_two` | x1, x2, y, signal, truth, alpha, kind | reps : est, low, high, hit, reject, width, vif, pred_error ; example : x1, x2, y, y_hat, resid | `repeat * n` | Estime le coefficient de x1 ; `reject` vaut 1 si le test de Student le déclare non nul. |
@@ -29,7 +32,7 @@ Fichier généré par `scripts/gen_catalog.py` : ne pas l'éditer à la main.
 
 ## Fonctions des expressions
 
-`abs`, `ar1`, `arccos`, `arcsin`, `arctan`, `arctan2`, `ceil`, `clip`, `cos`, `cosh`, `cumsum`, `exp`, `floor`, `isfinite`, `isnan`, `log`, `log10`, `log2`, `max`, `maximum`, `mean`, `median`, `min`, `minimum`, `ols_match`, `round`, `sign`, `sin`, `sinh`, `sqrt`, `std`, `sum`, `tan`, `tanh`, `var`, `where`, `law`, `normal`, `uniform`, `bernoulli`.
+`abs`, `ar1`, `arccos`, `arcsin`, `arctan`, `arctan2`, `ceil`, `clip`, `cos`, `cosh`, `cumprod`, `cumsum`, `exp`, `floor`, `isfinite`, `isnan`, `log`, `log10`, `log2`, `max`, `maximum`, `mean`, `median`, `min`, `minimum`, `ols_match`, `quantile`, `round`, `sign`, `sin`, `sinh`, `sort`, `sqrt`, `std`, `sum`, `tan`, `tanh`, `var`, `where`, `law`, `normal`, `uniform`, `bernoulli`.
 
 Constantes : `e`, `pi`. Mot-clé accepté : `axis`.
 - `law` : law('nom') : un tirage de la loi du registre (standardisée)

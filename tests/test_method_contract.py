@@ -332,6 +332,27 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         15,
     ),
+    "formula_estimate": (
+        {"est": _X0.mean(axis=1), "truth": 0.0, "rng": np.random.default_rng(0)},
+        20,
+        None,
+    ),
+    "formula_test": (
+        {"stat": _X0.mean(axis=1), "critical": 1.96, "rng": np.random.default_rng(0)},
+        20,
+        None,
+    ),
+    "formula_interval": (
+        {
+            "est": _X0.mean(axis=1),
+            "low": _X0.mean(axis=1) - 1.0,
+            "high": _X0.mean(axis=1) + 1.0,
+            "truth": 0.0,
+            "rng": np.random.default_rng(0),
+        },
+        20,
+        None,
+    ),
     "integrate": (
         {
             "system": {

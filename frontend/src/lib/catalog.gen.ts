@@ -81,6 +81,59 @@ export const CATALOG: Catalog = {
       "doc": "Statistique z par répétition ; `inside` vaut 1 si |z| ne dépasse pas le quantile normal."
     },
     {
+      "name": "formula_estimate",
+      "args": [
+        "est",
+        "truth"
+      ],
+      "provides": {
+        "reps": [
+          "est",
+          "error"
+        ]
+      },
+      "cost": "repeat",
+      "doc": "`est` : l'estimation de chaque répétition (formule) ; `error` : `est - truth` (NaN sans `truth`)."
+    },
+    {
+      "name": "formula_interval",
+      "args": [
+        "est",
+        "low",
+        "high",
+        "truth"
+      ],
+      "provides": {
+        "reps": [
+          "est",
+          "low",
+          "high",
+          "hit",
+          "width"
+        ]
+      },
+      "cost": "repeat",
+      "doc": "Un intervalle par formule : `hit` vaut vrai si `low <= truth <= high`, `width` = `high - low`."
+    },
+    {
+      "name": "formula_test",
+      "args": [
+        "stat",
+        "pvalue",
+        "critical",
+        "alpha"
+      ],
+      "provides": {
+        "reps": [
+          "stat",
+          "pvalue",
+          "reject"
+        ]
+      },
+      "cost": "repeat",
+      "doc": "Un test défini par formule. Donnez `pvalue` (rejet si `pvalue < alpha`) ou `stat` et `critical` (rejet si `|stat| > critical`). Sans `stat` (resp. `pvalue`), cette colonne vaut NaN."
+    },
+    {
       "name": "integrate",
       "args": [
         "system",
@@ -324,6 +377,10 @@ export const CATALOG: Catalog = {
       "doc": ""
     },
     {
+      "name": "cumprod",
+      "doc": ""
+    },
+    {
       "name": "cumsum",
       "doc": ""
     },
@@ -384,6 +441,10 @@ export const CATALOG: Catalog = {
       "doc": ""
     },
     {
+      "name": "quantile",
+      "doc": ""
+    },
+    {
       "name": "round",
       "doc": ""
     },
@@ -397,6 +458,10 @@ export const CATALOG: Catalog = {
     },
     {
       "name": "sinh",
+      "doc": ""
+    },
+    {
+      "name": "sort",
       "doc": ""
     },
     {
