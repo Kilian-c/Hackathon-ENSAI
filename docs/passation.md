@@ -1,5 +1,11 @@
 # Notes de passation (la plus récente en haut)
 
+## H7 (20 h) : Student et pendule archivés, branche `r2/archives` (pas une relève)
+- `experiments/test_student.yaml` et `experiments/pendule_euler.yaml` sont dans `experiments/archives/` (`git mv`) : le registre ne lit pas les sous-dossiers, donc ils ont quitté l'accueil et les séries « toutes ». `README.md` mis à jour.
+- Tests (fichiers de R1, adaptés par R2, à relire) : `test_runner.py` lit Student et le pendule dans `ARCHIVES` (ils testent toujours `draw_log`, le générateur `ode` et l'axe du temps) ; `test_api.py` : liste, lecture et erreurs sur `multicolinearite`, le YAML brut vient de `archives/` ; `test_sweep.py` : axe de choix sur le TCL, cible `base` sur la multicolinéarité (`h.rho` et `p.n`), grille 2D sur le TCL. pytest et ruff verts.
+- **R3, à faire** : `frontend/src/dev/specs/test_student.spec.json` et `pendule_euler.spec.json` sont toujours importés par `lib/lab.test.ts` ; le second contient encore `energy_drift` et `full_turn`. Les régénérer depuis `archives/` ou retirer ces tests.
+- **R1, à faire** : `scripts/make_fixtures.py` et les fixtures `pendule_*` / `student_*` (note précédente).
+
 ## H7 (19 h 30) : `integrate` générique, branche `r2/integrate-generique` (pas une relève)
 - Fusionné dans `main` à la demande de R2. `backend/methods/integrate.py` ne calcule plus l'énergie du pendule ni `full_turn` : `summary` = `max_rel_error` seulement. `pendule_euler.yaml` : mesures `energy_drift` et `full_turn` retirées, défi `rk4-gros-pas` réécrit (`s.err_angle == 'broken'`). `test_integrate.py` adapté. pytest et ruff verts.
 - **R1, à faire** : `scripts/make_fixtures.py` (lignes 323 à 370) fabrique encore `energy_drift` et `full_turn` : les retirer, puis régénérer `frontend/src/fixtures/pendule_*.run.json` (`uv run python scripts/make_fixtures.py`).

@@ -38,26 +38,34 @@ def test_one_axis_continuous_with_critical() -> None:
     assert set(res.model_dump(exclude_none=True)) >= set(json.loads(FIXTURE.read_text(encoding="utf-8")))
 
 
-def test_choice_axis_with_base_target() -> None:
-    res = SweepResult.model_validate(_post("test-student", ["h.loi"]).json())
+def test_choice_axis() -> None:
+    res = SweepResult.model_validate(_post("theoreme-central-limite", ["h.loi"]).json())
     assert res.axes[0].values[0] == "normal" and len(res.axes[0].labels) == len(res.axes[0].values)
-    assert isinstance(res.target, dict) and set(res.target) == {"student", "wilcoxon"}
     assert res.critical is None  # axe non continu
     cauchy = res.axes[0].values.index("cauchy")
-    assert res.states["student"][0] == "ok" and res.states["student"][cauchy] == "broken"
+    assert res.states["moyenne"][0] == "ok" and res.states["moyenne"][cauchy] == "broken"
+
+
+def test_base_target_is_per_method() -> None:
+    res = SweepResult.model_validate(_post("multicolinearite", ["h.rho"]).json())
+    assert isinstance(res.target, dict) and set(res.target) == {"complet", "reduit"}
+    assert res.states["complet"][0] == "ok" and res.states["complet"][-1] == "broken"
+    assert res.critical["complet"] is not None and res.critical["reduit"] is None
 
 
 def test_two_axes_grid_is_indexed_axis2_then_axis1() -> None:
-    res = SweepResult.model_validate(_post("test-student", ["h.loi", "p.n"]).json())
+    res = SweepResult.model_validate(_post("theoreme-central-limite", ["h.loi", "p.n"]).json())
     n_loi, n_n = len(res.axes[0].values), len(res.axes[1].values)
-    grid = res.values["student"]
+    grid = res.values["moyenne"]
     assert len(grid) == n_n and all(len(row) == n_loi for row in grid)
     assert res.critical is None
 
 
 def test_parameter_axis_and_informative_measure() -> None:
-    res = SweepResult.model_validate(_post("test-student", ["p.n"], measure="alpha").json())
-    assert res.measure == "alpha" and res.critical is not None
+    res = SweepResult.model_validate(
+        _post("multicolinearite", ["p.n"], {"hypotheses": {"rho": 0.9}}, measure="power").json()
+    )
+    assert res.measure == "power" and res.critical is not None
     info = SweepResult.model_validate(_post("regression-lineaire", ["h.hetero"], measure="width").json())
     assert info.states == {} and info.target is None and info.critical is None
 
