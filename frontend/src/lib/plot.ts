@@ -442,6 +442,63 @@ function intervalsFigure(view: ViewResult, opts: ChartOptions): Figure {
   return { data, layout, caption: captionFor(view, 0) }
 }
 
+/**
+ * Répétitions en mode trajectoires (faisceau de X̄_n, LGN et TCL) : chaque série porte `paths`, une
+ * liste par trajectoire. Une seule trace par série (trajectoires séparées par null) : un identifiant
+ * stable et une seule entrée de légende. Abscisse : `x` de la série s'il existe, sinon 1, 2, …, n.
+ * La vraie valeur (rôle truth, scalaire) est une ligne horizontale.
+ */
+function pathsFigure(view: ViewResult, opts: ChartOptions): Figure {
+  const data: Trace[] = []
+  const shapes: Trace[] = []
+  const annotations: Trace[] = []
+  const series = view.series.filter((s) => isVisible(s, opts) && Array.isArray(s.paths) && s.paths.length > 0)
+  // Référence d'abord, pour qu'elle reste derrière.
+  series.sort((a, b) => Number(b.role === 'reference') - Number(a.role === 'reference'))
+  let count = 0
+  for (const s of series) {
+    const paths = s.paths as Num[][]
+    const grid = nums(s, 'x')
+    const xs: (number | null)[] = []
+    const ys: (number | null)[] = []
+    for (const path of paths) {
+      path.forEach((v, i) => {
+        const xi = grid.length === path.length ? grid[i] : i + 1
+        xs.push(isNum(xi) ? xi : i + 1)
+        ys.push(isNum(v) ? v : null)
+      })
+      xs.push(null)
+      ys.push(null)
+    }
+    if (s.role !== 'reference') count = Math.max(count, paths.length)
+    const role = seriesRole(s) ?? 'method'
+    const style = plotlyStyle(role, 'lines') as { line?: Record<string, unknown> }
+    data.push({
+      type: 'scatter',
+      uid: s.id,
+      name: s.label,
+      mode: 'lines',
+      x: xs,
+      y: ys,
+      line: { ...(style.line ?? {}), width: 1 },
+      opacity: role === 'reference' ? 0.35 : 0.55,
+      legendgroup: s.id,
+      hoverinfo: 'skip',
+      connectgaps: false,
+    })
+  }
+  for (const t of view.series.filter((x) => x.role === 'truth')) {
+    const v = scalar(t)
+    if (v === null) continue
+    const color = cssVar('--ct-role-truth')
+    shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: v, y1: v, line: { color, width: 1.5 } })
+    annotations.push({ xref: 'paper', x: 1, xanchor: 'right', y: v, yanchor: 'bottom', text: t.label, showarrow: false, font: { color, size: 11 } })
+  }
+  const caption = captionFor(view, 0)
+  if (caption.length === 0 && count > 0) caption.push(count === 1 ? '1 trajectoire' : `${count} trajectoires`)
+  return { data, layout: baseLayout(view, { shapes, annotations }), caption }
+}
+
 /** Distribution : histogrammes superposés, bacs fixés par les bornes de l'axe. */
 function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
   const data: Trace[] = []
@@ -632,8 +689,7 @@ export function buildFigure(view: ViewResult, opts: ChartOptions): Figure | null
     case 'curves':
       return xyFigure(view, opts)
     case 'repetitions':
-      // TODO(passation) : trajectoires (mode « paths », LGN et TCL, P1) à dessiner depuis Series.paths.
-      return view.mode === 'paths' ? xyFigure(view, opts) : intervalsFigure(view, opts)
+      return view.mode === 'paths' ? pathsFigure(view, opts) : intervalsFigure(view, opts)
     case 'distribution':
       return distributionFigure(view, opts)
     case 'sensitivity':

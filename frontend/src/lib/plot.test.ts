@@ -203,3 +203,27 @@ describe('points posés', () => {
     expect(fig.data.some((t) => String(t.uid).endsWith('.points-poses'))).toBe(false)
   })
 })
+
+describe('trajectoires', () => {
+  const base = { layer: null, y: null, low: null, high: null, hit: null }
+  const view = {
+    id: 'faisceau', type: 'repetitions', mode: 'paths', total: 500, shown: 2,
+    series: [
+      { ...base, id: 'faisceau.paths.moy', slot: 'paths', method: 'moy', role: 'method', label: 'X̄n', x: null, value: null, paths: [[1, 0.5, 0.2], [0, 0.1, null]] },
+      { ...base, id: 'faisceau.truth', slot: 'truth', method: null, role: 'truth', label: 'μ', x: null, value: 0, paths: null },
+    ],
+  } as unknown as ViewResult
+  const fig = buildFigure(view, { methodsOn: new Set(['moy']), showReference: false })!
+  it('une seule trace par série, trajectoires séparées par null, abscisse 1..n', () => {
+    expect(fig.data).toHaveLength(1)
+    expect(fig.data[0].x).toEqual([1, 2, 3, null, 1, 2, 3, null])
+    expect(fig.data[0].y).toEqual([1, 0.5, 0.2, null, 0, 0.1, null, null])
+  })
+  it('la vraie valeur est une ligne horizontale', () => {
+    const sh = (fig.layout.shapes as { y0: number; xref: string }[])[0]
+    expect(sh).toMatchObject({ y0: 0, xref: 'paper' })
+  })
+  it('masquer la méthode masque ses trajectoires', () => {
+    expect(buildFigure(view, { methodsOn: new Set(), showReference: false })!.data).toHaveLength(0)
+  })
+})
