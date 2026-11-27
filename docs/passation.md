@@ -1,5 +1,9 @@
 # Notes de passation (la plus récente en haut)
 
+## Chantier « modularité » ouvert par R3 + R1 (pas une relève)
+- Objectif : ouvrir l'appli à d'autres théorèmes (algèbre linéaire d'abord), sans toucher aux contrats. Méthodes `formula_*` (méthode écrite dans le YAML), paquet `backend/methods/linalg/`, vue `heatmap`, catalogue généré, seuils proposés par `/api/validate`.
+- **Fichiers réservés** : la liste et le partage R1 / R3 sont dans `docs/chantier_modularite.md`. **R2 et R4** : `backend/methods/__init__.py`, `expr.py`, `validate.py`, `runner.py`, `plot.ts`, `importPrompt.ts` et `ImportView.svelte` en font partie. Prévenez la personne indiquée avant d'y toucher.
+
 ## Questions de prédiction et Domaine de validité du TCL, faits par R3 (pas une relève)
 - **R1, à relire** : `backend/engine/training.py` sert les questions `prediction` (une fois par série). Le moteur lance l'état de départ et l'état d'arrivée (même graine) et compare la mesure de la méthode principale : « reste stable » sous 2 mc_se d'écart, « augmente » ou « diminue » au-delà de 4 ; entre les deux, nouveau tirage (5 au plus), sinon question retirée (`dropped`). Choix fixes `up`, `down`, `stable` ; `reveal.state` = état d'arrivée. Tests dans `tests/test_training.py` (deux anciens tests adaptés : ils supposaient des séries sans prédiction).
 - **R2, à relire** : une question `prediction` ajoutée au TCL (Cauchy, n au quadruple : la part dans ±1,96 **diminue**, 26 % puis 9 %), aux tests multiples (2 groupes puis 5 à 10 : fausses alarmes en hausse) et à la multicolinéarité (rho de 0 à 0,9-0,98 : puissance en baisse) ; celle de la régression (cahier) est désormais servie, énoncé retouché (« au double »). Simulées sur 30 graines : réponse nette à chaque fois. Vue `validite` (`validity_domain`, axes `[h.loi, p.n]`) ajoutée au TCL : Student à 2 ddl et Cauchy Rompus à tous les n, 0,1 s.
