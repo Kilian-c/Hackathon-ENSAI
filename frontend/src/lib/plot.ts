@@ -379,6 +379,27 @@ export function unitCircle(view: ViewResult): Trace | null {
   }
 }
 
+/**
+ * Plotly retient les bornes du PREMIER dessin et y revient avec « Réinitialiser les axes » ou un
+ * double-clic. Quand les bornes du moteur changent (vraie pente, taille d'échantillon, nouveau tirage),
+ * ce retour montrait un cadre périmé, parfois vide. Après chaque dessin, on remplace ces bornes initiales
+ * par celles de la figure courante. Les axes sans bornes fixes (automatiques) ne sont pas touchés.
+ * `fullLayout` est l'état interne de Plotly (`_rangeInitial0` / `_rangeInitial1`, Plotly 4).
+ */
+export function syncInitialRanges(fullLayout: unknown, layout: Layout): void {
+  if (typeof fullLayout !== 'object' || fullLayout === null) return
+  const axes = fullLayout as Record<string, Record<string, unknown> | undefined>
+  for (const [name, wanted] of Object.entries(layout)) {
+    if (!/^[xy]axis\d*$/.test(name)) continue
+    const range = (wanted as { range?: unknown } | undefined)?.range
+    const axis = axes[name]
+    if (!axis || !Array.isArray(range) || range.length !== 2) continue
+    axis._rangeInitial0 = range[0]
+    axis._rangeInitial1 = range[1]
+    axis._autorangeInitial = false
+  }
+}
+
 export function baseLayout(view: ViewResult, extra: Layout = {}): Layout {
   const aspect = equalAspect(view)
   const xaxis = { ...axisLayout(axisRange(view, 'x'), uiString(view, 'x_title'), uiFlag(view, 'log_x')), ...aspect.x }
