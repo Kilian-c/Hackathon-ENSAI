@@ -38,3 +38,11 @@ export function formatControl(value: number, step: number | null | undefined): s
   const decimals = step && step < 1 ? Math.min(6, Math.ceil(-Math.log10(step) - 1e-9)) : 0
   return frNumber(value, decimals)
 }
+
+/** Niveau de difficulté d'une expérience (`level` : « 1 », « 2 », « 3 ») en mots. */
+const LEVELS: Record<string, string> = { '1': 'Découverte', '2': 'Intermédiaire', '3': 'Avancé' }
+
+export function levelLabel(level: string | number | null | undefined): string {
+  const key = String(level ?? '').trim()
+  return LEVELS[key] ?? key
+}

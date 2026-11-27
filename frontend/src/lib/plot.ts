@@ -12,7 +12,7 @@
  * - identifiants de traces stables (uid = id de la série) pour que Plotly anime proprement.
  */
 
-import { cssVar, plotlyStyle, verdictColor, type DisplayRole } from './roles'
+import { cssVar, plotlyStyle, roleColor, verdictColor, type DisplayRole } from './roles'
 import {
   axisRange,
   bools,
@@ -52,6 +52,30 @@ export interface ChartOptions {
   methodLabels?: Readonly<Record<string, string>>
   /** Vue Sensibilité : titre de l'axe balayé (lab.axisTitle), si la vue n'en impose pas un. */
   axisLabel?: string
+  /**
+   * Points posés au clic (EngineState.extra_points, coordonnées de la vue), dessinés en étoiles
+   * par-dessus l'échantillon. Seulement pour une vue qui autorise l'ajout de points.
+   */
+  injected?: ReadonlyArray<{ x: number; y?: number | null }>
+}
+
+/** Identifiant de la trace des points posés : PlotlyChart le reconnaît au clic (pour un retrait). */
+export const INJECTED_SUFFIX = '.points-poses'
+
+/** Points posés au clic, en étoiles ; y absent (vue à une dimension) : posés sur l'axe horizontal. */
+export function injectedTrace(viewId: string, points: NonNullable<ChartOptions['injected']>): Trace {
+  const style = pointsStyle('injected')
+  return {
+    type: 'scatter',
+    uid: `${viewId}${INJECTED_SUFFIX}`,
+    name: points.length > 1 ? 'Points posés' : 'Point posé',
+    ...style,
+    x: points.map((p) => p.x),
+    y: points.map((p) => (typeof p.y === 'number' ? p.y : 0)),
+    customdata: points.map((_, i) => i),
+    hovertemplate: 'Point posé (cliquez pour le retirer)<extra></extra>',
+    cliponaxis: false,
+  }
 }
 
 /** Emplacements dessinés en ligne ; les autres sont des points. */
@@ -59,6 +83,7 @@ const LINE_SLOTS = new Set(['fit', 'trend', 'series', 'truth', 'paths'])
 
 /** Motif de remplissage par rôle (histogrammes, barres) : la couleur n'est jamais le seul indice. */
 const PATTERN: Partial<Record<DisplayRole, string>> = {
+  truth: '-',
   method: '',
   correction: '/',
   alternative_1: 'x',
@@ -93,8 +118,9 @@ export function withAlpha(color: string, alpha: number): string {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
 }
 
+/** Couleur d'un rôle, y compris ceux qui n'ont pas de marqueur (vraie valeur). */
 function markerColor(role: DisplayRole): string {
-  return (plotlyStyle(role, 'markers').marker as { color: string }).color
+  return roleColor(role)
 }
 
 function markerSymbol(role: DisplayRole): string {
@@ -209,6 +235,41 @@ function lineTrace(s: Series, sortByX: boolean): Trace {
   }
 }
 
+/**
+ * Segments (résidus d'une droite, écarts) : un trait vertical par point, de (x, low) à (x, high),
+ * réunis dans une seule trace (séparés par null) pour garder un identifiant stable.
+ */
+export function segmentsTrace(s: Series): Trace | null {
+  const x = nums(s, 'x')
+  const low = nums(s, 'low')
+  const high = nums(s, 'high')
+  const xs: (number | null)[] = []
+  const ys: (number | null)[] = []
+  for (let i = 0; i < Math.min(x.length, low.length, high.length); i++) {
+    const xi = x[i]
+    const a = low[i]
+    const b = high[i]
+    if (!isNum(xi) || !isNum(a) || !isNum(b)) continue
+    xs.push(xi, xi, null)
+    ys.push(a, b, null)
+  }
+  if (xs.length === 0) return null
+  const role = seriesRole(s)
+  const color = role ? markerColor(role) : cssVar('--ct-plot-data')
+  return {
+    type: 'scatter',
+    uid: s.id,
+    name: s.label,
+    mode: 'lines',
+    x: xs,
+    y: ys,
+    line: { color: withAlpha(color, 0.7), width: 1, dash: 'dot' },
+    hoverinfo: 'skip',
+    legendgroup: s.id,
+    connectgaps: false,
+  }
+}
+
 /** Ligne verticale (vraie valeur, seuil) sous forme de forme Plotly, avec son libellé. */
 function verticalLine(x: number, color: string, dash: string, text?: string): { shape: Trace; annotation?: Trace } {
   return {
@@ -280,6 +341,12 @@ function captionFor(view: ViewResult, clipped: number): string[] {
 function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
   const data: Trace[] = []
   let clipped = 0
+  // Segments d'abord : sous les points et la droite.
+  for (const s of view.series) {
+    if (s.slot !== 'segments' || !isVisible(s, opts)) continue
+    const t = segmentsTrace(s)
+    if (t) data.push(t)
+  }
   const visible = view.series.filter(
     (s) => isVisible(s, opts) && s.x != null && s.y != null,
   )
@@ -295,6 +362,7 @@ function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
       clipped += m.clipped
     }
   }
+  if (opts.injected && opts.injected.length > 0) data.push(injectedTrace(view.id, opts.injected))
   const shapes: Trace[] = []
   if (view.type === 'residuals') {
     shapes.push({
@@ -374,6 +442,63 @@ function intervalsFigure(view: ViewResult, opts: ChartOptions): Figure {
   return { data, layout, caption: captionFor(view, 0) }
 }
 
+/**
+ * Répétitions en mode trajectoires (faisceau de X̄_n, LGN et TCL) : chaque série porte `paths`, une
+ * liste par trajectoire. Une seule trace par série (trajectoires séparées par null) : un identifiant
+ * stable et une seule entrée de légende. Abscisse : `x` de la série s'il existe, sinon 1, 2, …, n.
+ * La vraie valeur (rôle truth, scalaire) est une ligne horizontale.
+ */
+function pathsFigure(view: ViewResult, opts: ChartOptions): Figure {
+  const data: Trace[] = []
+  const shapes: Trace[] = []
+  const annotations: Trace[] = []
+  const series = view.series.filter((s) => isVisible(s, opts) && Array.isArray(s.paths) && s.paths.length > 0)
+  // Référence d'abord, pour qu'elle reste derrière.
+  series.sort((a, b) => Number(b.role === 'reference') - Number(a.role === 'reference'))
+  let count = 0
+  for (const s of series) {
+    const paths = s.paths as Num[][]
+    const grid = nums(s, 'x')
+    const xs: (number | null)[] = []
+    const ys: (number | null)[] = []
+    for (const path of paths) {
+      path.forEach((v, i) => {
+        const xi = grid.length === path.length ? grid[i] : i + 1
+        xs.push(isNum(xi) ? xi : i + 1)
+        ys.push(isNum(v) ? v : null)
+      })
+      xs.push(null)
+      ys.push(null)
+    }
+    if (s.role !== 'reference') count = Math.max(count, paths.length)
+    const role = seriesRole(s) ?? 'method'
+    const style = plotlyStyle(role, 'lines') as { line?: Record<string, unknown> }
+    data.push({
+      type: 'scatter',
+      uid: s.id,
+      name: s.label,
+      mode: 'lines',
+      x: xs,
+      y: ys,
+      line: { ...(style.line ?? {}), width: 1 },
+      opacity: role === 'reference' ? 0.35 : 0.55,
+      legendgroup: s.id,
+      hoverinfo: 'skip',
+      connectgaps: false,
+    })
+  }
+  for (const t of view.series.filter((x) => x.role === 'truth')) {
+    const v = scalar(t)
+    if (v === null) continue
+    const color = cssVar('--ct-role-truth')
+    shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: v, y1: v, line: { color, width: 1.5 } })
+    annotations.push({ xref: 'paper', x: 1, xanchor: 'right', y: v, yanchor: 'bottom', text: t.label, showarrow: false, font: { color, size: 11 } })
+  }
+  const caption = captionFor(view, 0)
+  if (caption.length === 0 && count > 0) caption.push(count === 1 ? '1 trajectoire' : `${count} trajectoires`)
+  return { data, layout: baseLayout(view, { shapes, annotations }), caption }
+}
+
 /** Distribution : histogrammes superposés, bacs fixés par les bornes de l'axe. */
 function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
   const data: Trace[] = []
@@ -384,8 +509,9 @@ function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
   for (const s of view.series.filter((x) => isVisible(x, opts))) {
     const v = scalar(s)
     if (v !== null) {
-      const color = s.role === 'truth' ? cssVar('--ct-role-truth') : cssVar('--ct-plot-axis')
-      const line = verticalLine(v, color, s.role === 'truth' ? 'solid' : 'dot', s.label)
+      // Vraie valeur en orange, seuil en rouge (rôle rupture), le reste en neutre.
+      const color = s.role === 'truth' || s.role === 'rupture' ? roleColor(s.role) : cssVar('--ct-plot-axis')
+      const line = verticalLine(v, color, s.role === 'truth' ? 'solid' : s.role === 'rupture' ? 'dash' : 'dot', s.label)
       shapes.push(line.shape)
       if (line.annotation) annotations.push(line.annotation)
       continue
@@ -401,6 +527,7 @@ function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
       xbins: bins,
       autobinx: bins ? false : undefined,
       opacity: role === 'reference' ? 0.35 : 0.6,
+      // L'histogramme d'une vraie loi (rôle truth, ex. h1) se distingue par un motif, pas seulement l'orange.
       marker: {
         color: withAlpha(color, role === 'reference' ? 0.25 : 0.55),
         line: { color, width: 1 },
@@ -408,6 +535,7 @@ function distributionFigure(view: ViewResult, opts: ChartOptions): Figure {
       },
     })
   }
+  if (opts.injected && opts.injected.length > 0) data.push(injectedTrace(view.id, opts.injected.map((p) => ({ x: p.x }))))
   return { data, layout: baseLayout(view, { barmode: 'overlay', shapes, annotations }), caption: captionFor(view, 0) }
 }
 
@@ -561,8 +689,7 @@ export function buildFigure(view: ViewResult, opts: ChartOptions): Figure | null
     case 'curves':
       return xyFigure(view, opts)
     case 'repetitions':
-      // TODO(passation) : trajectoires (mode « paths », LGN et TCL, P1) à dessiner depuis Series.paths.
-      return view.mode === 'paths' ? xyFigure(view, opts) : intervalsFigure(view, opts)
+      return view.mode === 'paths' ? pathsFigure(view, opts) : intervalsFigure(view, opts)
     case 'distribution':
       return distributionFigure(view, opts)
     case 'sensitivity':
