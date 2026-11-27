@@ -50,6 +50,8 @@ export interface ChartOptions {
   measure?: MeasureFormat | null
   /** Vue Sensibilité : libellé de chaque méthode (RunResult.methods[].label), pour la légende. */
   methodLabels?: Readonly<Record<string, string>>
+  /** Vue Sensibilité : titre de l'axe balayé (lab.axisTitle), si la vue n'en impose pas un. */
+  axisLabel?: string
 }
 
 /** Emplacements dessinés en ligne ; les autres sont des points. */
@@ -535,7 +537,7 @@ function sensitivityFigure(view: ViewResult, opts: ChartOptions): Figure {
   const ytitle = opts.measure ? `${opts.measure.label}${unit ? ` (${unit})` : ''}` : undefined
   const layout = baseLayout(view, { shapes, annotations, barmode: 'group' })
   layout.yaxis = { ...axisLayout(yRange, ytitle) }
-  if (numeric) layout.xaxis = { ...axisLayout(axisRange(view, 'x'), uiString(view, 'x_title') ?? axis.target) }
+  if (numeric) layout.xaxis = { ...axisLayout(axisRange(view, 'x'), uiString(view, 'x_title') ?? opts.axisLabel ?? axis.target) }
   return { data, layout, caption: [] }
 }
 

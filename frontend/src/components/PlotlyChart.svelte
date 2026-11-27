@@ -26,6 +26,7 @@
     measure?: MeasureFormat | null
     roles?: Readonly<Record<string, DisplayRole>>
     methodLabels?: Readonly<Record<string, string>>
+    axisLabel?: string
     height?: number
   }
 
@@ -38,12 +39,13 @@
     measure = null,
     methodLabels = {},
     height = 340,
+    axisLabel,
   }: Props = $props()
 
   let el: HTMLDivElement | undefined = $state()
 
   const figure = $derived.by(() => {
-    const opts: ChartOptions = { roles, methodsOn, showReference, sweep, measure, methodLabels }
+    const opts: ChartOptions = { roles, methodsOn, showReference, sweep, measure, methodLabels, axisLabel }
     return buildFigure(view, opts)
   })
 

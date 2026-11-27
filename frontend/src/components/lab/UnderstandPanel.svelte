@@ -79,6 +79,7 @@
 <style>
   .understand {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ct-space-3);
   }
   h2 {
@@ -94,17 +95,18 @@
     margin: var(--ct-space-1) 0 0;
     color: var(--ct-muted);
     font-size: var(--ct-text-sm);
-    white-space: pre-line;
   }
   .hyps {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ct-space-3);
   }
   .hyps li {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ct-space-2);
     padding: var(--ct-space-3);
     background: var(--ct-surface-2);
@@ -145,9 +147,11 @@
   .status {
     font-size: var(--ct-text-sm);
     color: var(--ct-muted);
-    white-space: nowrap;
+    text-align: right;
   }
   .formula {
+    overflow-x: auto;
+    overflow-y: hidden;
     font-size: var(--ct-text-sm);
     color: var(--ct-muted);
   }

@@ -20,6 +20,7 @@
   import VerdictBadge from './VerdictBadge.svelte'
   import { ApiError, createLatest, type Latest } from '../../lib/executor'
   import {
+    axisTitle,
     brokenValue,
     currentOnAxes,
     headlineVerdict,
@@ -342,6 +343,7 @@
                 measure={sweptMeasure}
                 {roles}
                 methodLabels={labels}
+                axisLabel={sweepShown ? axisTitle(spec, sweepShown.axes[0].target) : undefined}
                 height={420}
               />
             {/if}
@@ -366,6 +368,7 @@
     margin: 0 auto;
     padding: var(--ct-space-4) var(--ct-space-6) var(--ct-space-8);
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ct-space-4);
   }
   .top {
@@ -392,6 +395,7 @@
   }
   .actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--ct-space-3);
   }
@@ -453,13 +457,14 @@
   }
   @media (max-width: 50rem) {
     .grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
   .left,
   .center,
   .right {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ct-space-3);
     min-width: 0;
   }
@@ -471,6 +476,7 @@
   }
   .params {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ct-space-3);
   }
   .params h3 {

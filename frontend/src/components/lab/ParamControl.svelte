@@ -41,6 +41,7 @@
 <style>
   .param {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ct-space-1);
     font-size: var(--ct-text-sm);
   }
@@ -51,6 +52,7 @@
   }
   input[type='range'] {
     flex: 1;
+    min-width: 0;
     accent-color: var(--ct-role-method);
   }
   .value {
