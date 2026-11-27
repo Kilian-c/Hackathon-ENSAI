@@ -6,7 +6,10 @@ Une série est déterminée par (filtre, graine, empreinte du contenu des YAML) 
   condition `verify`) ; 5 tirages au plus, sinon la question est retirée et listée dans `dropped`.
 - `diagnostic_auto` : peut revenir (2 fois au plus par série), avec une pathologie cachée différente ;
   le `qid` se termine par l'indice de l'occurrence.
-- `prediction` : P1, pas encore servie.
+- `prediction` (P1) : une seule fois par série. Le moteur lance l'état de départ et l'état d'arrivée
+  (même graine) et compare la mesure de la méthode principale : « reste stable » si l'écart est sous
+  2 erreurs Monte Carlo, « augmente » ou « diminue » s'il dépasse 4 ; entre les deux, nouveau tirage
+  (5 au plus), sinon question retirée. La bonne réponse n'est jamais écrite dans le YAML.
 
 Aucun code propre à un théorème : libellés et états viennent des hypothèses du YAML.
 Écrit par R2 (aide à R1), à relire par R1.
@@ -32,10 +35,17 @@ from backend.contracts import (
     TrainingQuestion,
     TrainingSessionResponse,
 )
-from backend.engine.expr import ExprError
+from backend.engine.expr import Env, ExprError, evaluate
 from backend.engine.rng import rng_for
 from backend.engine.runner import RunError, check_condition, run
-from backend.engine.schema import DiagnosticAuto, ExperimentSpec, Misconception, ProcParam, State
+from backend.engine.schema import (
+    DiagnosticAuto,
+    ExperimentSpec,
+    Misconception,
+    Prediction,
+    ProcParam,
+    State,
+)
 from backend.engine.state import StateError, resolve_state
 
 MAX_TRIES = 5  # tirages au plus pour qu'une question passe `verify`
@@ -44,6 +54,10 @@ DIAG_REPEAT = 2  # occurrences au plus d'un même diagnostic dans une série
 SEED_RANGE = 1_000_000  # graines courtes : elles apparaissent dans les liens
 HEALTHY_KEY = "sain"
 HEALTHY_LABEL = "Hypothèses respectées"
+STABLE_SE = 2.0  # écart sous 2 erreurs Monte Carlo : « reste stable »
+CHANGE_SE = 4.0  # écart au-delà de 4 erreurs Monte Carlo : « augmente » ou « diminue »
+STABLE_REL = 0.02  # mesure sans erreur Monte Carlo : stable sous 2 % d'écart relatif
+PREDICTION_CHOICES = (("up", "Elle augmente"), ("down", "Elle diminue"), ("stable", "Elle reste stable"))
 
 _PLACEHOLDER = re.compile(r"\{(\w+)\}")
 _WHOLE_PLACEHOLDER = re.compile(r"^\{(\w+)\}$")
@@ -148,6 +162,92 @@ def _misconception(spec: ExperimentSpec, q: Misconception, rng: np.random.Genera
     raise _Dropped(f"La condition verify a échoué sur {MAX_TRIES} tirages.")
 
 
+def _bound(q: Prediction, raw: float | str, drawn: Mapping[str, float], spec: ExperimentSpec) -> Any:
+    """Une borne du balayage : clé d'option pour une hypothèse à choix, sinon expression numérique."""
+    kind, _, name = q.sweep.target.partition(".")
+    # Expression : nombres tirés écrits avec un point (« 0.94 »), pas avec la virgule de l'affichage.
+    text = _PLACEHOLDER.sub(lambda m: repr(drawn[m.group(1)]), raw) if isinstance(raw, str) else raw
+    hyp = spec.hypotheses.get(name) if kind == "h" else None
+    if hyp is not None and hyp.type == "choice":
+        return text
+    if hyp is not None and hyp.type == "boolean":
+        return text in (True, "true", "1")
+    if isinstance(text, str):
+        try:
+            text = evaluate(text, Env())
+        except ExprError as exc:
+            raise _Dropped(f"Borne de balayage illisible : {exc}") from exc
+    return float(text)
+
+
+def _measure_text(spec: ExperimentSpec, measure_id: str, value: float) -> str:
+    m = spec.measures[measure_id]
+    shown = f"{value * m.scale:.{m.decimals}f}".replace(".", ",")
+    return f"{shown}{(' ' + m.unit) if m.unit else ''}"
+
+
+def _prediction(spec: ExperimentSpec, q: Prediction, rng: np.random.Generator) -> TrainingQuestion:
+    if q.measure not in spec.measures:
+        raise _Dropped(f"Mesure inconnue : « {q.measure} ».")
+    kind, _, name = q.sweep.target.partition(".")
+    if (kind == "p" and name not in spec.params) or (kind == "h" and name not in spec.hypotheses):
+        raise _Dropped(f"Axe inconnu : « {q.sweep.target} ».")
+    main = next(m.id for m in spec.methods if m.role == "method")
+    for _ in range(MAX_TRIES):
+        drawn = _draw_params(q.procedural_params, rng)
+        seed = int(rng.integers(0, SEED_RANGE))
+        params, hyps = _partial(q.state, drawn)
+        group = params if kind == "p" else hyps
+        ends = []
+        for raw in (q.sweep.from_, q.sweep.to):
+            values = {**group, name: _bound(q, raw, drawn, spec)}
+            p, h = (values, hyps) if kind == "p" else (params, values)
+            state = _full_state(spec, p, h, seed)
+            mr = run(spec, state).measures[q.measure]
+            ends.append((state, mr.values.get(main), mr.mc_se.get(main)))
+        (s0, v0, se0), (s1, v1, se1) = ends
+        if v0 is None or v1 is None:
+            continue
+        delta = v1 - v0
+        if se0 is not None and se1 is not None:
+            se = float(np.hypot(se0, se1))
+            stable, changed = abs(delta) <= STABLE_SE * se, abs(delta) >= CHANGE_SE * se
+        else:
+            ref = max(abs(v0), abs(v1), 1e-12)
+            stable, changed = abs(delta) <= STABLE_REL * ref, abs(delta) > STABLE_REL * ref
+        if not (stable or changed):
+            continue  # écart ambigu : un autre tirage
+        answer = "stable" if stable else ("up" if delta > 0 else "down")
+        label = spec.measures[q.measure].label
+        facts = (
+            f"{label} : {_measure_text(spec, q.measure, v0)} au départ, "
+            f"{_measure_text(spec, q.measure, v1)} à l'arrivée."
+        )
+        verdict = {"up": "elle augmente", "down": "elle diminue", "stable": "elle reste stable"}[answer]
+        choices = [
+            TrainingChoice(
+                id=cid,
+                label=text,
+                correct=cid == answer,
+                explain=(f"Exact : {verdict}. " if cid == answer else f"Non : {verdict}. ") + facts,
+                reveal=Reveal(state=s1, focus_view=None),
+            )
+            for cid, text in PREDICTION_CHOICES
+        ]
+        k = len(choices)
+        return TrainingQuestion(
+            qid=f"{spec.id}/{q.id}/0",
+            experiment_id=spec.id,
+            type="prediction",
+            prompt=_fill_text(q.prompt, drawn),
+            hypothesis=None,
+            k=k,
+            confidence=_confidence(k),
+            choices=choices,
+        )
+    raise _Dropped(f"Aucune réponse nette sur {MAX_TRIES} tirages (écart trop proche du bruit Monte Carlo).")
+
+
 @dataclass(frozen=True)
 class _Pathology:
     key: str  # « hyp », « hyp.option » ou « sain »
@@ -248,7 +348,7 @@ def select_experiments(specs: Mapping[str, ExperimentSpec], filter_: str) -> lis
 @dataclass(frozen=True)
 class _Slot:
     spec: ExperimentSpec
-    question: Misconception | DiagnosticAuto
+    question: Misconception | DiagnosticAuto | Prediction
     index: int
 
 
@@ -256,7 +356,7 @@ def _pool(experiments: list[ExperimentSpec]) -> list[_Slot]:
     slots: list[_Slot] = []
     for spec in experiments:
         for q in spec.questions:
-            if isinstance(q, Misconception):
+            if isinstance(q, Misconception | Prediction):
                 slots.append(_Slot(spec, q, 0))
             elif isinstance(q, DiagnosticAuto):
                 repeat = min(DIAG_REPEAT, len(q.pathologies.from_) + 1)
@@ -298,6 +398,8 @@ def build_session(
         try:
             if isinstance(slot.question, Misconception):
                 questions.append(_misconception(slot.spec, slot.question, rng))
+            elif isinstance(slot.question, Prediction):
+                questions.append(_prediction(slot.spec, slot.question, rng))
             else:
                 seen = used.setdefault((slot.spec.id, slot.question.id), set())
                 made, hidden = _diagnostic(slot.spec, slot.question, slot.index, rng, seen)

@@ -15,6 +15,8 @@ def test_every_choice_of_a_misconception_passes_its_verify() -> None:
     s = _session("multicolinearite", 4)
     assert s.questions and not s.dropped
     for q in s.questions:
+        if q.type != "misconception":
+            continue
         spec = specs[q.experiment_id]
         yaml_q = next(x for x in spec.questions if x.id == q.qid.split("/")[1])
         verify = {c.id: c.verify for c in yaml_q.choices}
@@ -52,4 +54,30 @@ def test_question_whose_verify_never_passes_is_dropped() -> None:
     s = _session("tests-multiples", 5, specs)
     assert [d.question_id for d in s.dropped] == [spec.questions[0].id]
     assert "verify" in s.dropped[0].reason
-    assert len(s.questions) == 2
+    assert len(s.questions) == len(spec.questions) - 1
+
+
+# --- Questions de prédiction (P1) -------------------------------------------------------------------------
+
+
+def test_prediction_answer_is_computed_by_the_engine() -> None:
+    """Trois choix fixes, un seul juste, calculé en relançant les deux états (simulé avant d'écrire)."""
+    expected = {
+        "regression-lineaire": "stable",  # couverture sous hétéroscédasticité : n ne répare rien
+        "theoreme-central-limite": "down",  # Cauchy : la part dans ±1,96 baisse quand n grandit
+        "tests-multiples": "up",  # plus de comparaisons, plus de fausses alarmes
+        "multicolinearite": "down",  # X1 et X2 très liées : la puissance chute
+    }
+    for eid, answer in expected.items():
+        preds = [q for q in _session(eid, 5).questions if q.type == "prediction"]
+        assert len(preds) == 1, eid
+        q = preds[0]
+        assert q.k == 3 and [c.id for c in q.choices] == ["up", "down", "stable"]
+        assert [c.id for c in q.choices if c.correct] == [answer], eid
+        assert all("au départ" in c.explain for c in q.choices)
+
+
+def test_prediction_is_deterministic() -> None:
+    a = _session("tests-multiples", 11).model_dump()
+    b = _session("tests-multiples", 11).model_dump()
+    assert a == b

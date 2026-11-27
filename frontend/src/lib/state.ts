@@ -27,6 +27,10 @@ export interface UiState {
   methodsOn: string[]
   /** Onglet ouvert du Laboratoire (identifiant de vue), null = premier onglet. */
   tab: string | null
+  /** Étape du Laboratoire (`comprendre`, `defis`) ; absente = Expérimenter. */
+  stage?: string | null
+  /** Hypothèse ouverte dans l'étape Comprendre (pont depuis l'Entraînement). */
+  focus?: string | null
 }
 
 type Value = number | boolean | string
@@ -171,6 +175,8 @@ export type Link =
       seed: number | null
       on: string[] | null
       tab: string | null
+      stage?: string | null
+      focus?: string | null
     }
 
 function parseSeed(raw: string | null): number | null {
@@ -211,6 +217,8 @@ export function parseLink(url: string): Link {
     seed: parseSeed(q.get('seed')),
     on: on === null ? null : on.split(',').filter(Boolean),
     tab: q.get('tab'),
+    stage: q.get('stage'),
+    focus: q.get('hyp'),
   }
 }
 
@@ -261,7 +269,12 @@ export function resolveLabLink(
   const known = new Set(spec.methods.map((m) => m.id))
   const ui = defaultUi(spec)
   const on = link.on?.filter((id) => known.has(id))
-  return { engine, ui: { methodsOn: on && on.length > 0 ? on : ui.methodsOn, tab: link.tab } }
+  const stage = link.stage === 'comprendre' || link.stage === 'defis' ? link.stage : null
+  const focus = link.focus && link.focus in spec.hypotheses ? link.focus : null
+  const out: UiState = { methodsOn: on && on.length > 0 ? on : ui.methodsOn, tab: link.tab }
+  if (stage) out.stage = stage
+  if (focus) out.focus = focus
+  return { engine, ui: out }
 }
 
 function formatValue(v: Value): string {
@@ -290,6 +303,8 @@ export function labLink(
   const defaultOn = defaultUi(spec).methodsOn
   if (ui.methodsOn.join(',') !== defaultOn.join(',')) q.set('on', ui.methodsOn.join(','))
   if (ui.tab) q.set('tab', ui.tab)
+  if (ui.stage) q.set('stage', ui.stage)
+  if (ui.focus) q.set('hyp', ui.focus)
   const axes = injectAxes(spec)
   if (engine.extra_points.length > 0) {
     q.set('pts', engine.extra_points.map((pt) => axes.map((a) => pt[a]).join(',')).join(';'))
