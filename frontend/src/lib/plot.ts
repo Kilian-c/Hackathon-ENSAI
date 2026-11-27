@@ -153,8 +153,16 @@ function markerTraces(s: Series, view: ViewResult): { traces: Trace[]; clipped: 
   const { inside, outside } = clampPoints(nums(s, 'x'), nums(s, 'y'), axisRange(view, 'x'), axisRange(view, 'y'))
   const style = pointsStyle(seriesRole(s))
   const marker = style.marker as Record<string, unknown>
+  // Réglages d'affichage facultatifs de la vue (champ libre `ui`) : taille et nom de chaque point.
+  const size = view.ui?.marker_size
+  if (typeof size === 'number') marker.size = size
+  const labels = view.ui?.point_labels
+  const named = s.slot === 'points' && Array.isArray(labels)
   const traces: Trace[] = [
-    { type: 'scatter', uid: s.id, name: s.label, x: inside.x, y: inside.y, ...style, legendgroup: s.id },
+    {
+      type: 'scatter', uid: s.id, name: s.label, x: inside.x, y: inside.y, ...style, legendgroup: s.id,
+      ...(named ? { mode: 'markers+text', text: labels, textposition: 'bottom center' } : {}),
+    },
   ]
   if (outside.x.length > 0) {
     traces.push({
@@ -541,8 +549,12 @@ function sensitivityFigure(view: ViewResult, opts: ChartOptions): Figure {
   return { data, layout, caption: [] }
 }
 
-/** Figure d'une vue ; null si le type n'est pas (encore) dessiné : afficher la vue de secours. */
+/**
+ * Figure d'une vue ; null si elle ne peut pas être dessinée (type non géré, ou aucune série hors
+ * Sensibilité, dont les données viennent du balayage) : afficher la vue de secours.
+ */
 export function buildFigure(view: ViewResult, opts: ChartOptions): Figure | null {
+  if (view.type !== 'sensitivity' && view.series.length === 0) return null
   switch (view.type) {
     case 'scatter':
     case 'residuals':

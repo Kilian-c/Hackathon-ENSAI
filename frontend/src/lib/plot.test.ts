@@ -92,6 +92,7 @@ describe('buildFigure', () => {
 
   it('type non dessiné : null (vue de secours)', () => {
     expect(buildFigure({ ...reg.views.nuage, type: 'measures_table' }, opts(['ols']))).toBeNull()
+    expect(buildFigure({ ...reg.views.nuage, series: [] }, opts(['ols']))).toBeNull() // rien à dessiner
   })
 })
 
