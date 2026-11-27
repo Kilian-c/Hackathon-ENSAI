@@ -2,7 +2,7 @@ schema_version: 1
 id: "pendule-euler"
 title: "Pendule simple : la méthode d'Euler et son pas de temps"
 discipline: "physique"
-level: "1A"
+level: "2"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
 concepts: ["edo", "euler", "runge-kutta", "stabilite-numerique", "pendule"]
 
 theorem:

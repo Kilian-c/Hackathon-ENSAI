@@ -35,7 +35,7 @@ def _first_issue(text: str):
 
 
 def test_unknown_field_reports_line():
-    issue = _first_issue(REGRESSION.replace('level: "1A/2A"', 'level: "1A/2A"\nbidule: 3'))
+    issue = _first_issue(REGRESSION.replace('level: "3"', 'level: "3"\nbidule: 3'))
     assert (issue.line, issue.path) == (6, "bidule")
 
 
