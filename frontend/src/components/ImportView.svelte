@@ -86,6 +86,10 @@
   }
 
   async function readFile(file: File): Promise<void> {
+    if (!/\.ya?ml$/i.test(file.name) && !file.type.startsWith('text/')) {
+      error = `« ${file.name} » n'est pas un fichier YAML (.yaml ou .yml).`
+      return
+    }
     if (file.size > MAX_BYTES) {
       error = `Le fichier « ${file.name} » fait ${Math.ceil(file.size / 1024)} Ko : 64 Ko au plus.`
       return
@@ -156,8 +160,14 @@
     }
   }
 
+  /** Erreur de syntaxe YAML : PyYAML la repère parfois une ligne plus bas que la vraie faute (guillemet non fermé). */
+  function isSyntaxIssue(issue: ValidateIssue): boolean {
+    return issue.message.startsWith('YAML invalide')
+  }
+
   function where(issue: ValidateIssue): string {
-    const parts = [issue.line ? `ligne ${issue.line}` : null, issue.path || null].filter(Boolean)
+    const line = issue.line ? `${isSyntaxIssue(issue) ? 'vers la ligne' : 'ligne'} ${issue.line}` : null
+    const parts = [line, issue.path || null].filter(Boolean)
     return parts.join(', ')
   }
 </script>
@@ -273,6 +283,9 @@
                   <span class="where">{where(issue) || 'fichier'}</span>
                 </button>
                 <span>{issue.message}</span>
+                {#if isSyntaxIssue(issue)}
+                  <span class="muted small">(la faute peut aussi être sur la ligne juste au-dessus)</span>
+                {/if}
               </li>
             {/each}
           </ul>
