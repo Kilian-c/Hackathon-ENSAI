@@ -320,8 +320,6 @@ PEN_MEASURES = {
                   "texts": {"ok": "Trajectoire fidèle : erreur de {value}.",
                             "warning": "La trajectoire dérive : erreur de {value}.",
                             "broken": "Trajectoire fausse : erreur de {value}."}},
-    "energy_drift": {"label": "Dérive de l'énergie", "unit": "%", "scale": 100, "decimals": 1},
-    "full_turn": {"label": "Le pendule fait le tour", "decimals": 0},
 }
 
 
@@ -351,23 +349,17 @@ def pendulum_run(pas: float, theta0: float = 1.2, t_end: float = 5.0):
     t = np.linspace(0.0, t_end, 400)
     truth = solve_ivp(rhs, (0.0, t_end), [theta0, 0.0], t_eval=t, rtol=1e-10, atol=1e-10).y[0]
     ids = ["euler", "rk4"]
-    sol, vals, base = {}, {"err": {}, "drift": {}, "turn": {}}, {"err": {}, "drift": {}, "turn": {}}
+    sol, vals, base = {}, {"err": {}}, {"err": {}}
     for target_state, p in ((vals, pas), (base, 0.0)):
         for m in ids:
             tt, s = integrate(theta0, t_end, 10 ** (-3.5 + 2.5 * p), m)
             theta = np.interp(t, tt, s[:, 0])
-            energy = 0.5 * s[:, 1] ** 2 - 9.81 * np.cos(s[:, 0])
-            scale = 9.81 * (1 - math.cos(theta0))
             target_state["err"][m] = float(np.max(np.abs(theta - truth)) / theta0)
-            target_state["drift"][m] = float(abs(energy[-1] - energy[0]) / scale)
-            target_state["turn"][m] = float(np.max(np.abs(s[:, 0])) > math.pi)
             if p == pas:
                 sol[m] = theta
     none = {m: None for m in ids}
     measures = {
         "err_angle": measure_block(PEN_MEASURES["err_angle"], vals["err"], none, base["err"], ids),
-        "energy_drift": measure_block(PEN_MEASURES["energy_drift"], vals["drift"], none, base["drift"], ids),
-        "full_turn": measure_block(PEN_MEASURES["full_turn"], vals["turn"], none, base["turn"], ids),
     }
     views = [
         {"id": "trajectoire", "type": "curves", "title": "Angle au cours du temps",
@@ -386,7 +378,7 @@ def pendulum_run(pas: float, theta0: float = 1.2, t_end: float = 5.0):
         "equation": {"terms": {"err": {"violated_by": ["pas"] if pas > 0 else []}}},
         "challenges": [
             {"id": "plus-grand-pas", "passed": pas >= 0.2 and euler_state == "ok"},
-            {"id": "rk4-gros-pas", "passed": vals["turn"]["euler"] == 1.0 and vals["err"]["rk4"] < 0.05},
+            {"id": "rk4-gros-pas", "passed": euler_state == "broken" and vals["err"]["rk4"] < 0.05},
         ],
         "views": views, "draw_log": None, "invalid_rate": {"euler": 0.0, "rk4": 0.0}, "warnings": [],
         "repeat_used": 1, "compute_ms": 0.0,
