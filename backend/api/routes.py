@@ -8,11 +8,12 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.api import registry
-from backend.contracts import ExperimentSummary, RunRequest, RunResult
+from backend.contracts import ExperimentSummary, RunRequest, RunResult, SweepRequest, SweepResult
 from backend.engine.loader import ExperimentError
 from backend.engine.runner import RunError, run
 from backend.engine.schema import ExperimentSpec
 from backend.engine.state import StateError
+from backend.engine.sweep import sweep
 
 router = APIRouter(prefix="/api")
 
@@ -72,5 +73,14 @@ def post_run(request: RunRequest) -> RunResult:
             raise HTTPException(422, {"message": "Fichier d'expérience invalide.", "issues": detail}) from exc
     try:
         return run(spec, request.state)
+    except (StateError, RunError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/sweep", response_model=SweepResult)
+def post_sweep(request: SweepRequest) -> SweepResult:
+    spec = _get_spec(request.experiment_id)
+    try:
+        return sweep(spec, request.state, [a.target for a in request.axes], request.measure)
     except (StateError, RunError) as exc:
         raise HTTPException(422, str(exc)) from exc

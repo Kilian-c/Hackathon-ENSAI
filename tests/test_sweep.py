@@ -1,0 +1,82 @@
+"""Tests du balayage : grilles, seuils interpolés, cible `base`, 2 axes, plafonds, erreurs en français."""
+
+import json
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from backend.contracts import SweepResult
+from backend.main import app
+
+client = TestClient(app)
+FIXTURE = (
+    Path(__file__).resolve().parent.parent / "frontend" / "src" / "fixtures" / "regression_hetero.sweep.json"
+)
+
+
+def _post(experiment_id: str, axes: list[str], state: dict | None = None, measure: str | None = None):
+    body = {"experiment_id": experiment_id, "axes": [{"target": a} for a in axes], "state": state or {}}
+    if measure:
+        body["measure"] = measure
+    return client.post("/api/sweep", json=body)
+
+
+def test_one_axis_continuous_with_critical() -> None:
+    r = _post("regression-lineaire", ["h.hetero"], {"hypotheses": {"hetero": 0.8}})
+    assert r.status_code == 200
+    res = SweepResult.model_validate(r.json())
+    assert len(res.axes[0].values) == 11 and res.measure == "coverage"
+    assert res.current == {"h.hetero": 0.8}
+    ols, hc3 = res.values["ols"], res.values["hc3"]
+    assert ols[0] > 0.9 and ols[-1] < 0.8 and min(hc3) > 0.9  # HC3 reste fiable partout
+    assert res.states["ols"][0] == "ok" and res.states["ols"][-1] == "broken"
+    crit = res.critical["ols"]
+    assert crit is not None and 0 < crit.warning_at < crit.broken_at <= 1
+    assert res.critical["hc3"] is None
+    assert res.target == 0.95 and res.direction == "below"
+    # même forme que la fixture de R1 (contrat respecté)
+    assert set(res.model_dump(exclude_none=True)) >= set(json.loads(FIXTURE.read_text(encoding="utf-8")))
+
+
+def test_choice_axis_with_base_target() -> None:
+    res = SweepResult.model_validate(_post("test-student", ["h.loi"]).json())
+    assert res.axes[0].values[0] == "normal" and len(res.axes[0].labels) == len(res.axes[0].values)
+    assert isinstance(res.target, dict) and set(res.target) == {"student", "wilcoxon"}
+    assert res.critical is None  # axe non continu
+    cauchy = res.axes[0].values.index("cauchy")
+    assert res.states["student"][0] == "ok" and res.states["student"][cauchy] == "broken"
+
+
+def test_two_axes_grid_is_indexed_axis2_then_axis1() -> None:
+    res = SweepResult.model_validate(_post("test-student", ["h.loi", "p.n"]).json())
+    n_loi, n_n = len(res.axes[0].values), len(res.axes[1].values)
+    grid = res.values["student"]
+    assert len(grid) == n_n and all(len(row) == n_loi for row in grid)
+    assert res.critical is None
+
+
+def test_parameter_axis_and_informative_measure() -> None:
+    res = SweepResult.model_validate(_post("test-student", ["p.n"], measure="alpha").json())
+    assert res.measure == "alpha" and res.critical is not None
+    info = SweepResult.model_validate(_post("regression-lineaire", ["h.hetero"], measure="width").json())
+    assert info.states == {} and info.target is None and info.critical is None
+
+
+def test_same_seed_same_sweep() -> None:
+    a = _post("regression-lineaire", ["h.hetero"]).json()
+    b = _post("regression-lineaire", ["h.hetero"]).json()
+    a.pop("compute_ms"), b.pop("compute_ms")
+    assert a == b
+
+
+def test_errors_are_french_422() -> None:
+    cases = [
+        (["h.nimporte"], "Hypothèse inconnue"),
+        (["p.beta1"], "n'est pas balayable"),
+        (["h.hetero", "h.hetero"], "différents"),
+    ]
+    for axes, text in cases:
+        r = _post("regression-lineaire", axes)
+        assert r.status_code == 422 and text in r.json()["detail"], axes
+    assert _post("regression-lineaire", ["h.hetero"], measure="zzz").status_code == 422
+    assert _post("nexiste-pas", ["h.hetero"]).status_code == 404
