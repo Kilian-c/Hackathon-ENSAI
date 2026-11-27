@@ -165,3 +165,25 @@ describe('expériences importées (P1)', () => {
     expect(labLink(spec, defaultState(spec), ui, { kind: 'draft' })).toBe('?brouillon=&v=1&seed=42')
   })
 })
+
+describe('étape et hypothèse dans le lien (pont de l’Entraînement)', () => {
+  it('écrit et relit stage= et hyp=', () => {
+    const ui = { ...defaultUi(spec), stage: 'comprendre', focus: 'hetero' }
+    const url = labLink(spec, defaultState(spec), ui)
+    expect(url).toContain('stage=comprendre')
+    expect(url).toContain('hyp=hetero')
+    const link = parseLink(url)
+    if (link.kind !== 'lab') throw new Error('lien de Laboratoire attendu')
+    const resolved = resolveLabLink(spec, link)
+    expect(resolved.ui.stage).toBe('comprendre')
+    expect(resolved.ui.focus).toBe('hetero')
+  })
+
+  it('ignore une étape ou une hypothèse inconnue', () => {
+    const link = parseLink('?exp=regression-lineaire&v=1&stage=nimporte&hyp=zzz')
+    if (link.kind !== 'lab') throw new Error('lien de Laboratoire attendu')
+    const resolved = resolveLabLink(spec, link)
+    expect(resolved.ui.stage).toBeUndefined()
+    expect(resolved.ui.focus).toBeUndefined()
+  })
+})
