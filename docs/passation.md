@@ -1,5 +1,13 @@
 # Notes de passation (la plus récente en haut)
 
+## H6,5 (18 h 30) : planning revu, on a de l'avance (pas une relève)
+- Décision de Kilian : le P0 est presque vert, donc **jalon P0 avancé à H9 (21 h)**, P1 ouvert tout de suite, priorités P1 : mécaniques visuelles puis Import + Supabase. Coupes appliquées au P1 à H17. Détail et tâches dans l'ordre : **CLAUDE.md, section 2**.
+- R3 (jusqu'à 21 h) : niveaux en mots, `segments` dans `plot.ts`, puis banc de méthodes, trajectoires du TCL, ajout de points par clic.
+- R2 (jusqu'à 21 h) : Student et pendule vers `experiments/archives/` (tests mis à jour), `Dockerfile`, `paths` du TCL et `auto_sweep` dans les YAML, puis une expérience de plus du catalogue.
+- R1 (21 h) : relire tout ce qui a été fusionné sans vous (liste en section 2), puis `POST /api/validate`, `draw_log`, tests P1.
+- R4 (22 h) : galerie, lien vers le Bilan en fin de série, relecture du Bilan, écran Import, partage Supabase (`supabase/schema.sql` : prévenir Kilian).
+- Pitch : le pendule est abandonné, donc le passage de 2:45 à 3:30 est à refaire (TCL sous Cauchy ou tests multiples) : R3 + R2, entre H19 et H23.
+
 ## H6 (18 h 30) : décision, `level` = difficulté 1, 2, 3 (pas une relève)
 - Décision de R2 : `level` vaut « 1 » (Découverte), « 2 » (Intermédiaire) ou « 3 » (Avancé), comme le propose le catalogue ; l'année (« 1A », « 2A ») disparaît. Niveaux repris des tableaux du catalogue : 1 = somme de dés, seuil et ROC, carrés des résidus ; 2 = TCL, tests multiples, pendule ; 3 = régression, Student, multicolinéarité (absente du catalogue : rangée comme « Variable omise »).
 - `tests/test_engine.py` (R1) : la chaîne repérée dans la régression passe de `level: "1A/2A"` à `level: "3"`.

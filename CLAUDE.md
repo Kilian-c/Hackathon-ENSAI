@@ -7,6 +7,8 @@ Ce fichier en résume tout ce dont tu as besoin pour coder. En cas de doute, le 
 ### Écarts assumés avec le cahier (ce fichier fait foi)
 
 - **Expériences P0 (décision de H4, remplace partout ailleurs « les 3 expériences P0 »)** : uniquement des théorèmes vus en cours. Les quatre sont `regression_lineaire.yaml` (intervalle de confiance d'une pente ; Newey-West et Anscombe retirés), `theoreme_central_limite.yaml`, `multicolinearite.yaml` et `tests_multiples.yaml`. `test_student.yaml` et `pendule_euler.yaml` sont **abandonnées** : n'y consacrez plus de temps, et le générateur `ode` n'est plus nécessaire en P0. Les deux fichiers restent dans le dépôt tant que les tests et les fixtures s'en servent. Les passages ci-dessous qui les décrivent (sections 1, 7, 9, 12, 13) ne valent plus que pour ces anciens fichiers.
+- **Avance à H6,5 (18 h 30, décision de Kilian)** : R2 et R3 ont déjà écrit l'essentiel du moteur (`run()`, `/api/run`, `/api/sweep` à 1 ou 2 axes, `/api/training/session`), et Laboratoire, Entraînement et Bilan tournent. Donc : **jalon P0 avancé à H9 (21 h)** ; chaque rôle passe au P1 dès que son reste de P0 est fait, sans attendre le jalon ; priorités P1 : **mécaniques visuelles** puis **Import + Supabase** ; la liste de coupes s'applique au P1 à H17 (section 13). Nouveau planning et tâches par rôle : section 2.
+- **Expériences jouables** : les 4 du cours (ci-dessus) et 3 du catalogue de R2, de niveau 1 : `somme_des.yaml`, `seuil_roc.yaml`, `carres_residus.yaml`. `level` vaut « 1 » (Découverte), « 2 » (Intermédiaire) ou « 3 » (Avancé). Student et le pendule partent dans `experiments/archives/` : le registre ne lit que `experiments/*.yaml`, sans sous-dossiers, donc ils sortent de l'accueil et des séries ; les tests qui s'en servent pointent vers le nouveau chemin.
 - **Planning** : le cahier suppose 30 h à partir de 9 h. Ici, le départ est à **12 h**, le code s'arrête le lendemain à **13 h (H25)** et le pitch a lieu à **17 h (H29)**. Les créneaux de la section 2 sont recalculés.
 - **Entraînement** : une seule route `POST /api/training/session`, `seed` facultative, pas de réserve de séries en P0, `count = min(10, questions disponibles)`. Le cahier (tableau des routes, annexe C.5 et arborescence) décrit encore deux routes `GET /api/training/next` et `GET /api/training/session` avec une réserve : **ignore-les**, voir section 8.
 - **Les 3 YAML de référence sont déjà dans `experiments/`**, extraits du `.tex` (annexe B.1 à B.3). Ne les recopie pas une seconde fois : pars de ces fichiers. Seul changement par rapport au cahier : le `explain` du contre-exemple `cauchy-petit-n` ne contient plus de chiffre écrit en dur.
@@ -40,35 +42,74 @@ Si la demande de la personne sort de son rôle ou de son créneau, dis-le en une
 - Stack : Python (FastAPI, NumPy, SciPy ; statsmodels seulement dans les tests), Svelte 5 + Plotly.js + KaTeX, Supabase seulement pour le partage d'expériences importées (P1).
 - Déploiement : interface sur Cloudflare, moteur dans une image Docker sur un hébergeur Python gratuit, version locale de secours sur un seul port.
 - Équipe : R1 + R4 la nuit, R3 (Kilian) + R2 le jour.
-- P0 = 3 expériences : `regression_lineaire.yaml`, `test_student.yaml` et `pendule_euler.yaml`, déjà présentes dans `experiments/` (extraites de l'annexe B du cahier). **Ne les réinvente pas** : R2 les complète (questions) et ajuste les tolérances après simulation.
+- Expériences jouables (écarts assumés ci-dessus) : régression, TCL, multicolinéarité, tests multiples (cours) ; somme de dés, seuil et ROC, carrés des résidus (catalogue, niveau 1). Student et pendule : abandonnés, dans `experiments/archives/`.
 - Interface **en français, vouvoiement partout** (boutons, énoncés, erreurs, explications).
 
 ---
 
 ## 2. Le planning (départ à 12 h ; code figé le lendemain à 13 h ; pitch à 17 h)
 
-Adaptation du planning du cahier : le code s'arrête à H25 au lieu de H28, donc les relèves et le jalon P0 sont avancés de 2 h. Le cahier fait foi sur le contenu des créneaux, ce fichier fait foi sur les heures.
+**Planning revu à H6,5 (18 h 30)** : le P0 est presque vert, donc le jalon P0 passe à H9 et le temps gagné va au P1 (mécaniques visuelles, puis Import + Supabase). Les relèves (H9, H17, H23), le gel à H25 et le pitch à H29 ne changent pas. Ce fichier fait foi sur les heures et sur les tâches ; le cahier fait foi sur le contenu des fonctionnalités (fiches de l'annexe F).
 
 | Créneau | Heures | Qui | Objectif |
 |---|---|---|---|
-| H0 à H4 | 12 h à 16 h | Tous | Coder les contrats (pas les discuter), tranche verticale |
-| H4 à H9 | 16 h à 21 h | R3 + R2 | Interface sur fixtures ; méthodes et 3 YAML |
-| H9 à H10 | 21 h à 22 h | Tous | Relève, fusion, première mise en ligne complète |
-| H10 à H17 | 22 h à 5 h | R1 + R4 | Moteur complet, routes P0 ; écrans secondaires |
-| H17 à H19 | 5 h à 7 h | Tous | **Jalon P0** (critère ci-dessous) ; sinon liste de coupes |
-| H19 à H23 | 7 h à 11 h | R3 + R2 | Entraînement complet, contenus définitifs, puis P1 |
+| H0 à H6,5 | 12 h à 18 h 30 | Tous | **Fait** : contrats, moteur, API P0, 7 expériences, Laboratoire, Entraînement, Bilan |
+| H6,5 à H9 | 18 h 30 à 21 h | R3 + R2 | Fermer le P0 restant, puis premières mécaniques P1 |
+| H9 à H10 | 21 h à 22 h | Tous | Relève, **jalon P0 avancé** (critère ci-dessous), relecture par R1, première mise en ligne |
+| H10 à H17 | 22 h à 5 h | R1 + R4 | Import + `/api/validate` + Supabase, galerie, P1 côté moteur, tests P1 |
+| H17 à H19 | 5 h à 7 h | Tous | **Jalon P1** : ce qui n'est pas vert est coupé dans l'ordre de la section 13 |
+| H19 à H23 | 7 h à 11 h | R3 + R2 | Prédictions, Domaine de validité, contenus définitifs, démo et pitch |
 | H23 à H25 | 11 h à 13 h | Tous | Démo de bout en bout, intégration P1 terminée ; **H25 (13 h) : plus aucune fonctionnalité** |
 | H25 à H29 | 13 h à 17 h | Tous | Corrections de bugs seulement, audit, vidéo de secours, répétitions ; **pitch à 17 h** |
 
-### H0 à H4, dans l'ordre
+### H6,5 à H9 (18 h 30 à 21 h), R3 + R2, dans l'ordre
+**R3 (Kilian, interface)**
+1. Reste de P0 : niveau affiché en mots (« Découverte », « Intermédiaire », « Avancé ») dans `App.svelte` et `LabView.svelte` ; `segments` dessinés par `plot.ts` (séries sans `y` : seuil et ROC, carrés des résidus) ; vérifier à l'œil `h1` (rôle `truth`, orange) dans les vues `distribution`.
+2. **Banc de méthodes** (annexe F, fiche « Banc de méthodes ») : afficher ou masquer chaque alternative sans aucun appel (tout est dans `RunResult`), `on=` dans l'URL (`lib/state.ts`).
+3. **Trajectoires** du TCL (`Series.paths`, TODO dans `plot.ts`), dès que R2 les sert.
+4. **Ajout de points par clic** (fiche F) : `extra_points` existe déjà dans `EngineState` (20 au plus), activé par `allow_point_injection` de la vue.
+
+**R2 (contenu, et moteur à la place de R1 : prévenir R1, qui relit à H9)**
+1. Student et pendule vers `experiments/archives/` ; mettre à jour les chemins dans `tests/test_api.py`, `tests/test_runner.py`, `tests/test_integrate.py` ; régénérer avec R3 les specs de repli (`frontend/src/dev/specs/`).
+2. `Dockerfile` du moteur (`OMP_NUM_THREADS=1`, port de l'hébergeur choisi) pour la mise en ligne de H9.
+3. Pour R3 : `paths` servis dans la vue du TCL (`runner.py`) ; `auto_sweep` rempli dans les YAML qui s'y prêtent (régression, TCL, tests multiples).
+4. Si tout est vert : une expérience de plus du catalogue (simulée avant d'écrire les seuils, 3 questions, tests de contenu verts).
+
+### H9 à H10 (21 h à 22 h), tous
+- R1 relit ce qui a été fusionné sans lui : `runner.py`, `training.py`, `fastexpr.py`, `sweep.py`, `api/registry.py`, `api/routes.py`, `Dockerfile`.
+- Jalon P0 vérifié (critère ci-dessous) ; note de relève dans `docs/passation.md`.
+- Première mise en ligne : interface sur Cloudflare (`frontend/DEPLOIEMENT.md`), moteur sur l'hébergeur.
+
+### H10 à H17 (22 h à 5 h), R1 + R4
+**R1 (moteur et API)**
+1. `POST /api/validate` (P1, annexe C du cahier) : erreurs par ligne (le chargeur les donne déjà) et tests 1, 3, 4, 10 lancés sur le YAML reçu. `/api/run` accepte déjà `raw_content`.
+2. Journal des tirages : `draw_log` servi pour les expériences qui le déclarent, vérifié par un test.
+3. Tests P1 : 2, 5, 6, 7, 9 et `tests/test_properties.py`.
+4. Seulement si tout est vert : budget (réduction automatique de `repeat`), réserve de séries, lenteur de Tukey au premier appel.
+
+**R4 (écrans secondaires)**
+1. Galerie (`components/home/`) à la place de l'accueil provisoire de `App.svelte` : filtres et tri par niveau et discipline, accès à l'Entraînement et au Bilan (`?bilan`).
+2. Lien vers le Bilan sur l'écran de fin de l'Entraînement ; relecture du Bilan écrit par R3 (`lib/calibration.ts`, `components/summary/CalibrationSummary.svelte`).
+3. **Écran Import** (`ImportView.svelte`) : coller ou déposer un YAML, erreurs par ligne via `/api/validate`, ouverture dans le Laboratoire avec `raw_content`.
+4. **Partage Supabase** : table dans `supabase/schema.sql` (fichier de R3 : Kilian relit au matin), enregistrer une expérience importée et l'ouvrir par lien.
+
+### H17 à H19 (5 h à 7 h), tous
+Jalon P1 : chaque mécanique commencée est terminée ou coupée (section 13). Note de relève H17.
+
+### H19 à H23 (7 h à 11 h), R3 + R2
+- R3 : questions de prédiction dans l'Entraînement ; balayage automatique (pause sur la mesure primaire, fiche F) s'il n'est pas fait ; Domaine de validité si le temps le permet.
+- R2 : questions `prediction` dans les YAML et servies par `training.py` ; vue `validity_domain` côté moteur si R3 la fait ; contenus définitifs (textes et seuils revérifiés sur le vrai moteur).
+- Les deux : **démo** (graine fixée, lien direct vers la question de démonstration de la régression, cahier section 7) et **nouveau déroulé du pitch** : le passage « pendule, 2:45 à 3:30 » est remplacé par une autre expérience du cours (TCL sous Cauchy, que rien ne répare, ou tests multiples et Bonferroni) ; l'Import est montré à 3:30 s'il est prêt.
+
+### Historique : H0 à H4, dans l'ordre (fait)
 - **H0 à H1 (les 4)** : dépôt (fait : arborescence, `docs/`, `docs/passation.md`, les 3 YAML de référence dans `experiments/`), puis **lecture commune** de `experiments/regression_lineaire.yaml` : c'est le modèle des autres.
 - **H1 à H2** : `backend/engine/schema.py` qui charge **les 3 YAML de référence** (R1) ; `method_contract.py`, `aggregators.py`, `laws.py` avec leur test de conformité (R2) ; R2 relit `test_student.yaml` et signale à R1 tout besoin du schéma avant le gel.
 - **H2 à H3** : `backend/contracts.py` (requêtes et réponses de `/api/run`, `/api/sweep`, `/api/training/session`) (R1) ; `roles.ts`, `tokens.css`, règle de couleur dans `equation.ts` (R3).
 - **H3 à H4** : `scripts/gen_types.sh` et premier `types.gen.ts` (R3) ; faux JSON des vues P0 et d'une série d'Entraînement, validés par `contracts.py` (R1) ; `tests/test_loader.py` (R4) ; FastAPI + Vite/Svelte 5 + proxy `/api`, projet Cloudflare, `Dockerfile` pour l'hébergeur choisi avant le hackathon (Hugging Face Spaces ou Render).
 - **Jalon tranche verticale (H4, 16 h)** : `POST /api/run` (générateur `random` + MCO) renvoie une vraie courbe affichée par `PlotlyChart.svelte`. Tag git `contracts-v1`.
 
-### Critère du jalon P0 (H19, 7 h)
-Sur les 3 expériences P0 : Laboratoire (casser, Correction, Référence, verdicts) et Entraînement minimal (question générée et vérifiée, crans, validation par simulation) tournent sur la vraie API, et les tests P0 (1, 3, 4, 8, 10) passent.
+### Critère du jalon P0 (avancé à H9, 21 h)
+Sur les 7 expériences jouables : Laboratoire (casser, Correction, Référence, verdicts) et Entraînement minimal (question générée et vérifiée, crans, validation par simulation) tournent sur la vraie API, et les tests P0 (1, 3, 4, 8, 10) passent.
 
 ---
 
@@ -348,11 +389,11 @@ Tests de `tests/test_experiments.py` (section 4.10 du cahier). **P0 : 1, 3, 4, 8
 
 ## 13. Priorités et coupes (section 6.5 du cahier)
 
-- **P0** (jusqu'à H19) : les 3 expériences P0 ; `run()`, générateurs `random` et `ode`, méthodes en liste, agrégateurs, verdicts, Référence, balayage à 1 axe, cache, plafonds ; Laboratoire (Comprendre, 3 types de contrôles, bouton Correction, Référence, verdicts, équation dynamique, Répétitions, Sensibilité, contre-exemples, 2 défis) ; Entraînement (idées fausses, diagnostics, `verify`, crans, validation par simulation, pont vers le Laboratoire, Bilan) ; partage par URL ; tests P0 ; types générés ; fixtures.
-- **P1** (après le jalon, dans l'ordre inverse de la liste de coupes) : banc de méthodes, LGN et TCL, Domaine de validité, balayage automatique, hypothèses P1 de la régression, prédictions, Import et Supabase, ajout de points, journal des tirages, budget, réserve de séries d'Entraînement, tests P1.
+- **P0** (presque fait à H6,5 ; jalon à H9) : les expériences jouables (section 1) ; `run()`, générateur `random`, méthodes en liste, agrégateurs, verdicts, Référence, balayage à 1 axe, cache, plafonds ; Laboratoire (Comprendre, 3 types de contrôles, bouton Correction, Référence, verdicts, équation dynamique, Répétitions, Sensibilité, contre-exemples, 2 défis) ; Entraînement (idées fausses, diagnostics, `verify`, crans, validation par simulation, pont vers le Laboratoire, Bilan) ; partage par URL ; tests P0 ; types générés ; fixtures.
+- **P1** (ouvert dès qu'un rôle a fini son P0 ; répartition à la section 2) : banc de méthodes, trajectoires du TCL, ajout de points, balayage automatique, Import + `/api/validate` + Supabase, journal des tirages, prédictions, Domaine de validité, tests P1 ; en dernier, budget et réserve de séries. Les hypothèses P1 de la régression (indépendance, forme de la relation, Anscombe) restent retirées (décision de H4).
 - **P2** : inspecteur, calques, régression 3D, TFA, petits angles, générateur `function`.
 
-Si le P0 n'est pas vert à H19 (7 h), on coupe **dans cet ordre, sans débat** :
+Au jalon P1 (H17, 5 h), toute mécanique qui n'est pas verte est coupée **dans cet ordre, sans débat** (même règle si, par surprise, le P0 n'est pas vert à H9) :
 1. journal des tirages et ajout de points ;
 2. écran Import et partage Supabase ;
 3. questions de prédiction ;
@@ -362,7 +403,7 @@ Si le P0 n'est pas vert à H19 (7 h), on coupe **dans cet ordre, sans débat** :
 7. expérience LGN et TCL ;
 8. banc de méthodes (le bouton Correction seul reste).
 
-**Ne se coupe jamais** : Laboratoire avec Correction, Référence et verdicts ; Entraînement avec questions vérifiées et validation par simulation ; explications ; vues Répétitions et Sensibilité ; Bilan ; lien de partage ; les 3 expériences P0.
+**Ne se coupe jamais** : Laboratoire avec Correction, Référence et verdicts ; Entraînement avec questions vérifiées et validation par simulation ; explications ; vues Répétitions et Sensibilité ; Bilan ; lien de partage ; les 4 expériences du cours.
 
 ---
 
