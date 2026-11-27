@@ -3,14 +3,14 @@
  "id": "regression-lineaire",
  "title": "Régression linéaire : quand l'intervalle de confiance d'une pente devient faux",
  "discipline": "statistique",
- "level": "1A/2A",
+ "level": "3",
  "concepts": [
-  "mco",
-  "intervalle-de-confiance",
-  "residus",
-  "heteroscedasticite",
+  "MCO",
+  "intervalle de confiance",
+  "résidus",
+  "hétéroscédasticité",
   "levier",
-  "independance"
+  "indépendance"
  ],
  "theorem": {
   "name": "Intervalle de confiance d'un coefficient des MCO",
@@ -459,7 +459,10 @@
    "inspect": true,
    "allow_point_injection": true,
    "mode": null,
-   "ui": null
+   "ui": {
+    "x_title": "x",
+    "y_title": "y"
+   }
   },
   {
    "id": "residus",
@@ -475,7 +478,10 @@
    "inspect": false,
    "allow_point_injection": false,
    "mode": null,
-   "ui": null
+   "ui": {
+    "x_title": "x",
+    "y_title": "Résidu"
+   }
   },
   {
    "id": "ic",
@@ -494,7 +500,9 @@
    "inspect": false,
    "allow_point_injection": false,
    "mode": "intervals",
-   "ui": null
+   "ui": {
+    "x_title": "Estimation de la pente"
+   }
   },
   {
    "id": "sens",
@@ -599,7 +607,7 @@
   {
    "id": "reg-q3-n",
    "type": "prediction",
-   "prompt": "Sous forte hétéroscédasticité, que devient la couverture des IC classiques si n passe de {n} à {n} x 2 ?",
+   "prompt": "Sous forte hétéroscédasticité, que devient la couverture des IC classiques si n passe de {n} au double ?",
    "procedural_params": {
     "n": {
      "min": 100.0,

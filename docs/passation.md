@@ -1,5 +1,14 @@
 # Notes de passation (la plus récente en haut)
 
+## H9,5 (21 h 30) : corrections pour R1 et R3 faites par R4, branche `r4/corrections-autres-roles` (pas une relève)
+- Branche partie de `origin/main` (après l'Import de Kilian), **à relire par chaque propriétaire avant fusion** (un commit par rôle). pytest, ruff, `npm run check` et `npm test` verts.
+- ~~**R1** : `make_fixtures.py`, calculs inutiles retirés et défi `rk4-gros-pas` aligné~~ : fait et fusionné par R1 (`6cf283c`). Il ne reste sur cette branche que la partie de Kilian.
+- **R3** : `src/dev/specs/*.spec.json` régénérées depuis les YAML au format de `GET /api/experiments/{id}` (`model_dump(mode="json", by_alias=True)`, Student et pendule depuis `archives/`) : niveaux « 3 » et « 2 », pendule sans les deux mesures, défi réécrit, `ui` des vues, notions accentuées. `lab.test.ts` vert sans changement.
+- **R3** : `lib/share.ts`, nouvelle fonction `supabaseBaseUrl` : retire la barre finale et un suffixe `/rest/v1` de `VITE_SUPABASE_URL`. Copiée telle quelle depuis le tableau de bord Supabase, l'adresse se terminait par `/rest/v1/` et le partage échouait (404 `PGRST125`, chemin `/rest/v1/rest/v1/...`). Tests dans `lib/share.test.ts` ; `.env.example` précise l'adresse et la clé publique. Partage testé de bout en bout au navigateur (création, réouverture, Sensibilité).
+- **R3, tout le monde concerné** : `vite.config.ts`, le relais `/api` vise `http://127.0.0.1:8000` au lieu de `localhost:8000`. Sous Windows, `localhost` était d'abord essayé en IPv6, où uvicorn n'écoute pas : **2 s perdues à chaque requête** (0,24 s après). Rien à faire pour personne ; si votre moteur tourne ailleurs (autre port, autre machine, IPv6 seul), mettez `API_PROXY_TARGET=...` dans `frontend/.env`. `npm run dev` affiche la cible au démarrage, et un message en français si le moteur ne répond pas. Sans effet en ligne (`VITE_API_URL`).
+- **R3** : `PlotlyChart.svelte`, `showSendToCloud: false` : Plotly 4 affichait au survol un bouton « Share chart… » (en anglais) qui envoie le graphique vers Plotly Cloud. Vérifié au navigateur : il ne reste que des boutons en français.
+- Côté R4 (branche `r4/relecture`, à relire par Kilian pour `ImportView.svelte`) : test du chargeur, Bilan relu et corrigé, Import relu (erreur de syntaxe « vers la ligne N », fichier non YAML refusé), tests utilisateurs. Ma galerie et mon Import (`r4/galerie`) sont abandonnés au profit de ceux de Kilian.
+
 ## Chantier « modularité » ouvert par R3 + R1 (pas une relève)
 - Objectif : ouvrir l'appli à d'autres théorèmes (algèbre linéaire d'abord), sans toucher aux contrats. Méthodes `formula_*` (méthode écrite dans le YAML), paquet `backend/methods/linalg/`, vue `heatmap`, catalogue généré, seuils proposés par `/api/validate`.
 - **Partie R3 terminée** (détail dans `docs/chantier_modularite.md`) :
@@ -10,10 +19,12 @@
   - **R4** : `ImportView.svelte` est libéré (rien à changer) ; `importPrompt.ts` est modifié (à relire).
 - **Fichiers réservés** : la liste et le partage R1 / R3 sont dans `docs/chantier_modularite.md`. **R2** : `backend/methods/__init__.py`, `expr.py`, `validate.py` et `runner.py` restent réservés (partie de R1). Prévenez R1 avant d'y toucher. Les fichiers d'interface sont libérés.
 
+
 ## Questions de prédiction et Domaine de validité du TCL, faits par R3 (pas une relève)
 - **R1, à relire** : `backend/engine/training.py` sert les questions `prediction` (une fois par série). Le moteur lance l'état de départ et l'état d'arrivée (même graine) et compare la mesure de la méthode principale : « reste stable » sous 2 mc_se d'écart, « augmente » ou « diminue » au-delà de 4 ; entre les deux, nouveau tirage (5 au plus), sinon question retirée (`dropped`). Choix fixes `up`, `down`, `stable` ; `reveal.state` = état d'arrivée. Tests dans `tests/test_training.py` (deux anciens tests adaptés : ils supposaient des séries sans prédiction).
 - **R2, à relire** : une question `prediction` ajoutée au TCL (Cauchy, n au quadruple : la part dans ±1,96 **diminue**, 26 % puis 9 %), aux tests multiples (2 groupes puis 5 à 10 : fausses alarmes en hausse) et à la multicolinéarité (rho de 0 à 0,9-0,98 : puissance en baisse) ; celle de la régression (cahier) est désormais servie, énoncé retouché (« au double »). Simulées sur 30 graines : réponse nette à chaque fois. Vue `validite` (`validity_domain`, axes `[h.loi, p.n]`) ajoutée au TCL : Student à 2 ddl et Cauchy Rompus à tous les n, 0,1 s.
 - Interface : « Ouvrir dans le Laboratoire » ouvre Comprendre sur l'hypothèse de la question (`stage=`, `hyp=`) ; bouton « Voir mon bilan » en fin de série.
+
 
 ## Import, `/api/validate` et partage Supabase, fait par R3 (pas une relève)
 - **R1, à relire** : `backend/engine/validate.py` (nouveau : erreurs du chargeur, puis tests 1, 3, 4, 10 à 200 répétitions ; avertissement si `ok_within` < 2 mc_se au `repeat` du fichier, ou moins de 3 questions), `POST /api/validate` dans `routes.py`, `registry.register_import` / `imported` (un YAML au schéma valide est retenu en mémoire sous `import-<16 car. du SHA-256>` : `GET /api/experiments/{clé}` et `/api/sweep` l'acceptent, **aucun contrat changé**). `/api/run` et `/api/sweep` renvoient 422 au lieu de 500 sur une `ValueError` de méthode. Tests dans `tests/test_api.py`. Les 11 YAML officiels passent la validation (4 s au plus).
