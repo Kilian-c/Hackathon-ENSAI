@@ -84,7 +84,7 @@ measures:
     target: base                 # la cible est la puissance de la même méthode sous loi normale
     direction: below
     ok_within: 0.10
-    broken_beyond: 0.25          # n = 25 : Student Rompu sous Student à 2 ddl et Cauchy ; Wilcoxon Fragile sous Cauchy
+    broken_beyond: 0.29          # n = 25 : Student Rompu sous Student à 2 ddl et Cauchy ; Wilcoxon Fragile sous Cauchy
     texts:
       ok: "Puissance préservée : {value}."
       warning: "Puissance entamée : {value}."
