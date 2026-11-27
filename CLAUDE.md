@@ -168,7 +168,8 @@ cd frontend && npm run check
 cd frontend && npm test                         # tests unitaires (Vitest) des règles de lib/
 
 # Contrats et fixtures
-bash scripts/gen_types.sh                        # contracts.py -> types.gen.ts
+bash scripts/gen_types.sh                        # contracts.py -> types.gen.ts, schema.py -> experiments/schema.json
+uv run python scripts/gen_catalog.py             # registres (méthodes, lois, agrégateurs, fonctions) -> lib/catalog.gen.ts
 uv run python scripts/make_fixtures.py           # vrais résultats -> frontend/src/fixtures/
 ```
 
@@ -179,6 +180,8 @@ Variables : `VITE_API_URL` (adresse du moteur pour l'interface en ligne), `OMP_N
 ## 7. Le format YAML (annexe B du cahier : 3 fichiers complets, déjà dans `experiments/`)
 
 **Ne recopie jamais un YAML depuis le PDF** : l'extraction altère les accents (`R é gression`), insère des espaces (`p . n`, `law ( ’ normal ’)`) et perd l'indentation. Les fichiers de `experiments/` ont été extraits du `.tex` par script : pars d'eux, puis vérifie avec `tests/test_loader.py`.
+
+**Après avoir ajouté une méthode, une loi, un agrégateur ou une fonction**, lance `uv run python scripts/gen_catalog.py` et commite `catalog.gen.ts` : le prompt de l'écran Import le lit, et `tests/test_generated.py` échoue tant qu'il n'est pas à jour. **Après un changement de `schema.py`**, `bash scripts/gen_types.sh` régénère aussi `experiments/schema.json`. Ce fichier donne l'autocomplétion et les erreurs du YAML dans VS Code, avec l'extension YAML et le réglage `"yaml.schemas": { "./experiments/schema.json": ["experiments/*.yaml"] }` dans `.vscode/settings.json`, qui n'est pas suivi par git.
 
 Clés de premier niveau d'une expérience :
 `schema_version: 1`, `id`, `title`, `discipline`, `level`, `concepts`, `theorem`, `equation`, `params`, `hypotheses`, `counterexamples`, `generator`, `methods`, `measures`, `challenges`, `auto_sweep`, `draw_log` (P1), `views`, `opening_question` (P1), `questions`.
@@ -358,7 +361,7 @@ def ols_ci(*, x, y, truth, alpha, se_type, rng) -> MethodResult:
 | Un agrégateur manquant | une fonction de plus dans `engine/aggregators.py` |
 | Une loi absente du registre | option avec `expr:` au lieu de `law:` |
 | Une nouvelle méthode | une fonction de plus avec `@register_method` |
-| Un réglage d'affichage propre à une vue | champ libre `ui: {}` de la vue |
+| Un réglage d'affichage propre à une vue | champ libre `ui: {}` de la vue. Réglages lus par l'interface, avec leur sens dans `VIEW_UI_KEYS` (`lib/plot.ts`) : `x_title`, `y_title`, `log_x`, `log_y`, `aspect: "equal"`, `unit_circle`, `marker_size`, `point_labels`, et pour `heatmap` `zmin`, `zmax`, `decimals` |
 | Une série de plus dans une vue | une seconde vue du même type |
 | Une vue qui ne se construit pas | la vue de secours `measures_table` s'affiche |
 

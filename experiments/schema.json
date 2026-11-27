@@ -1,0 +1,1550 @@
+{
+  "$defs": {
+    "Challenge": {
+      "additionalProperties": false,
+      "properties": {
+        "goal": {
+          "title": "Goal",
+          "type": "string"
+        },
+        "hint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hint"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "unlock": {
+          "title": "Unlock",
+          "type": "string"
+        },
+        "when": {
+          "maxLength": 300,
+          "title": "When",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "goal",
+        "when",
+        "unlock"
+      ],
+      "title": "Challenge",
+      "type": "object"
+    },
+    "Choice": {
+      "additionalProperties": false,
+      "properties": {
+        "correct": {
+          "title": "Correct",
+          "type": "boolean"
+        },
+        "explain": {
+          "title": "Explain",
+          "type": "string"
+        },
+        "focus_view": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Focus View",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "reveal_state": {
+          "$ref": "#/$defs/State"
+        },
+        "verify": {
+          "maxLength": 300,
+          "title": "Verify",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "correct",
+        "reveal_state",
+        "verify",
+        "focus_view",
+        "explain"
+      ],
+      "title": "Choice",
+      "type": "object"
+    },
+    "Counterexample": {
+      "additionalProperties": false,
+      "properties": {
+        "expect": {
+          "anyOf": [
+            {
+              "const": "same_summary",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expect"
+        },
+        "explain": {
+          "title": "Explain",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/State"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "explain",
+        "state"
+      ],
+      "title": "Counterexample",
+      "type": "object"
+    },
+    "DiagnosticAuto": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "pathologies": {
+          "$ref": "#/$defs/Pathologies"
+        },
+        "procedural_params": {
+          "default": {},
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {
+              "$ref": "#/$defs/ProcParam"
+            }
+          },
+          "title": "Procedural Params",
+          "type": "object"
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/State"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "diagnostic_auto",
+          "title": "Type",
+          "type": "string"
+        },
+        "view": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "View",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "prompt",
+        "view",
+        "pathologies"
+      ],
+      "title": "DiagnosticAuto",
+      "type": "object"
+    },
+    "Equation": {
+      "additionalProperties": false,
+      "properties": {
+        "terms": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {
+              "$ref": "#/$defs/EquationTerm"
+            }
+          },
+          "title": "Terms",
+          "type": "object"
+        },
+        "tex": {
+          "title": "Tex",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tex",
+        "terms"
+      ],
+      "title": "Equation",
+      "type": "object"
+    },
+    "EquationTerm": {
+      "additionalProperties": false,
+      "properties": {
+        "corrected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Corrected"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "title": "EquationTerm",
+      "type": "object"
+    },
+    "FunctionGenerator": {
+      "additionalProperties": false,
+      "description": "P2 : le format seulement.",
+      "properties": {
+        "grid": {
+          "default": null,
+          "title": "Grid"
+        },
+        "type": {
+          "const": "function",
+          "title": "Type",
+          "type": "string"
+        },
+        "variables": {
+          "default": null,
+          "title": "Variables"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "FunctionGenerator",
+      "type": "object"
+    },
+    "Hypothesis": {
+      "additionalProperties": false,
+      "properties": {
+        "affects": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Affects",
+          "type": "array"
+        },
+        "broken_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Broken Label"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "disabled_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disabled Text"
+        },
+        "disabled_when": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disabled When"
+        },
+        "healthy_value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Healthy Value"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "ok_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ok Label"
+        },
+        "options": {
+          "anyOf": [
+            {
+              "patternProperties": {
+                "^[A-Za-z_][A-Za-z0-9_]*$": {
+                  "$ref": "#/$defs/Option"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Options"
+        },
+        "range": {
+          "default": [
+            0.0,
+            1.0
+          ],
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Range",
+          "type": "array"
+        },
+        "robust_expected": {
+          "default": false,
+          "title": "Robust Expected",
+          "type": "boolean"
+        },
+        "statement_tex": {
+          "title": "Statement Tex",
+          "type": "string"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "type": {
+          "enum": [
+            "continuous",
+            "choice",
+            "boolean"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "when_broken": {
+          "title": "When Broken",
+          "type": "string"
+        },
+        "why": {
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "healthy_value",
+        "label",
+        "category",
+        "statement_tex",
+        "why",
+        "when_broken"
+      ],
+      "title": "Hypothesis",
+      "type": "object"
+    },
+    "Layer": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Layer",
+      "type": "object"
+    },
+    "Measure": {
+      "additionalProperties": false,
+      "properties": {
+        "agg": {
+          "maxLength": 300,
+          "title": "Agg",
+          "type": "string"
+        },
+        "broken_beyond": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Broken Beyond"
+        },
+        "decimals": {
+          "default": 2,
+          "maximum": 6,
+          "minimum": 0,
+          "title": "Decimals",
+          "type": "integer"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "enum": [
+                "below",
+                "above",
+                "both"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Direction"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "ok_within": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ok Within"
+        },
+        "primary": {
+          "default": false,
+          "title": "Primary",
+          "type": "boolean"
+        },
+        "scale": {
+          "default": 1.0,
+          "title": "Scale",
+          "type": "number"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "const": "base",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target"
+        },
+        "texts": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MeasureTexts"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unit": {
+          "default": "",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "agg",
+        "label"
+      ],
+      "title": "Measure",
+      "type": "object"
+    },
+    "MeasureTexts": {
+      "additionalProperties": false,
+      "properties": {
+        "broken": {
+          "title": "Broken",
+          "type": "string"
+        },
+        "ok": {
+          "title": "Ok",
+          "type": "string"
+        },
+        "warning": {
+          "title": "Warning",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok",
+        "warning",
+        "broken"
+      ],
+      "title": "MeasureTexts",
+      "type": "object"
+    },
+    "Method": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "default": {},
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {}
+          },
+          "title": "Args",
+          "type": "object"
+        },
+        "call": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "title": "Call",
+          "type": "string"
+        },
+        "explain": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Explain"
+        },
+        "id": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "repairs": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Repairs",
+          "type": "array"
+        },
+        "role": {
+          "enum": [
+            "method",
+            "correction",
+            "alternative"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "role",
+        "call",
+        "label"
+      ],
+      "title": "Method",
+      "type": "object"
+    },
+    "Misconception": {
+      "additionalProperties": false,
+      "properties": {
+        "choices": {
+          "items": {
+            "$ref": "#/$defs/Choice"
+          },
+          "minItems": 2,
+          "title": "Choices",
+          "type": "array"
+        },
+        "hypothesis": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "title": "Hypothesis",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "procedural_params": {
+          "default": {},
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {
+              "$ref": "#/$defs/ProcParam"
+            }
+          },
+          "title": "Procedural Params",
+          "type": "object"
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        },
+        "type": {
+          "const": "misconception",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "prompt",
+        "hypothesis",
+        "choices"
+      ],
+      "title": "Misconception",
+      "type": "object"
+    },
+    "OdeGenerator": {
+      "additionalProperties": false,
+      "properties": {
+        "derived": {
+          "anyOf": [
+            {
+              "patternProperties": {
+                "^[A-Za-z_][A-Za-z0-9_]*$": {
+                  "maxLength": 300,
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Derived"
+        },
+        "rhs": {
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {
+              "maxLength": 300,
+              "type": "string"
+            }
+          },
+          "title": "Rhs",
+          "type": "object"
+        },
+        "state": {
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            }
+          },
+          "title": "State",
+          "type": "object"
+        },
+        "t_end": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "T End"
+        },
+        "type": {
+          "const": "ode",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "t_end",
+        "state",
+        "rhs"
+      ],
+      "title": "OdeGenerator",
+      "type": "object"
+    },
+    "Option": {
+      "additionalProperties": false,
+      "description": "Option d'une hypothèse de type `choice` : une loi du registre OU une expression libre.",
+      "properties": {
+        "expr": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expr"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "law": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Law"
+        },
+        "robust_expected": {
+          "default": false,
+          "title": "Robust Expected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "Option",
+      "type": "object"
+    },
+    "Param": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Default"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "sweep_values": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sweep Values"
+        },
+        "type": {
+          "enum": [
+            "number",
+            "boolean"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "label",
+        "default"
+      ],
+      "title": "Param",
+      "type": "object"
+    },
+    "Pathologies": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "From",
+          "type": "array"
+        }
+      },
+      "required": [
+        "from"
+      ],
+      "title": "Pathologies",
+      "type": "object"
+    },
+    "Prediction": {
+      "additionalProperties": false,
+      "description": "P1 : le format est figé dès maintenant.",
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "measure": {
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "title": "Measure",
+          "type": "string"
+        },
+        "procedural_params": {
+          "default": {},
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {
+              "$ref": "#/$defs/ProcParam"
+            }
+          },
+          "title": "Procedural Params",
+          "type": "object"
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/State"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "sweep": {
+          "$ref": "#/$defs/PredictionSweep"
+        },
+        "type": {
+          "const": "prediction",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "prompt",
+        "sweep",
+        "measure"
+      ],
+      "title": "Prediction",
+      "type": "object"
+    },
+    "PredictionSweep": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "From"
+        },
+        "target": {
+          "pattern": "^[hp]\\.[A-Za-z_][A-Za-z0-9_]*$",
+          "title": "Target",
+          "type": "string"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "To"
+        }
+      },
+      "required": [
+        "target",
+        "from",
+        "to"
+      ],
+      "title": "PredictionSweep",
+      "type": "object"
+    },
+    "ProcParam": {
+      "additionalProperties": false,
+      "properties": {
+        "max": {
+          "title": "Max",
+          "type": "number"
+        },
+        "min": {
+          "title": "Min",
+          "type": "number"
+        },
+        "step": {
+          "title": "Step",
+          "type": "number"
+        }
+      },
+      "required": [
+        "min",
+        "max",
+        "step"
+      ],
+      "title": "ProcParam",
+      "type": "object"
+    },
+    "RandomGenerator": {
+      "additionalProperties": false,
+      "properties": {
+        "inject": {
+          "anyOf": [
+            {
+              "patternProperties": {
+                "^[A-Za-z_][A-Za-z0-9_]*$": {
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inject"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "maxLength": 300,
+              "type": "string"
+            }
+          ],
+          "title": "N"
+        },
+        "repeat": {
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Repeat",
+          "type": "integer"
+        },
+        "type": {
+          "const": "random",
+          "title": "Type",
+          "type": "string"
+        },
+        "variables": {
+          "maxProperties": 30,
+          "minProperties": 1,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {
+              "$ref": "#/$defs/Variable"
+            }
+          },
+          "title": "Variables",
+          "type": "object"
+        }
+      },
+      "required": [
+        "type",
+        "n",
+        "repeat",
+        "variables"
+      ],
+      "title": "RandomGenerator",
+      "type": "object"
+    },
+    "State": {
+      "additionalProperties": false,
+      "description": "Un état partiel : ce qui n'est pas cité prend sa valeur saine ou son défaut.",
+      "properties": {
+        "hypotheses": {
+          "default": {},
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "title": "Hypotheses",
+          "type": "object"
+        },
+        "params": {
+          "default": {},
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]*$": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "title": "State",
+      "type": "object"
+    },
+    "Theorem": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "statement": {
+          "title": "Statement",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "statement"
+      ],
+      "title": "Theorem",
+      "type": "object"
+    },
+    "Variable": {
+      "additionalProperties": false,
+      "properties": {
+        "dims": {
+          "anyOf": [
+            {
+              "enum": [
+                "sample",
+                "obs_p"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dims"
+        },
+        "expr": {
+          "maxLength": 300,
+          "title": "Expr",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expr"
+      ],
+      "title": "Variable",
+      "type": "object"
+    },
+    "View": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_point_injection": {
+          "default": false,
+          "title": "Allow Point Injection",
+          "type": "boolean"
+        },
+        "axes": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Axes"
+        },
+        "bind": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bind"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "inspect": {
+          "default": false,
+          "title": "Inspect",
+          "type": "boolean"
+        },
+        "layers": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Layer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Layers"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mode"
+        },
+        "sweep": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ViewSweep"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "ui": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ui"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "title"
+      ],
+      "title": "View",
+      "type": "object"
+    },
+    "ViewSweep": {
+      "additionalProperties": false,
+      "properties": {
+        "axes": {
+          "items": {
+            "pattern": "^[hp]\\.[A-Za-z_][A-Za-z0-9_]*$",
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Axes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "axes"
+      ],
+      "title": "ViewSweep",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Fichier de experiments/ (schema_version 1). Généré par scripts/export_schema.py --yaml.",
+  "properties": {
+    "auto_sweep": {
+      "default": [],
+      "items": {
+        "pattern": "^[hp]\\.[A-Za-z_][A-Za-z0-9_]*$",
+        "type": "string"
+      },
+      "title": "Auto Sweep",
+      "type": "array"
+    },
+    "challenges": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Challenge"
+      },
+      "title": "Challenges",
+      "type": "array"
+    },
+    "concepts": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Concepts",
+      "type": "array"
+    },
+    "counterexamples": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Counterexample"
+      },
+      "title": "Counterexamples",
+      "type": "array"
+    },
+    "discipline": {
+      "title": "Discipline",
+      "type": "string"
+    },
+    "draw_log": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Draw Log"
+    },
+    "equation": {
+      "$ref": "#/$defs/Equation"
+    },
+    "generator": {
+      "discriminator": {
+        "mapping": {
+          "function": "#/$defs/FunctionGenerator",
+          "ode": "#/$defs/OdeGenerator",
+          "random": "#/$defs/RandomGenerator"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RandomGenerator"
+        },
+        {
+          "$ref": "#/$defs/OdeGenerator"
+        },
+        {
+          "$ref": "#/$defs/FunctionGenerator"
+        }
+      ],
+      "title": "Generator"
+    },
+    "hypotheses": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_]*$": {
+          "$ref": "#/$defs/Hypothesis"
+        }
+      },
+      "title": "Hypotheses",
+      "type": "object"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "level": {
+      "title": "Level",
+      "type": "string"
+    },
+    "measures": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_]*$": {
+          "$ref": "#/$defs/Measure"
+        }
+      },
+      "title": "Measures",
+      "type": "object"
+    },
+    "methods": {
+      "items": {
+        "$ref": "#/$defs/Method"
+      },
+      "minItems": 1,
+      "title": "Methods",
+      "type": "array"
+    },
+    "opening_question": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Opening Question"
+    },
+    "params": {
+      "default": {},
+      "patternProperties": {
+        "^[A-Za-z_][A-Za-z0-9_]*$": {
+          "$ref": "#/$defs/Param"
+        }
+      },
+      "title": "Params",
+      "type": "object"
+    },
+    "questions": {
+      "default": [],
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "diagnostic_auto": "#/$defs/DiagnosticAuto",
+            "misconception": "#/$defs/Misconception",
+            "prediction": "#/$defs/Prediction"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/Misconception"
+          },
+          {
+            "$ref": "#/$defs/DiagnosticAuto"
+          },
+          {
+            "$ref": "#/$defs/Prediction"
+          }
+        ]
+      },
+      "title": "Questions",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "theorem": {
+      "$ref": "#/$defs/Theorem"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "views": {
+      "items": {
+        "$ref": "#/$defs/View"
+      },
+      "minItems": 1,
+      "title": "Views",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "discipline",
+    "level",
+    "theorem",
+    "equation",
+    "hypotheses",
+    "generator",
+    "methods",
+    "measures",
+    "views"
+  ],
+  "title": "Expérience Crash-Test",
+  "type": "object"
+}
