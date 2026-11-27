@@ -8,6 +8,7 @@
 |---|---|---|
 | `regression_lineaire`, `multicolinearite`, `theoreme_central_limite`, `tests_multiples` | 3, 3, 2, 2 | `ols_ci`, `ols_two`, `clt_mean`, `pairwise_tests` |
 | `somme_des`, `moyenne_mediane`, `sondage_marge` | 1 | `statistic` |
+| `maximum_uniformes` | 2 | `statistic` (max) |
 | `seuil_roc`, `desequilibre` | 1 | `classifier` (kind « seuil ») |
 | `carres_residus` | 1 | `regressor` (ols, manuelle) |
 
@@ -27,7 +28,7 @@ Méthodes existantes : `statistic` (sum, mean, max, min, median), `classifier` (
 |---|---|---|
 | Premier pile, géométrique (1) | 1 | `statistic` ; `theory` d'une vue `distribution` n'est pas servi (R3) |
 | Binomiale = somme de Bernoulli (1) | 1 | `statistic` (sum) |
-| Maximum de n uniformes (2), minimum d'exponentielles (3) | 1 | `statistic` (max, min) |
+| Minimum d'exponentielles (3) | 1 | `statistic` (min) ; maximum d'uniformes fait |
 | Mélange θP + (1−θ)Dirac (2) | 1 | option `expr:` pour la loi |
 | Y = g(X), inversion F⁻¹(U) (2, 3) | 1 | choix de g ou de la loi par une hypothèse de type `choice` |
 | Poisson ≈ binomiale (2) | 2 | loi `poisson` absente du registre (option `expr:`) |

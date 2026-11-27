@@ -1,0 +1,201 @@
+schema_version: 1
+id: "maximum-uniformes"
+title: "Maximum de n uniformes : estimer une borne"
+discipline: "probabilites"
+level: "2"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
+concepts: ["maximum", "loi-uniforme", "estimation", "valeurs-extremes"]
+
+theorem:
+  name: "Loi du maximum de n uniformes"
+  statement: |
+    Si X_1, ..., X_n sont indépendantes et uniformes sur [0 ; 1], alors P(max ≤ t) = t^n. Le
+    maximum s'approche donc de la borne 1, et très vite : il en est éloigné d'environ 1/n, alors
+    que la moyenne d'un échantillon n'est précise qu'à 1/√n près. Cette convergence suppose une
+    borne nette : si la loi n'a pas de borne, ou si les mesures sont bruitées, le maximum ne
+    dit plus rien de la borne.
+
+equation:
+  tex: '\mathbb{E}[{{maximum}}] = {{valeur}}'
+  terms:
+    maximum:
+      ok: '\max(X_1, \ldots, X_n)'
+    valeur:
+      ok: '\dfrac{n}{n+1} \longrightarrow 1'
+
+params:
+  n: { type: number, label: "Nombre d'observations n", min: 5, max: 500, step: 5, default: 50,
+       sweep_values: [5, 10, 20, 50, 100, 500] }
+
+hypotheses:
+  loi:
+    type: choice
+    healthy_value: "uniforme"
+    label: "Loi bornée"
+    category: "loi"
+    options:
+      uniforme:      { label: "Uniforme sur [0 ; 1] (borne nette en 1)", law: uniform }
+      exponentielle: { label: "Exponentielle (aucune borne)", law: exponential }
+    statement_tex: 'X_i \in [0, 1]'
+    why: "Le maximum n'approche une borne que si cette borne existe : la formule P(max ≤ t) = t^n suppose que la loi s'arrête en 1."
+    when_broken: "Sans borne, le maximum continue de grandir quand n augmente : il suit les valeurs rares de plus en plus grandes, et ne converge vers aucune valeur."
+    affects: [valeur]
+  bruit:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Mesures exactes"
+    category: "donnees"
+    ok_label: "Exactes"
+    broken_label: "Mesures bruitées (écart type jusqu'à 0,15)"
+    statement_tex: 'Y_i = X_i'
+    why: "Le maximum retient l'observation la plus extrême : il suppose qu'on observe les valeurs elles-mêmes, sans erreur de mesure."
+    when_broken: "Une erreur de mesure, même petite, peut faire dépasser la borne à la plus grande observation : le maximum garde la plus favorable de ces erreurs et surestime la borne."
+    affects: [maximum]
+
+counterexamples:
+  - id: "pas-de-borne"
+    label: "Loi sans borne"
+    explain: "Avec une loi exponentielle, il n'y a pas de borne à atteindre : le maximum dépasse largement 1 et continue de croître avec n."
+    state: { hypotheses: { loi: "exponentielle" } }
+  - id: "peu-d-observations"
+    label: "Peu d'observations, n = 5"
+    explain: "Avec peu d'observations, le maximum reste nettement en dessous de la borne : il la sous-estime toujours."
+    state: { params: { n: 5 } }
+  - id: "mesures-bruitees"
+    label: "Mesures bruitées"
+    explain: "Le bruit de mesure fait dépasser la borne à la plus grande observation : le maximum surestime la borne."
+    state: { hypotheses: { bruit: 1.0 } }
+
+generator:
+  type: random
+  n: p.n                          # n observations
+  repeat: 500                     # 500 échantillons
+  variables:
+    u: { expr: "@h.loi" }
+    x: { expr: "(u + 1.7320508) / 3.4641016 + 0.15 * h.bruit * normal()" }   # u est centrée réduite : on la ramène à [0 ; 1] (loi uniforme) ; bruit = 0 : mesures exactes
+
+methods:
+  - id: maximum
+    role: method
+    call: statistic
+    label: "Maximum"
+    args: { x: x, kind: "max" }
+
+measures:
+  ecart:
+    agg: "bias(reps.stat, 1)"
+    label: "Écart du maximum à la borne 1"
+    decimals: 3
+    primary: true
+    target: 0
+    direction: both
+    ok_within: 0.04
+    broken_beyond: 0.08
+    texts:
+      ok: "Le maximum est proche de la borne : écart de {value}."
+      warning: "Le maximum s'éloigne de la borne : écart de {value}."
+      broken: "Le maximum n'estime pas la borne : écart de {value}."
+  etalement:
+    agg: "sd(reps.stat)"
+    label: "Variation du maximum d'un échantillon à l'autre"
+    decimals: 3
+
+challenges:
+  - id: "n-minimal"
+    goal: "Trouvez un nombre d'observations d'au plus 40 pour lequel le maximum est déjà Fiable."
+    when: "p.n <= 40 and s.ecart == 'ok'"
+    unlock: "L'écart vaut environ 1/(n+1) : il passe sous 0,04 dès une trentaine d'observations."
+  - id: "bruit-fort"
+    goal: "Avec au moins 100 observations, rendez le maximum Rompu en gardant une loi bornée."
+    when: "p.n >= 100 and h.loi == 'uniforme' and s.ecart == 'broken'"
+    unlock: "Plus n est grand, plus le maximum est sensible au bruit : il retient la plus grande erreur de mesure."
+
+auto_sweep: [p.n, h.bruit]
+
+views:
+  - id: maxima
+    type: distribution
+    title: "Le maximum sur 500 échantillons"
+    bind: { stat: reps.stat }
+    ui: { x_title: "Maximum observé (la borne vaut 1)", labels: { stat: "Maxima observés" } }
+  - id: echantillon
+    type: distribution
+    title: "Un échantillon"
+    bind: { stat: example.x }
+    ui: { x_title: "Valeurs observées" }
+  - id: sens-n
+    type: sensitivity
+    title: "Selon le nombre d'observations"
+    sweep: { axes: [p.n] }
+  - id: sens-bruit
+    type: sensitivity
+    title: "Selon le bruit de mesure"
+    sweep: { axes: [h.bruit] }
+
+questions:
+  - id: "max-q1-bornee"
+    type: misconception
+    prompt: "Vous tirez {n} nombres uniformes sur [0 ; 1] et vous gardez le plus grand. Est-il très proche de 1 ?"
+    hypothesis: "loi"
+    procedural_params:
+      n: { min: 50, max: 200, step: 50 }
+    choices:
+      - id: "a"
+        label: "Non : avec un seul maximum, on peut être loin de la borne."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "uniforme" } }
+        verify: "s.ecart == 'ok'"
+        focus_view: "maxima"
+        explain: "Regardez l'histogramme : tous les maxima sont tout près de 1. La probabilité de rester sous t vaut t puissance n, elle s'effondre vite."
+      - id: "b"
+        label: "Oui : il est à environ 1/n de la borne, presque toujours."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "uniforme" } }
+        verify: "s.ecart == 'ok'"
+        focus_view: "maxima"
+        explain: "Exact : P(max ≤ t) = t^n, donc le maximum se colle à la borne beaucoup plus vite que la moyenne ne se stabilise."
+
+  - id: "max-q2-sans-borne"
+    type: misconception
+    prompt: "Vous gardez le plus grand de {n} valeurs d'une loi exponentielle. Le maximum se stabilise-t-il quand n augmente ?"
+    hypothesis: "loi"
+    procedural_params:
+      n: { min: 100, max: 500, step: 100 }
+    choices:
+      - id: "a"
+        label: "Oui : comme pour l'uniforme, il converge vers une valeur."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "exponentielle" } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "maxima"
+        explain: "Sans borne, il n'y a rien vers quoi converger : plus on observe de valeurs, plus la plus grande est grande."
+      - id: "b"
+        label: "Non : sans borne, il continue de croître avec n."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "exponentielle" } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "maxima"
+        explain: "Exact : la convergence du maximum vient de la borne de la loi, pas du nombre d'observations seul."
+
+  - id: "max-q3-bruit"
+    type: misconception
+    prompt: "Chaque mesure est faussée par une petite erreur aléatoire, centrée sur 0. Le maximum de {n} mesures reste-t-il centré sur la borne ?"
+    hypothesis: "bruit"
+    procedural_params:
+      n: { min: 100, max: 300, step: 100 }
+    choices:
+      - id: "a"
+        label: "Oui : les erreurs sont centrées, elles s'annulent."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { bruit: 1.0 } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "maxima"
+        explain: "Les erreurs s'annulent dans une moyenne, pas dans un maximum : il retient la plus favorable, toujours positive."
+      - id: "b"
+        label: "Non : il retient la plus grande erreur, donc surestime la borne."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { bruit: 1.0 } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "maxima"
+        explain: "Exact : le maximum est la statistique la plus sensible au bruit, car il choisit la valeur la plus extrême."
