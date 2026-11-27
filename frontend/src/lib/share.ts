@@ -11,7 +11,18 @@
  * Supabase est appelé par son API REST (pas de dépendance) : VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.
  */
 
-const SUPABASE_URL: string = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '')
+/**
+ * Adresse du projet sans barre finale ni suffixe `/rest/v1` : le tableau de bord Supabase affiche souvent
+ * l'adresse de l'API REST (`https://<projet>.supabase.co/rest/v1/`), et ce module ajoute lui-même `/rest/v1`.
+ */
+export function supabaseBaseUrl(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/rest\/v1$/, '')
+}
+
+const SUPABASE_URL: string = supabaseBaseUrl(import.meta.env.VITE_SUPABASE_URL ?? '')
 const SUPABASE_KEY: string = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
 const DRAFT_KEY = 'crash-test:import:brouillon'
 const SCHEMA_VERSION = 1
