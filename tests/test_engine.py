@@ -3,7 +3,16 @@
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
+from backend.contracts import (
+    RunRequest,
+    RunResult,
+    SweepRequest,
+    SweepResult,
+    TrainingRequest,
+    TrainingSessionResponse,
+)
 from backend.engine.loader import ExperimentError, load_experiment, load_experiment_file
 
 EXPERIMENTS = sorted((Path(__file__).parent.parent / "experiments").glob("*.yaml"))
@@ -49,3 +58,160 @@ def test_repeat_cap():
 def test_oversized_file():
     issue = _first_issue(REGRESSION + "#" * 70_000)
     assert issue.line is None
+
+
+# --- Contrats d'API : les exemples de l'annexe C du cahier doivent passer tels quels -------------------
+
+CAHIER_RUN_RESULT = {
+    "schema_version": 1,
+    "state_hash": "a3f09c1e7b2d4e88",
+    "methods": [
+        {"id": "ols", "role": "method", "label": "MCO classique (IC à 95 %)"},
+        {"id": "hc3", "role": "correction", "label": "HC3", "explain": "..."},
+        {"id": "nw", "role": "alternative", "label": "Newey-West", "explain": "..."},
+    ],
+    "measures": {
+        "coverage": {
+            "label": "Taux de couverture réel", "unit": "%", "scale": 100, "decimals": 1,
+            "primary": True, "target": 0.95, "direction": "below",
+            "ok_within": 0.03, "broken_beyond": 0.10,
+            "values": {"ols": 0.740, "hc3": 0.946, "nw": 0.941},
+            "mc_se": {"ols": 0.020, "hc3": 0.010, "nw": 0.011},
+            "states": {"ols": "broken", "hc3": "ok", "nw": "ok"},
+            "texts": {"ols": "Intervalle non fiable (74,0 %) : ...", "hc3": "...", "nw": "..."},
+            "baseline": {"ols": 0.952, "hc3": 0.950, "nw": 0.948},
+        }
+    },
+    "equation": {"terms": {"var": {"violated_by": ["hetero"]}}},
+    "challenges": [{"id": "trap-bp-test", "passed": False}],
+    "views": [
+        {
+            "id": "nuage", "type": "scatter", "title": "Nuage et droite ajustée",
+            "axes": {"x": [-3.1, 6.4], "y": [-9.8, 11.4]}, "shown": 151, "total": 151, "clipped": 0,
+            "data": {
+                "series": [{"id": "nuage.x.ols", "method": "ols", "role": "method", "label": "x", "data": {}}]
+            },
+        }
+    ],
+    "draw_log": None,
+    "invalid_rate": {"ols": 0.0, "hc3": 0.0, "nw": 0.0},
+    "warnings": [{"code": "repeat_reduced", "text": "Estimation sur 200 tirages pour tenir le délai."}],
+    "repeat_used": 500,
+    "compute_ms": 26.4,
+}
+
+
+def test_run_request_from_cahier():
+    req = RunRequest.model_validate(
+        {
+            "experiment_id": "regression-lineaire",
+            "raw_content": None,
+            "state": {
+                "params": {"n": 150, "beta1": 1.5},
+                "hypotheses": {"hetero": 0.8, "error_law": "normal", "add_leverage": False},
+                "extra_points": [{"x": 4.2, "y": -2.0}],
+                "seed": 42,
+            },
+        }
+    )
+    assert req.state.seed == 42
+
+
+def test_run_request_needs_exactly_one_source():
+    with pytest.raises(ValidationError):
+        RunRequest.model_validate({"state": {}})
+    with pytest.raises(ValidationError):
+        RunRequest.model_validate({"experiment_id": "a", "raw_content": "schema_version: 1"})
+
+
+def test_extra_points_capped():
+    with pytest.raises(ValidationError):
+        RunRequest.model_validate({"experiment_id": "a", "state": {"extra_points": [{"x": 0.0}] * 21}})
+
+
+def test_run_result_from_cahier():
+    result = RunResult.model_validate(CAHIER_RUN_RESULT)
+    assert result.measures["coverage"].states["ols"] == "broken"
+    assert result.model_dump(mode="json")["views"][0]["data"]["series"][0]["id"] == "nuage.x.ols"
+
+
+def test_sweep_from_cahier():
+    SweepRequest.model_validate(
+        {
+            "experiment_id": "regression-lineaire",
+            "state": {"params": {"n": 150}, "hypotheses": {"hetero": 0.8}, "seed": 42},
+            "axes": [{"target": "h.hetero"}],
+            "measure": "coverage",
+        }
+    )
+    result = SweepResult.model_validate(
+        {
+            "axes": [{"target": "h.hetero", "values": [0, 0.1, 0.2], "labels": ["0", "0,1", "0,2"]}],
+            "measure": "coverage",
+            "values": {"ols": [0.951, 0.948, 0.937], "hc3": [0.949, 0.950, 0.948]},
+            "mc_se": {"ols": [0.010, 0.010, 0.011], "hc3": [0.010, 0.010, 0.010]},
+            "states": {"ols": ["ok", "ok", "ok"], "hc3": ["ok", "ok", "ok"]},
+            "critical": {"ols": {"warning_at": 0.27, "broken_at": 0.58}, "hc3": None},
+            "target": 0.95, "ok_within": 0.03, "broken_beyond": 0.10, "direction": "below",
+            "current": {"h.hetero": 0.8},
+            "repeat_used": 500, "reduced": False, "compute_ms": 2310,
+        }
+    )
+    assert result.critical["hc3"] is None
+
+
+def test_sweep_two_axes_grid():
+    result = SweepResult.model_validate(
+        {
+            "axes": [
+                {"target": "h.hetero", "values": [0, 1], "labels": ["0", "1"]},
+                {"target": "p.n", "values": [30, 100], "labels": ["30", "100"]},
+            ],
+            "measure": "coverage",
+            "values": {"ols": [[0.9, 0.8], [0.95, 0.7]]},
+            "current": {"h.hetero": 0.0, "p.n": 30},
+            "repeat_used": 200, "compute_ms": 1.0,
+        }
+    )
+    assert result.values["ols"][1][1] == 0.7
+
+
+def test_training_request_defaults():
+    req = TrainingRequest.model_validate({})
+    assert (req.filter, req.count, req.seed) == ("toutes", 10, None)
+    TrainingRequest.model_validate({"filter": "discipline:statistique", "count": 3, "seed": 123})
+    with pytest.raises(ValidationError):
+        TrainingRequest.model_validate({"count": 11})
+    with pytest.raises(ValidationError):
+        TrainingRequest.model_validate({"filter": "Régression linéaire"})
+
+
+def test_training_session_from_cahier():
+    session = TrainingSessionResponse.model_validate(
+        {
+            "id": "regression-lineaire~123",
+            "filter": "regression-lineaire",
+            "seed": 123,
+            "content_hash": "3f09c1",
+            "questions": [
+                {
+                    "qid": "regression-lineaire/reg-q2-diag/0",
+                    "experiment_id": "regression-lineaire",
+                    "type": "diagnostic_auto",
+                    "prompt": "Analysez le graphique des résidus ci-dessous.",
+                    "initial_view": {"id": "residus", "type": "residuals", "title": "Résidus"},
+                    "hypothesis": "hetero",
+                    "k": 2,
+                    "confidence": {"guess": 0.5, "fair": 0.725, "sure": 0.95},
+                    "choices": [
+                        {"id": "c1", "label": "Hétéroscédasticité", "correct": True, "explain": "...",
+                         "reveal": {"state": {"hypotheses": {"hetero": 0.9}}, "focus_view": "ic"}},
+                        {"id": "c2", "label": "Point levier influent", "correct": False, "explain": "...",
+                         "reveal": {"state": {"hypotheses": {"add_leverage": True}}}},
+                    ],
+                }
+            ],
+            "dropped": [{"experiment_id": "x", "question_id": "y", "reason": "verify a échoué 5 fois"}],
+        }
+    )
+    assert session.questions[0].choices[0].reveal.state.hypotheses["hetero"] == 0.9
