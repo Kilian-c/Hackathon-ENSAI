@@ -19,6 +19,13 @@ import { VIEW_TYPES, VIEW_UI_KEYS } from './plot'
  */
 export const PENDING_VIEWS: ReadonlySet<string> = new Set<string>()
 
+/**
+ * Méthodes du moteur que le prompt ne propose pas : `integrate` exige le générateur `ode` (conditions
+ * initiales, `rhs`, `derived`), que le prompt ne décrit pas ; un assistant l'appellerait avec le générateur
+ * `random` et le YAML serait refusé. Elle reste dans le catalogue : les YAML qui déclarent `ode` marchent.
+ */
+export const UNAVAILABLE_METHODS: ReadonlySet<string> = new Set(['integrate'])
+
 /** Une ligne par méthode : appel et arguments, valeurs de `kind`, ce qu'elle fournit, à quoi elle sert. */
 export function methodLine(m: CatalogMethod): string {
   const args = m.args.map((a) => (a.default === null ? a.name : `${a.name}=${a.default}`)).join(', ')
@@ -49,7 +56,7 @@ Fonctions des expressions (liste blanche, seul mot-clé permis : axis) : ${catal
 Agrégateurs des mesures (f = expression sur reps.<clé>) : ${aggs}.
 
 Méthodes disponibles (call: et ses arguments, puis ce qu'elle fournit) — n'en inventez aucune :
-${catalog.methods.map(methodLine).join('\n')}
+${catalog.methods.filter((m) => !UNAVAILABLE_METHODS.has(m.name)).map(methodLine).join('\n')}
 
 Types de vue (type:) :
 ${views}

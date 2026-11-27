@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CATALOG, type Catalog } from './catalog.gen'
-import { catalogSection, importPrompt, methodLine, PENDING_VIEWS } from './importPrompt'
+import { catalogSection, importPrompt, methodLine, PENDING_VIEWS, UNAVAILABLE_METHODS } from './importPrompt'
 import { VIEW_TYPES, VIEW_UI_KEYS } from './plot'
 
 describe('catalogue généré (catalog.gen.ts)', () => {
@@ -22,8 +22,10 @@ describe('prompt de l’écran Import', () => {
     expect(prompt).toContain('Sujet : Loi des grands nombres')
     expect(importPrompt('  ')).toContain('<décrivez ici le théorème')
   })
-  it('liste chaque méthode du catalogue, avec ses valeurs de kind', () => {
-    for (const m of CATALOG.methods) expect(prompt).toContain(`- ${m.name}(`)
+  it('liste chaque méthode du catalogue (sauf celles masquées), avec ses valeurs de kind', () => {
+    for (const m of CATALOG.methods) {
+      if (!UNAVAILABLE_METHODS.has(m.name)) expect(prompt).toContain(`- ${m.name}(`)
+    }
     const stat = CATALOG.methods.find((m) => m.name === 'statistic')!
     expect(methodLine(stat)).toMatch(/\[kind : (\w+ \| )+\w+\]/)
     expect(methodLine(stat)).toContain('reps: stat')
@@ -45,6 +47,11 @@ describe('prompt de l’écran Import', () => {
     expect(PENDING_VIEWS.has('heatmap')).toBe(false)
     expect(prompt).toContain('- heatmap : ')
     expect(prompt).toContain('zmin (')
+  })
+  it('integrate (qui exige le générateur ode, non décrit) n’est pas proposée', () => {
+    expect(UNAVAILABLE_METHODS.has('integrate')).toBe(true)
+    expect(prompt).not.toContain('- integrate(')
+    expect(CATALOG.methods.some((m) => m.name === 'integrate')).toBe(true) // reste au catalogue
   })
   it('une méthode ajoutée au catalogue apparaît sans rien recopier', () => {
     const extra: Catalog = {

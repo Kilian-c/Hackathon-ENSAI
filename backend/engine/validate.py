@@ -7,6 +7,7 @@ pour répondre en quelques secondes. Même logique que `tests/test_experiments.p
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import yaml
@@ -146,22 +147,37 @@ def _round2(value: float) -> float:
     return float(f"{value:.2g}")
 
 
+def _ceil2(value: float) -> float:
+    """Deux chiffres significatifs, arrondi vers le haut : l'état sain ne doit jamais sortir de `ok`."""
+    if value <= 0:
+        return 0.0
+    step = 10.0 ** (math.floor(math.log10(value)) - 1)
+    return float(f"{math.ceil(round(value / step, 9)) * step:.2g}")
+
+
 def _gap(value: float | None, target: float | None, direction: str) -> float | None:
     if value is None or target is None:
         return None
     return sweep_gap(value, target, direction)
 
 
+MIN_BROKEN_RATIO = 2.25  # la plus petite perturbation doit dépasser ok_within de plus de 2,25 fois
+
+
 def _proposals(
-    spec: ExperimentSpec, healthy: RunResult, root: yaml.Node | None, se_factor: float
+    spec: ExperimentSpec, healthy: RunResult, root: yaml.Node | None
 ) -> list[ValidateIssue]:
     """Seuils proposés d'après la simulation, un avertissement par mesure à verdict.
 
     Format stable (lu par l'interface) : le chemin est `measures.<id>` et le message commence par
-    « Seuils proposés : ok_within = <x> ; broken_beyond = <y> » (la seconde partie peut manquer).
-    - `ok_within` : 3 erreurs Monte Carlo de la méthode principale à l'état sain, au `repeat` du fichier.
-    - `broken_beyond` : moyenne géométrique entre `ok_within` et le plus petit écart des contre-exemples ;
-      sans contre-exemple, des hypothèses cassées au maximum qui ne sont pas `robust_expected`.
+    « Seuils proposés : ok_within = <x> ; broken_beyond = <y> » (la seconde partie peut manquer, avec sa
+    raison).
+    - `ok_within` : l'écart déjà présent à l'état sain (par exemple l'optimisme du meilleur seuil) plus trois
+      erreurs Monte Carlo de la méthode principale, arrondi vers le haut : l'état sain reste Fiable. Les
+      erreurs sont celles du `repeat` utilisé ici (au plus 200), donc au moins celles du `repeat` du fichier.
+    - `broken_beyond` : moyenne géométrique entre `ok_within` et le plus petit écart des contre-exemples
+      (sans contre-exemple, des hypothèses cassées au maximum qui ne sont pas `robust_expected`), seulement
+      si cet écart dépasse `ok_within` de plus de 2,25 fois : sinon la zone Fragile serait quasi vide.
     """
     method, _ = _primary(spec)
     perturbed = [_run(spec, ce.state.model_dump()) for ce in spec.counterexamples if ce.expect is None]
@@ -178,7 +194,9 @@ def _proposals(
         se = mr.mc_se.get(method)
         if mr.direction is None or se is None or se <= 1e-6 or mr.target is None:
             continue  # pas de bruit mesurable (mesure déterministe) : rien à proposer
-        ok = _round2(3 * se * se_factor)
+        target = mr.baseline.get(method) if mr.target == "base" else mr.target
+        base_gap = _gap(mr.values.get(method), target, mr.direction) or 0.0
+        ok = _ceil2(base_gap + 3 * se)
         gaps = []
         for res in perturbed:
             pm = res.measures[mid]
@@ -187,10 +205,15 @@ def _proposals(
             if g is not None and g > ok:
                 gaps.append(g)
         text = f"Seuils proposés : ok_within = {ok:g}"
-        if gaps:
+        if gaps and min(gaps) >= MIN_BROKEN_RATIO * ok:
             text += f" ; broken_beyond = {_round2((ok * min(gaps)) ** 0.5):g}"
+        elif gaps:
+            text += (" (pas de broken_beyond proposé : la plus petite perturbation du fichier ne dépasse "
+                     "pas assez cette tolérance)")
         else:
-            text += " (aucune perturbation du fichier ne la dépasse : pas de broken_beyond proposé)"
+            text += " (pas de broken_beyond proposé : aucune perturbation du fichier ne dépasse cette valeur)"
+        if base_gap > 0:
+            text += f" ; écart déjà présent à l'état sain : {base_gap:.2g}"
         text += f" (fichier : ok_within = {mr.ok_within:g} ; broken_beyond = {mr.broken_beyond:g})."
         out.append(ValidateIssue(
             line=_line(root, ("measures", mid)) if root is not None else None,
@@ -244,7 +267,7 @@ def validate(raw: str) -> ValidateResponse:
         se_factor = (gen_fast.repeat / gen_full.repeat) ** 0.5
     warnings = _warnings(fast, healthy, root, se_factor)
     try:
-        warnings += _proposals(fast, healthy, root, se_factor)
+        warnings += _proposals(fast, healthy, root)
     except Exception:  # noqa: BLE001 : les propositions sont facultatives, jamais bloquantes
         pass
     return ValidateResponse(ok=all(t.passed for t in tests), errors=errors, warnings=warnings, tests=tests)
