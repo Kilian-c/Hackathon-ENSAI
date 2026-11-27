@@ -40,6 +40,7 @@ from backend.contracts import (
 )
 from backend.engine.aggregators import AGGREGATORS, AggResult
 from backend.engine.expr import Env, ExprError, Layered, compile_expr
+from backend.engine.fastexpr import compile_fast
 from backend.engine.generators.random_world import generate
 from backend.engine.method_contract import MethodResult, get_method
 from backend.engine.rng import rng_for
@@ -111,15 +112,21 @@ def _ode_world(spec: ExperimentSpec, rs: ResolvedState) -> dict[str, Any]:
     t_end = _scalar(gen.t_end, env0)
     compiled = [compile_expr(gen.rhs[k]) for k in names]
 
-    scope: dict[str, Any] = {}
-    env = Env(
-        variables=scope, namespaces=namespaces
-    )  # un seul Env réutilisé : l'appel est dans la boucle chaude
+    # Boucle chaude : chaque équation devient une fermeture (p.*, h.* et constantes pré-calculés).
+    fast = [compile_fast(gen.rhs[k], namespaces, {n: i for i, n in enumerate(names)}) for k in names]
+    if all(f is not None for f in fast):
 
-    def rhs(y: np.ndarray) -> np.ndarray:
-        for i, k in enumerate(names):
-            scope[k] = y[i]
-        return np.array([c.evaluate(env) for c in compiled], dtype=float)
+        def rhs(y: np.ndarray) -> np.ndarray:
+            return np.array([f(y) for f in fast], dtype=float)  # type: ignore[misc]
+
+    else:  # expression hors du sous-ensemble rapide : évaluateur général
+        scope: dict[str, Any] = {}
+        env = Env(variables=scope, namespaces=namespaces)
+
+        def rhs(y: np.ndarray) -> np.ndarray:
+            for i, k in enumerate(names):
+                scope[k] = y[i]
+            return np.array([c.evaluate(env) for c in compiled], dtype=float)
 
     t = np.linspace(0.0, t_end, N_GRID)
     sol = solve_ivp(lambda _t, v: rhs(v), (0.0, t_end), y0, t_eval=t, rtol=1e-10, atol=1e-10)
