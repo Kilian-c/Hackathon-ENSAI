@@ -507,14 +507,23 @@
           {/if}
 
           <div class="panel chart">
-            <div class="chart-head">
-              <div class="tabs" role="tablist" aria-label="Vues">
-                {#each tabs as t (t.id)}
-                  <button type="button" role="tab" aria-selected={t.id === activeTab} onclick={() => selectTab(t.id)}>
-                    {t.title}
-                  </button>
-                {/each}
-              </div>
+            <div class="tabs" role="tablist" aria-label="Vues">
+              {#each tabs as t (t.id)}
+                <button type="button" role="tab" aria-selected={t.id === activeTab} onclick={() => selectTab(t.id)}>
+                  {t.title}
+                </button>
+              {/each}
+            </div>
+            <div class="chart-tools">
+              <span>
+                {#if pointsHere}
+                  Cliquez dans le graphique pour ajouter un point (sur une étoile pour la retirer) :
+                  <strong>{placed.length} / {MAX_EXTRA_POINTS}</strong>
+                  {#if placed.length > 0}
+                    <button type="button" class="link" onclick={clearAllPoints}>Retirer tous les points</button>
+                  {/if}
+                {/if}
+              </span>
               <label class="ref" title="La même expérience avec toutes les hypothèses respectées (même graine)">
                 <input type="checkbox" bind:checked={showReference} />
                 <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
@@ -532,21 +541,10 @@
                         : 'Aucun balayage disponible pour cette vue.'}
                   </p>
                 {:else}
-                  {#if pointsHere}
-                    <div class="points-bar">
-                      <span>
-                        Cliquez dans le graphique pour ajouter un point (sur une étoile pour la retirer) :
-                        <strong>{placed.length} / {MAX_EXTRA_POINTS}</strong>
-                      </span>
-                      {#if placed.length > 0}
-                        <button type="button" class="link" onclick={clearAllPoints}>Retirer tous les points</button>
-                      {/if}
-                    </div>
-                    {#if pointsFull}
-                      <p class="banner error" role="alert">
-                        Vous avez posé {MAX_EXTRA_POINTS} points, le maximum. Retirez-en un pour en poser un autre.
-                      </p>
-                    {/if}
+                  {#if pointsHere && pointsFull}
+                    <p class="banner error" role="alert">
+                      Vous avez posé {MAX_EXTRA_POINTS} points, le maximum. Retirez-en un pour en poser un autre.
+                    </p>
                   {/if}
                   <!-- Un graphique par vue : le zoom d'une vue ne passe pas à la suivante. -->
                   {#key activeView.id}
@@ -830,19 +828,22 @@
   .chart {
     padding-top: 0;
   }
-  .chart-head {
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ct-space-1);
+    margin: 0 calc(-1 * var(--ct-space-2));
+    border-bottom: 1px solid var(--ct-border);
+  }
+  .chart-tools {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: 0 var(--ct-space-4);
-    margin: 0 calc(-1 * var(--ct-space-2)) var(--ct-space-3);
-    border-bottom: 1px solid var(--ct-border);
-  }
-  .tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--ct-space-1);
+    margin-bottom: var(--ct-space-2);
+    font-size: var(--ct-text-sm);
+    color: var(--ct-muted);
   }
   .tabs button {
     border: none;
@@ -858,15 +859,6 @@
     color: var(--ct-text);
     border-bottom-color: var(--ct-role-method);
     font-weight: 600;
-  }
-  .points-bar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--ct-space-2);
-    margin-bottom: var(--ct-space-2);
-    font-size: var(--ct-text-sm);
-    color: var(--ct-muted);
   }
   .view .banner {
     margin-bottom: var(--ct-space-2);
