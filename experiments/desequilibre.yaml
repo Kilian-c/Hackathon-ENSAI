@@ -43,11 +43,11 @@ hypotheses:
 counterexamples:
   - id: "maladie-rare"
     label: "Maladie rare"
-    explain: "Un patient sur 100 est malade. Le test qui se trompe le moins souvent a une exactitude proche de 99 %, mais il détecte presque aucun malade."
+    explain: "Les malades sont très rares. Le test qui se trompe le moins souvent a une exactitude très élevée, mais il ne détecte presque aucun malade."
     state: { hypotheses: { rarete: 1.0 } }
   - id: "maladie-peu-frequente"
     label: "Un malade sur cinq"
-    explain: "Un patient sur cinq est malade : ce n'est pas si rare, et pourtant le test rate déjà plus de la moitié des malades."
+    explain: "Les malades sont minoritaires sans être très rares, et pourtant le test en rate déjà une grande partie."
     state: { hypotheses: { rarete: 0.6 } }
 
 generator:
@@ -144,7 +144,7 @@ questions:
         reveal_state: { hypotheses: { rarete: 1.0 } }
         verify: "s.sensibilite == 'broken' and m.exactitude > 0.97"
         focus_view: "scores"
-        explain: "Il se trompe peu parce qu'il déclare presque tout le monde sain, et 99 % des patients le sont. Il laisse passer presque tous les malades."
+        explain: "Il se trompe peu parce qu'il déclare presque tout le monde sain, et presque tous les patients le sont. Il laisse passer presque tous les malades."
       - id: "b"
         label: "Non : il laisse passer presque tous les malades."
         correct: true
@@ -184,7 +184,7 @@ questions:
         reveal_state: { hypotheses: { rarete: 0.6 } }
         verify: "s.sensibilite == 'broken' and m.sensibilite < 0.5"
         focus_view: "scores"
-        explain: "Dès 1 malade sur 5, le test rate déjà plus de la moitié des malades : le déséquilibre n'a pas besoin d'être extrême."
+        explain: "Dès que les malades sont nettement moins nombreux que les sains, le test en rate déjà beaucoup : le déséquilibre n'a pas besoin d'être extrême."
       - id: "b"
         label: "Oui : il rate déjà plus de la moitié des malades."
         correct: true
