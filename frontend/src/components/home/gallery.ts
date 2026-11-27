@@ -20,13 +20,13 @@ export interface GalleryFilter {
 
 export const EMPTY_FILTER: GalleryFilter = { level: null, discipline: null, search: '', sort: 'level' }
 
-/** Minuscules, sans accents, espaces réduits : « Probabilités » et « probabilites » se rejoignent. */
+/** Minuscules, sans accents, tirets et espaces réduits à une espace : « Probabilités » et « probabilites » se rejoignent. */
 export function normalize(text: string): string {
   return text
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/\s+/g, ' ')
+    .replace(/[-_\s]+/g, ' ')
     .trim()
 }
 
@@ -97,6 +97,11 @@ export function experimentHref(id: string): string {
 /** Lien vers une série d'Entraînement : `toutes`, un identifiant ou `discipline:<nom>` (filtre du moteur). */
 export function trainHref(filter: string): string {
   return `?train=${encodeURIComponent(filter)}&v=${LINK_VERSION}`
+}
+
+/** Notion lisible : le moteur sert un identifiant (« moindres-carres ») ; on remplace les tirets. */
+export function conceptLabel(concept: string): string {
+  return concept.replace(/[-_]+/g, ' ').trim()
 }
 
 /** « 1 expérience », « 9 expériences ». */

@@ -7,6 +7,7 @@
   import type { ExperimentSummary } from '../../lib/types.gen'
   import {
     EMPTY_FILTER,
+    conceptLabel,
     countLabel,
     disciplineLabel,
     disciplinesOf,
@@ -142,7 +143,7 @@
             {#if e.concepts.length > 0}
               <ul class="concepts" aria-label="Notions">
                 {#each e.concepts as c (c)}
-                  <li>{c}</li>
+                  <li>{conceptLabel(c)}</li>
                 {/each}
               </ul>
             {/if}
