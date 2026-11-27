@@ -93,7 +93,7 @@ Sur les 3 expériences P0 : Laboratoire (casser, Correction, Référence, verdic
 - Écrire du Svelte 4 : pas de `export let`, pas de `$:`, pas de `on:click` (utilise `onclick`).
 - Tutoyer l'utilisateur dans l'interface, ou écrire un texte d'interface en anglais.
 - Commencer une fonctionnalité P1 avant que le jalon P0 soit vert, sans le signaler.
-- Fusionner sur `main` sans `uv run pytest -q`, `uv run ruff check` et `npm run check` au vert.
+- Fusionner sur `main` sans `uv run pytest -q`, `uv run ruff check`, `npm run check` et `npm test` au vert.
 - Ajouter une fonctionnalité après H25 (13 h).
 
 ---
@@ -120,6 +120,7 @@ uv run ruff check .
 # Interface
 cd frontend && npm install && npm run dev        # proxy /api vers le port 8000
 cd frontend && npm run check
+cd frontend && npm test                         # tests unitaires (Vitest) des règles de lib/
 
 # Contrats et fixtures
 bash scripts/gen_types.sh                        # contracts.py -> types.gen.ts
@@ -321,7 +322,7 @@ def ols_ci(*, x, y, truth, alpha, se_type, rng) -> MethodResult:
 ## 12. Tests et définition de « terminé »
 
 Un changement est terminé quand :
-1. `uv run pytest -q`, `uv run ruff check .` et `npm run check` sont au vert ;
+1. `uv run pytest -q`, `uv run ruff check .`, `npm run check` et `npm test` sont au vert ;
 2. aucune erreur dans la console du navigateur ;
 3. les textes d'interface sont en français et vouvoient ;
 4. aucun code propre à un théorème n'a été ajouté ;

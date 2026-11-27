@@ -1,13 +1,16 @@
-/* Base minimale. Le thème sombre et la palette de sens vivent dans styles/tokens.css (H2 à H3). */
+/* Base globale. Toutes les valeurs viennent de styles/tokens.css. */
 :root {
-  color-scheme: dark;
-  font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
-  color: #e6edf3;
-  background: #0d1117;
+  font: var(--ct-text-md) / 1.5 var(--ct-font);
+  color: var(--ct-text);
+  background: var(--ct-bg);
 }
 body {
   margin: 0;
 }
 code {
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--ct-font-mono);
+}
+:focus-visible {
+  outline: 2px solid var(--ct-focus);
+  outline-offset: 2px;
 }
