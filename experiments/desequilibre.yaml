@@ -1,0 +1,194 @@
+schema_version: 1
+id: "desequilibre"
+title: "Déséquilibre : 99 % de bonnes réponses sans rien détecter"
+discipline: "apprentissage"
+level: "1"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
+concepts: ["classification", "exactitude", "sensibilite", "desequilibre", "seuil"]
+
+theorem:
+  name: "Exactitude et classe rare"
+  statement: |
+    Un classifieur entraîné pour faire le moins d'erreurs possible déplace son seuil vers la classe rare
+    dès qu'elle devient rare : il la sacrifie, puisqu'elle compte peu dans le total. L'exactitude (la
+    part de bonnes réponses) monte, alors que la sensibilité (la part de cas rares détectés) s'effondre.
+    Une bonne exactitude ne prouve donc rien quand une classe est rare : il faut regarder la
+    sensibilité, et accepter de perdre un peu d'exactitude pour détecter les cas rares.
+
+equation:
+  tex: '\text{malade si } s > {{seuil}}'
+  terms:
+    seuil:
+      ok: 't = \tfrac{\mu_0 + \mu_1}{2} + \dfrac{\ln\big((1 - \pi) / \pi\big)}{\mu_1 - \mu_0}'
+      corrected: 't = \tfrac{\mu_0 + \mu_1}{2}'
+
+params:
+  ecart: { type: number, label: "Écart entre les moyennes des scores", min: 0.5, max: 4, step: 0.25, default: 1.5,
+           sweep_values: [0.5, 1, 1.5, 2, 2.5, 3, 4] }
+
+hypotheses:
+  rarete:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Autant de malades que de sains"
+    category: "classes"
+    ok_label: "50 % de malades"
+    broken_label: "Maladie rare (1 % de malades)"
+    statement_tex: 'P(\text{malade}) = \pi = 1/2'
+    why: "Pour un test qui cherche à se tromper le moins souvent possible, malades et sains comptent autant tant qu'ils sont aussi nombreux : le seuil est alors au milieu des deux cloches."
+    when_broken: "Quand la maladie est rare, presque tous les patients sont sains : le test qui se trompe le moins souvent monte son seuil et déclare presque tout le monde sain. Son exactitude monte, mais il laisse passer presque tous les malades."
+    affects: [seuil]
+
+counterexamples:
+  - id: "maladie-rare"
+    label: "Maladie rare"
+    explain: "Les malades sont très rares. Le test qui se trompe le moins souvent a une exactitude très élevée, mais il ne détecte presque aucun malade."
+    state: { hypotheses: { rarete: 1.0 } }
+  - id: "maladie-peu-frequente"
+    label: "Un malade sur cinq"
+    explain: "Les malades sont minoritaires sans être très rares, et pourtant le test en rate déjà une grande partie."
+    state: { hypotheses: { rarete: 0.6 } }
+
+generator:
+  type: random
+  n: 600                          # 600 patients par étude
+  repeat: 300                     # 300 études
+  variables:
+    malade: { expr: "bernoulli(0.5 - 0.49 * h.rarete)" }
+    score: { expr: "normal() + p.ecart * malade" }
+
+methods:
+  - id: exactitude_max
+    role: method
+    call: classifier
+    label: "Seuil qui se trompe le moins souvent"
+    args:
+      score: score
+      label: malade
+      kind: "seuil"
+      threshold: "p.ecart / 2 + log((0.5 + 0.49 * h.rarete) / (0.5 - 0.49 * h.rarete)) / p.ecart"
+  - id: equilibre
+    role: correction
+    call: classifier
+    label: "Seuil au milieu des deux cloches"
+    explain: "Le seuil au milieu des deux cloches détecte la même part de malades et de sains, quelle que soit leur proportion. Vous détectez de nouveau les malades, mais vous payez ce prix : l'exactitude baisse et il y a davantage de fausses alertes."
+    repairs: [rarete]
+    args: { score: score, label: malade, kind: "seuil", threshold: "p.ecart / 2" }
+
+measures:
+  sensibilite:
+    agg: "mean(reps.sens)"
+    label: "Sensibilité (malades détectés)"
+    unit: "%"
+    scale: 100
+    decimals: 1
+    primary: true
+    target: base
+    direction: below
+    ok_within: 0.10
+    broken_beyond: 0.30
+    texts:
+      ok: "Le test détecte {value} des malades."
+      warning: "Le test ne détecte plus que {value} des malades."
+      broken: "Le test ne détecte presque plus de malades : {value} seulement."
+  exactitude:
+    agg: "mean(reps.accuracy)"
+    label: "Exactitude (bonnes réponses)"
+    unit: "%"
+    scale: 100
+    decimals: 1
+  specificite:
+    agg: "mean(reps.spec)"
+    label: "Spécificité (sains reconnus)"
+    unit: "%"
+    scale: 100
+    decimals: 1
+
+challenges:
+  - id: "exactitude-trompeuse"
+    goal: "Obtenez plus de 95 % d'exactitude en détectant moins d'un malade sur dix."
+    when: "m.exactitude > 0.95 and m.sensibilite < 0.1"
+    unlock: "Rendez la maladie très rare : le test se trompe alors très peu, en ignorant presque tous les malades."
+  - id: "malades-retrouves"
+    goal: "Avec une maladie rare, retrouvez au moins 7 malades sur 10 grâce à la Correction."
+    when: "h.rarete >= 0.95 and m.sensibilite.equilibre >= 0.7"
+    unlock: "Affichez la Correction : le seuil au milieu des deux cloches ne dépend pas de la rareté."
+
+auto_sweep: [h.rarete]
+
+views:
+  - id: scores
+    type: distribution
+    title: "Scores des sains et des malades"
+    bind: { stat: example.score_neg, h1: example.score_pos }
+    ui: { x_title: "Score du test", labels: { stat: "Sains", h1: "Malades" } }
+  - id: sens-rarete
+    type: sensitivity
+    title: "Selon la rareté de la maladie"
+    sweep: { axes: [h.rarete] }
+  - id: sens-ecart
+    type: sensitivity
+    title: "Selon l'écart entre les scores"
+    sweep: { axes: [p.ecart] }
+
+questions:
+  - id: "des-q1-exactitude"
+    type: misconception
+    prompt: "Un patient sur 100 est malade. Un test est réglé pour se tromper le moins souvent possible et affiche environ 99 % de bonnes réponses. Détecte-t-il bien les malades ?"
+    hypothesis: "rarete"
+    choices:
+      - id: "a"
+        label: "Oui : avec 99 % de bonnes réponses, il détecte presque tous les malades."
+        correct: false
+        reveal_state: { hypotheses: { rarete: 1.0 } }
+        verify: "s.sensibilite == 'broken' and m.exactitude > 0.97"
+        focus_view: "scores"
+        explain: "Il se trompe peu parce qu'il déclare presque tout le monde sain, et presque tous les patients le sont. Il laisse passer presque tous les malades."
+      - id: "b"
+        label: "Non : il laisse passer presque tous les malades."
+        correct: true
+        reveal_state: { hypotheses: { rarete: 1.0 } }
+        verify: "s.sensibilite == 'broken' and m.exactitude > 0.97"
+        focus_view: "scores"
+        explain: "Exact : quand une classe est rare, une exactitude élevée ne prouve rien. Il faut regarder la sensibilité."
+
+  - id: "des-q2-prix"
+    type: misconception
+    prompt: "La maladie touche 1 patient sur 100. Vous placez le seuil au milieu des deux cloches pour détecter les malades. Que devient l'exactitude ?"
+    hypothesis: "rarete"
+    choices:
+      - id: "a"
+        label: "Elle monte : un test qui détecte mieux est un test plus exact."
+        correct: false
+        reveal_state: { hypotheses: { rarete: 1.0 } }
+        verify: "s.sensibilite.equilibre == 'ok' and m.exactitude.equilibre < m.exactitude - 0.1"
+        focus_view: "scores"
+        explain: "Elle baisse : les sains sont bien plus nombreux, et le seuil au milieu en déclare beaucoup malades à tort."
+      - id: "b"
+        label: "Elle baisse : détecter les malades coûte des fausses alertes."
+        correct: true
+        reveal_state: { hypotheses: { rarete: 1.0 } }
+        verify: "s.sensibilite.equilibre == 'ok' and m.exactitude.equilibre < m.exactitude - 0.1"
+        focus_view: "scores"
+        explain: "Exact : on échange de l'exactitude contre de la sensibilité. C'est un choix à faire selon le coût d'un malade raté."
+
+  - id: "des-q3-frequence"
+    type: misconception
+    prompt: "Un patient sur 5 est malade. Le test qui se trompe le moins souvent pose-t-il déjà problème pour détecter les malades ?"
+    hypothesis: "rarete"
+    choices:
+      - id: "a"
+        label: "Non : le problème n'apparaît que pour les maladies extrêmement rares."
+        correct: false
+        reveal_state: { hypotheses: { rarete: 0.6 } }
+        verify: "s.sensibilite == 'broken' and m.sensibilite < 0.5"
+        focus_view: "scores"
+        explain: "Dès que les malades sont nettement moins nombreux que les sains, le test en rate déjà beaucoup : le déséquilibre n'a pas besoin d'être extrême."
+      - id: "b"
+        label: "Oui : il rate déjà plus de la moitié des malades."
+        correct: true
+        reveal_state: { hypotheses: { rarete: 0.6 } }
+        verify: "s.sensibilite == 'broken' and m.sensibilite < 0.5"
+        focus_view: "scores"
+        explain: "Exact : le seuil monte dès que les malades sont moins nombreux que les sains, donc bien avant les cas extrêmes."

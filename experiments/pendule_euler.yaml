@@ -81,16 +81,6 @@ measures:
       ok: "Trajectoire fidèle : erreur de {value}."
       warning: "La trajectoire dérive : erreur de {value}."
       broken: "Trajectoire fausse : erreur de {value}."
-  energy_drift:
-    agg: "summary(energy_drift)"
-    label: "Dérive de l'énergie"
-    unit: "%"
-    scale: 100
-    decimals: 1
-  full_turn:
-    agg: "summary(full_turn)"         # 1 si le pendule dépasse pi, 0 sinon (Euler : à partir de h = 0,9)
-    label: "Le pendule fait le tour"
-    decimals: 0
 
 challenges:
   - id: "plus-grand-pas"
@@ -98,8 +88,8 @@ challenges:
     when: "h.pas >= 0.2 and s.err_angle == 'ok'"
     unlock: "Le pas acceptable dépend de la durée simulée : doublez la durée et recommencez."
   - id: "rk4-gros-pas"
-    goal: "Montrez que RK4 reste fiable avec un pas pour lequel Euler fait faire le tour au pendule."
-    when: "m.full_turn == 1 and m.err_angle.rk4 < 0.05"
+    goal: "Montrez que RK4 reste fiable avec un pas pour lequel Euler est Rompu."
+    when: "s.err_angle == 'broken' and m.err_angle.rk4 < 0.05"
     unlock: "Un schéma d'ordre 4 autorise des pas bien plus grands pour la même précision."
 
 auto_sweep: [h.pas]
