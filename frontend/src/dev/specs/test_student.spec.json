@@ -3,7 +3,7 @@
  "id": "test-student",
  "title": "Test de Student : queues lourdes, niveau et puissance",
  "discipline": "statistique",
- "level": "1A",
+ "level": "3",
  "concepts": [
   "test-de-student",
   "wilcoxon",

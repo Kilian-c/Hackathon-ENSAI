@@ -3,7 +3,7 @@
  "id": "pendule-euler",
  "title": "Pendule simple : la méthode d'Euler et son pas de temps",
  "discipline": "physique",
- "level": "1A",
+ "level": "2",
  "concepts": [
   "edo",
   "euler",
@@ -150,32 +150,6 @@
     "warning": "La trajectoire dérive : erreur de {value}.",
     "broken": "Trajectoire fausse : erreur de {value}."
    }
-  },
-  "energy_drift": {
-   "agg": "summary(energy_drift)",
-   "label": "Dérive de l'énergie",
-   "unit": "%",
-   "scale": 100.0,
-   "decimals": 1,
-   "primary": false,
-   "target": null,
-   "direction": null,
-   "ok_within": null,
-   "broken_beyond": null,
-   "texts": null
-  },
-  "full_turn": {
-   "agg": "summary(full_turn)",
-   "label": "Le pendule fait le tour",
-   "unit": "",
-   "scale": 1.0,
-   "decimals": 0,
-   "primary": false,
-   "target": null,
-   "direction": null,
-   "ok_within": null,
-   "broken_beyond": null,
-   "texts": null
   }
  },
  "challenges": [
@@ -188,8 +162,8 @@
   },
   {
    "id": "rk4-gros-pas",
-   "goal": "Montrez que RK4 reste fiable avec un pas pour lequel Euler fait faire le tour au pendule.",
-   "when": "m.full_turn == 1 and m.err_angle.rk4 < 0.05",
+   "goal": "Montrez que RK4 reste fiable avec un pas pour lequel Euler est Rompu.",
+   "when": "s.err_angle == 'broken' and m.err_angle.rk4 < 0.05",
    "unlock": "Un schéma d'ordre 4 autorise des pas bien plus grands pour la même précision.",
    "hint": null
   }
@@ -219,7 +193,10 @@
    "inspect": false,
    "allow_point_injection": false,
    "mode": null,
-   "ui": null
+   "ui": {
+    "x_title": "Temps (s)",
+    "y_title": "Angle (rad)"
+   }
   },
   {
    "id": "sens",
