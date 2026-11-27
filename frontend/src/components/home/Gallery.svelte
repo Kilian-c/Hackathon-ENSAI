@@ -61,6 +61,7 @@
     <nav class="actions" aria-label="Accès rapides">
       <a class="button primary" href={trainHref('toutes')}>S'entraîner sur toutes les expériences →</a>
       <a class="button" href="?bilan">Voir mon bilan →</a>
+      <a class="button" href="?import">Importer une expérience →</a>
     </nav>
   </header>
 

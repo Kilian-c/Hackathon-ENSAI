@@ -1,9 +1,10 @@
 <script lang="ts">
   // Navigation par l'URL (lib/state.ts, parseLink) : ?exp=... ouvre le Laboratoire, ?train=... l'Entraînement.
   // Sans paramètre : la galerie d'accueil de R4 (components/home/Gallery.svelte).
-  // ?bilan ouvre l'écran Bilan ; ?dev=charts ouvre le banc d'essai des graphiques et la palette.
+  // ?bilan ouvre l'écran Bilan ; ?import l'écran Import (R4) ; ?dev=charts ouvre le banc d'essai des graphiques et la palette.
   import LabView from './components/lab/LabView.svelte'
   import Gallery from './components/home/Gallery.svelte'
+  import ImportView from './components/ImportView.svelte'
   import CalibrationSummary from './components/summary/CalibrationSummary.svelte'
   import TrainingView from './components/training/TrainingView.svelte'
   import { parseLink } from './lib/state'
@@ -12,6 +13,7 @@
   const query = new URLSearchParams(location.search)
   const dev = query.get('dev')
   const summary = query.has('bilan')
+  const importing = query.has('import')
 </script>
 
 {#if dev === 'charts'}
@@ -20,6 +22,8 @@
   {/await}
 {:else if summary}
   <CalibrationSummary />
+{:else if importing}
+  <ImportView />
 {:else if link.kind === 'lab'}
   <LabView {link} />
 {:else if link.kind === 'error'}
