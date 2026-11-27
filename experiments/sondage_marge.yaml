@@ -3,7 +3,7 @@ id: "sondage-marge"
 title: "Sondage : que vaut la marge d'erreur ?"
 discipline: "statistique"
 level: "1"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
-concepts: ["sondage", "marge-d-erreur", "intervalle-de-confiance", "biais-de-selection"]
+concepts: ["sondage", "marge d'erreur", "intervalle de confiance", "biais de sélection"]
 
 theorem:
   name: "Marge d'erreur d'un sondage"

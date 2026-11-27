@@ -3,7 +3,7 @@ id: "seuil-roc"
 title: "Test médical : où placer le seuil ?"
 discipline: "apprentissage"
 level: "1"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
-concepts: ["classification", "seuil", "matrice-de-confusion", "courbe-roc", "prevalence"]
+concepts: ["classification", "seuil", "matrice de confusion", "courbe ROC", "prévalence"]
 
 theorem:
   name: "Seuil d'un test et règle de Bayes"

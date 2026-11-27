@@ -3,7 +3,7 @@ id: "desequilibre"
 title: "Déséquilibre : 99 % de bonnes réponses sans rien détecter"
 discipline: "apprentissage"
 level: "1"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
-concepts: ["classification", "exactitude", "sensibilite", "desequilibre", "seuil"]
+concepts: ["classification", "exactitude", "sensibilité", "déséquilibre", "seuil"]
 
 theorem:
   name: "Exactitude et classe rare"

@@ -1,9 +1,9 @@
 schema_version: 1
 id: "theoreme-central-limite"
 title: "Théorème central limite : quand la moyenne devient-elle gaussienne ?"
-discipline: "probabilites"
+discipline: "probabilités"
 level: "2"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
-concepts: ["theoreme-central-limite", "independance", "variance-finie", "loi-de-cauchy"]
+concepts: ["théorème central limite", "indépendance", "variance finie", "loi de Cauchy"]
 
 theorem:
   name: "Théorème central limite"

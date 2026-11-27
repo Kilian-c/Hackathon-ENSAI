@@ -3,7 +3,7 @@ id: "moyenne-mediane"
 title: "Moyenne ou médiane : qui résiste à une valeur extrême ?"
 discipline: "statistique"
 level: "1"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
-concepts: ["moyenne", "mediane", "valeur-aberrante", "robustesse"]
+concepts: ["moyenne", "médiane", "valeur aberrante", "robustesse"]
 
 theorem:
   name: "Sensibilité de la moyenne aux valeurs extrêmes"

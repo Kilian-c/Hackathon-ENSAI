@@ -3,7 +3,7 @@ id: "regression-lineaire"
 title: "Régression linéaire : quand l'intervalle de confiance d'une pente devient faux"
 discipline: "statistique"
 level: "3"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
-concepts: ["mco", "intervalle-de-confiance", "residus", "heteroscedasticite", "levier", "independance"]
+concepts: ["MCO", "intervalle de confiance", "résidus", "hétéroscédasticité", "levier", "indépendance"]
 
 # --- 1. Le théorème, expliqué simplement (panneau « Comprendre ») ---
 theorem:

@@ -3,7 +3,7 @@ id: "tests-multiples"
 title: "Tests multiples : les faux positifs s'accumulent"
 discipline: "statistique"
 level: "2"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
-concepts: ["tests-multiples", "faux-positifs", "bonferroni", "tukey", "anova"]
+concepts: ["tests multiples", "faux positifs", "Bonferroni", "Tukey", "ANOVA"]
 
 theorem:
   name: "Correction de Bonferroni"

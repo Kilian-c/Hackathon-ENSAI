@@ -3,7 +3,7 @@ id: "multicolinearite"
 title: "Multicolinéarité : deux variables explicatives trop liées"
 discipline: "statistique"
 level: "3"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
-concepts: ["mco", "multicolinearite", "vif", "test-de-student", "prevision"]
+concepts: ["MCO", "multicolinéarité", "VIF", "test de Student", "prévision"]
 
 theorem:
   name: "Variance des estimateurs des MCO et VIF"
