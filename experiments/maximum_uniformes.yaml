@@ -8,7 +8,7 @@ concepts: ["maximum", "loi uniforme", "estimation", "valeurs extrêmes"]
 theorem:
   name: "Loi du maximum de n uniformes"
   statement: |
-    Si X_1, ..., X_n sont indépendantes et uniformes sur [0 ; 1], alors P(max ≤ t) = t^n. Le
+    Si X₁, …, Xₙ sont indépendantes et uniformes sur [0 ; 1], alors P(max ≤ t) = tⁿ. Le
     maximum s'approche donc de la borne 1, et très vite : il en est éloigné d'environ 1/n, alors
     que la moyenne d'un échantillon n'est précise qu'à 1/√n près. Cette convergence suppose une
     borne nette : si la loi n'a pas de borne, ou si les mesures sont bruitées, le maximum ne
@@ -36,7 +36,7 @@ hypotheses:
       uniforme:      { label: "Uniforme sur [0 ; 1] (borne nette en 1)", law: uniform }
       exponentielle: { label: "Exponentielle (aucune borne)", law: exponential }
     statement_tex: 'X_i \in [0, 1]'
-    why: "Le maximum n'approche une borne que si cette borne existe : la formule P(max ≤ t) = t^n suppose que la loi s'arrête en 1."
+    why: "Le maximum n'approche une borne que si cette borne existe : la formule P(max ≤ t) = tⁿ suppose que la loi s'arrête en 1."
     when_broken: "Sans borne, le maximum continue de grandir quand n augmente : il suit les valeurs rares de plus en plus grandes, et ne converge vers aucune valeur."
     affects: [valeur]
   bruit:
@@ -154,7 +154,7 @@ questions:
         reveal_state: { params: { n: "{n}" }, hypotheses: { loi: "uniforme" } }
         verify: "s.ecart == 'ok'"
         focus_view: "maxima"
-        explain: "Exact : P(max ≤ t) = t^n, donc le maximum se colle à la borne beaucoup plus vite que la moyenne ne se stabilise."
+        explain: "Exact : P(max ≤ t) = tⁿ, donc le maximum se colle à la borne beaucoup plus vite que la moyenne ne se stabilise."
 
   - id: "max-q2-sans-borne"
     type: misconception
