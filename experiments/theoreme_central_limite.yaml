@@ -147,6 +147,10 @@ views:
     type: sensitivity
     title: "Selon la dépendance"
     sweep: { axes: [h.rho] }
+  - id: validite
+    type: validity_domain
+    title: "Domaine de validité"
+    sweep: { axes: [h.loi, p.n] }
 
 questions:
   - id: "tcl-q1-cauchy"
@@ -214,3 +218,12 @@ questions:
         verify: "s.inside == 'broken' and s.inside.variance_limite != 'broken'"
         focus_view: "moyennes"
         explain: "Exact : les corrélations s'ajoutent à la variance de la somme ; il faut la corriger."
+
+  - id: "tcl-q4-prediction-cauchy"
+    type: prediction
+    prompt: "Les observations suivent une loi de Cauchy. Si n passe de {n} au quadruple, que devient la part des moyennes normalisées comprises entre -1,96 et 1,96 ?"
+    procedural_params:
+      n: { min: 50, max: 120, step: 10 }
+    state: { hypotheses: { loi: "cauchy" } }
+    sweep: { target: p.n, from: "{n}", to: "{n} * 4" }
+    measure: inside               # choix fixes ; réponse calculée par le moteur (simulée : elle diminue)

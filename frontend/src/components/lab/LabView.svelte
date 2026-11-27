@@ -126,8 +126,9 @@
         engine = resolved.engine
         ui = resolved.ui
         if (resolved.ui.tab === CHALLENGES_TAB) stage = 'defis'
-        // Lien avec une hypothèse déjà cassée (partage, Entraînement) : Comprendre s'ouvre dessus.
-        openHyp = brokenHypotheses(opened.spec, resolved.engine)[0] ?? null
+        if (resolved.ui.stage === 'comprendre' || resolved.ui.stage === 'defis') stage = resolved.ui.stage
+        // Hypothèse demandée par le lien (pont de l'Entraînement), sinon la première cassée.
+        openHyp = resolved.ui.focus ?? brokenHypotheses(opened.spec, resolved.engine)[0] ?? null
       },
       (err) => {
         if (!cancelled) error = messageOf(err)
@@ -182,10 +183,16 @@
     }
   })
 
+  /** État d'affichage du lien : l'étape ouverte, et l'hypothèse lue dans Comprendre. */
+  function uiForLink(): UiState {
+    const onStage = stage === 'experimenter' ? null : stage
+    return { ...ui, stage: onStage, focus: stage === 'comprendre' ? openHyp : null }
+  }
+
   // --- Lien de partage : recopié dans l'URL (sans nouvelle entrée d'historique) ---
   $effect(() => {
     if (!spec || !engine) return
-    history.replaceState(null, '', labLink(spec, engine, ui, origin))
+    history.replaceState(null, '', labLink(spec, engine, uiForLink(), origin))
   })
 
   // --- Onglets du graphique : les vues renvoyées par le moteur ---
@@ -345,7 +352,7 @@
 
   async function copyLink(): Promise<void> {
     if (!spec || !engine) return
-    const url = `${location.origin}${location.pathname}${labLink(spec, engine, ui, origin)}`
+    const url = `${location.origin}${location.pathname}${labLink(spec, engine, uiForLink(), origin)}`
     try {
       await navigator.clipboard.writeText(url)
       copied = true

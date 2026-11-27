@@ -607,7 +607,7 @@
   {
    "id": "reg-q3-n",
    "type": "prediction",
-   "prompt": "Sous forte hétéroscédasticité, que devient la couverture des IC classiques si n passe de {n} à {n} x 2 ?",
+   "prompt": "Sous forte hétéroscédasticité, que devient la couverture des IC classiques si n passe de {n} au double ?",
    "procedural_params": {
     "n": {
      "min": 100.0,

@@ -211,3 +211,11 @@ questions:
         verify: "s.bias.reduit == 'broken' and s.power.reduit == 'ok'"
         focus_view: "ic"
         explain: "Exact : il estime à peu près beta1 + rho x beta2."
+
+  - id: "mc-q4-prediction-rho"
+    type: prediction
+    prompt: "Si la corrélation entre X1 et X2 passe de 0 à {r}, que devient la part des échantillons où le test de Student détecte l'effet de X1 ?"
+    procedural_params:
+      r: { min: 0.9, max: 0.98, step: 0.02 }
+    sweep: { target: h.rho, from: 0, to: "{r}" }
+    measure: power                # choix fixes ; réponse calculée par le moteur (simulée : elle diminue)

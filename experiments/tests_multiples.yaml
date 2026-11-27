@@ -191,3 +191,11 @@ questions:
         verify: "s.false_alarm == 'broken' and s.false_alarm.bonferroni == 'ok'"
         focus_view: "statistiques"
         explain: "Exact : l'inégalité de l'union garantit alors un risque global d'au plus 5 %."
+
+  - id: "tm-q4-prediction-groupes"
+    type: prediction
+    prompt: "Aucun groupe ne diffère des autres. Si l'on passe de 2 groupes (un seul test) à {g} groupes comparés deux à deux, au seuil de 5 % chacun, que devient la probabilité d'au moins une fausse alarme ?"
+    procedural_params:
+      g: { min: 5, max: 10, step: 1 }
+    sweep: { target: h.groupes, from: 2, to: "{g}" }
+    measure: false_alarm          # choix fixes ; réponse calculée par le moteur (simulée : elle augmente)
