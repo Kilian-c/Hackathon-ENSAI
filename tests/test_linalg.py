@@ -73,3 +73,69 @@ def test_heatmap_matrix_is_cropped_to_the_cap() -> None:
     res = runner.run(big, EngineState(params={"d": 70}))
     view = next(v for v in res.views if v.id == "matrice")
     assert len(view.series[0].paths) == runner.MAX_MATRIX
+
+
+# --- linsolve ---------------------------------------------------------------------------------------------
+
+
+def _spd_system(r: int = 12, d: int = 7, shift: float = 3.0):
+    rng = np.random.default_rng(11)
+    g = rng.standard_normal((r, d, d))
+    mat = (g + np.swapaxes(g, 1, 2)) / np.sqrt(2 * d) + shift * np.eye(d)
+    return mat, mat @ np.ones(d), np.ones((r, d))
+
+
+def test_direct_solvers_match_numpy() -> None:
+    from backend.methods.linalg.linsolve import _cholesky, _gauss
+
+    mat, b, _ = _spd_system()
+    expected = np.linalg.solve(mat, b[..., None])[..., 0]
+    solutions = (_gauss(mat.copy(), b, pivot=False), _gauss(mat.copy(), b, pivot=True), _cholesky(mat, b))
+    for solution in solutions:
+        assert solution == pytest.approx(expected, abs=1e-9)
+
+
+def test_iterative_solvers_converge_when_the_diagonal_dominates() -> None:
+    from backend.methods.linalg.linsolve import _iterate
+
+    mat, b, truth = _spd_system(shift=4.0)
+    for kind in ("jacobi", "gauss_seidel", "cg"):
+        solution, history = _iterate(kind, mat.copy(), b, 80, truth)
+        assert solution == pytest.approx(truth, abs=1e-6), kind
+        assert history[-1] < history[0] - 5, kind  # l'erreur (log10) baisse d'au moins cinq ordres
+
+
+def test_linsolve_failures_are_flagged_and_capped() -> None:
+    from backend.methods.linalg.linsolve import FAILED_LOG_ERROR, linsolve
+
+    rng = np.random.default_rng(5)
+    a = rng.standard_normal((40, 100))
+    weak = dict(a=a, d=10, shift=1.0, iters=60, rng=rng)  # matrice indéfinie : pas de dominance
+    jacobi = linsolve(kind="jacobi", **weak)
+    assert jacobi.reps["failed"].mean() > 0.5 and jacobi.reps["log_error"].max() <= FAILED_LOG_ERROR
+    assert linsolve(kind="cholesky", **weak).reps["failed"].all()  # exige une matrice définie positive
+    direct = linsolve(kind="gauss_pivot", **weak)
+    assert not direct.reps["failed"].any()  # la méthode directe : aucune condition sur A
+
+
+def test_linsolve_bad_arguments_are_french_errors() -> None:
+    from backend.methods.linalg.linsolve import linsolve
+
+    rng = np.random.default_rng(0)
+    with pytest.raises(ValueError, match="kind doit valoir"):
+        linsolve(a=np.zeros((2, 4)), d=2, kind="inconnue", rng=rng)
+    with pytest.raises(ValueError, match="d \\* d"):
+        linsolve(a=np.zeros((2, 5)), d=2, rng=rng)
+    with pytest.raises(ValueError, match="iters"):
+        linsolve(a=np.zeros((2, 4)), d=2, iters=0, rng=rng)
+
+
+def test_linsolve_experiment_jacobi_breaks_but_the_direct_method_does_not() -> None:
+    spec = load_experiment_file(WIGNER.parent / "systemes_lineaires.yaml")
+    healthy = runner.run(spec, EngineState())
+    assert healthy.measures["erreur"].states == {"jacobi": "ok", "gauss_seidel": "ok", "gauss_pivot": "ok"}
+    weak = runner.run(spec, EngineState(hypotheses={"dominance": 1.0}))
+    expected = {"jacobi": "broken", "gauss_seidel": "broken", "gauss_pivot": "ok"}
+    assert weak.measures["erreur"].states == expected
+    history = next(v for v in weak.views if v.id == "convergence")
+    assert history.series and history.series[0].y is not None

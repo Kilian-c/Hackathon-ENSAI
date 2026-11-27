@@ -332,6 +332,18 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         15,
     ),
+    "linsolve": (
+        {
+            "a": np.random.default_rng(2).standard_normal((20, 9)),
+            "d": 3,
+            "shift": 3.0,
+            "kind": "gauss_pivot",
+            "iters": 10,
+            "rng": np.random.default_rng(0),
+        },
+        20,
+        None,
+    ),
     "spectrum": (
         {"x": np.random.default_rng(1).standard_normal((20, 9)), "d": 3, "rng": np.random.default_rng(0)},
         20,

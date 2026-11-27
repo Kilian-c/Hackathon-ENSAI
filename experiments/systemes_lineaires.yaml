@@ -1,0 +1,189 @@
+# yaml-language-server: $schema=./schema.json
+schema_version: 1
+id: "systemes-lineaires"
+title: "Résoudre A x = b : quand une méthode itérative converge-t-elle ?"
+discipline: "algèbre linéaire"
+level: "2"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé
+concepts: ["système linéaire", "méthode de Jacobi", "diagonale dominante", "pivot de Gauss"]
+
+theorem:
+  name: "Convergence de la méthode de Jacobi"
+  statement: |
+    Pour résoudre A x = b, la méthode de Jacobi remplace x par D^{-1} (b - (A - D) x), où D est la
+    diagonale de A. Elle converge, quel que soit le point de départ, si et seulement si le rayon spectral de
+    D^{-1} (A - D) est strictement inférieur à 1, ce qui est le cas quand A est à diagonale strictement
+    dominante. Une méthode directe, comme le pivot de Gauss, donne la solution exacte à l'erreur d'arrondi
+    près, sans condition sur la diagonale.
+
+equation:
+  tex: '\|x_k - x^\star\| \;\longrightarrow\; {{limite}}'
+  terms:
+    limite:
+      ok: '0 \quad \text{si} \quad \rho\!\left(D^{-1}(A - D)\right) < 1'
+      corrected: '0 \quad \text{(méthode directe : aucune condition)}'
+
+params:
+  d:     { type: number, label: "Taille du système d", min: 10, max: 30, step: 5, default: 20,
+           sweep_values: [10, 15, 20, 30] }
+  iters: { type: number, label: "Nombre d'itérations", min: 10, max: 100, step: 10, default: 60,
+           sweep_values: [10, 20, 40, 60, 100] }
+
+hypotheses:
+  dominance:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Diagonale dominante"
+    category: "structure"
+    ok_label: "Dominante"
+    broken_label: "Diagonale trop faible"
+    statement_tex: '\rho\!\left(D^{-1}(A - D)\right) < 1'
+    why: "Les itérations de Jacobi multiplient l'erreur par la matrice D^{-1}(A - D) : elles se rapprochent de la solution seulement si cette matrice « contracte »."
+    when_broken: "Quand la diagonale ne domine plus les autres coefficients, l'erreur est multipliée à chaque itération au lieu d'être réduite : la méthode diverge, aussi longtemps qu'on itère."
+    affects: [limite]
+
+counterexamples:
+  - id: "diagonale-faible"
+    label: "Diagonale trop faible"
+    explain: "Le rayon spectral de la matrice d'itération dépasse 1 : l'erreur grandit à chaque itération au lieu de diminuer."
+    state: { hypotheses: { dominance: 1.0 } }
+  - id: "diagonale-moyenne"
+    label: "Diagonale un peu moins faible"
+    explain: "Le rayon spectral dépasse encore 1, de moins : l'erreur grandit plus lentement qu'avec une diagonale très faible, mais elle finit par exploser."
+    state: { hypotheses: { dominance: 0.7 } }
+
+generator:
+  type: random
+  n: p.d * p.d                    # une matrice d x d par répétition, rangée en d * d entrées
+  repeat: 200
+  variables:
+    a: { expr: "normal()" }
+
+methods:
+  - id: jacobi
+    role: method
+    call: linsolve
+    label: "Jacobi"
+    args: { a: a, d: p.d, shift: "3 - 2 * h.dominance", kind: "jacobi", iters: p.iters }
+  - id: gauss_seidel
+    role: alternative
+    call: linsolve
+    label: "Gauss-Seidel"
+    explain: "Gauss-Seidel réutilise tout de suite les valeurs déjà mises à jour : il converge souvent plus vite que Jacobi, mais pas quand la diagonale est trop faible, où il diverge aussi."
+    args: { a: a, d: p.d, shift: "3 - 2 * h.dominance", kind: "gauss_seidel", iters: p.iters }
+  - id: gauss_pivot
+    role: correction
+    call: linsolve
+    label: "Pivot de Gauss (méthode directe)"
+    explain: "Le pivot de Gauss ne fait aucune itération : il élimine les inconnues une à une et donne la solution à l'erreur d'arrondi près, quelle que soit la diagonale, tant que la matrice est inversible."
+    repairs: [dominance]
+    args: { a: a, d: p.d, shift: "3 - 2 * h.dominance", kind: "gauss_pivot", iters: p.iters }
+
+measures:
+  erreur:
+    agg: "median(reps.log_error)"
+    label: "Erreur relative sur la solution (puissance de 10)"
+    decimals: 1
+    primary: true
+    target: -8
+    direction: above
+    ok_within: 1.5
+    broken_beyond: 4
+    texts:
+      ok: "Solution précise : erreur relative de 10^{value}."
+      warning: "Solution peu précise : erreur relative de 10^{value}."
+      broken: "La solution est fausse : erreur relative de 10^{value} (16 = échec ou divergence)."
+  echecs:
+    agg: "rate(reps.failed)"
+    label: "Systèmes dont la résolution échoue (divergence)"
+    unit: "%"
+    scale: 100
+    decimals: 0
+
+challenges:
+  - id: "jacobi-diverge"
+    goal: "Faites diverger la méthode de Jacobi (verdict Rompu) alors que le pivot de Gauss reste Fiable."
+    when: "s.erreur == 'broken' and s.erreur.gauss_pivot == 'ok'"
+    unlock: "Une diagonale trop faible rend la matrice d'itération expansive : seule la méthode directe n'en dépend pas."
+  - id: "plus-d-iterations"
+    goal: "Avec une diagonale un peu faible, retrouvez un verdict Fiable en augmentant le nombre d'itérations."
+    when: "h.dominance >= 0.2 and p.iters >= 60 and s.erreur == 'ok'"
+    unlock: "Tant que le rayon spectral reste sous 1, plus d'itérations réduisent encore l'erreur : la vitesse dépend de ce rayon."
+
+auto_sweep: [h.dominance]
+
+views:
+  - id: convergence
+    type: curves
+    title: "Erreur au fil des itérations (médiane)"
+    ui: { x_title: "Itération", y_title: "Erreur relative (puissance de 10)" }
+    bind: { t: curves.k, series: [ { y: curves.history, label: "Erreur" } ] }
+  - id: matrice
+    type: heatmap
+    title: "La matrice A du premier système"
+    bind: { matrix: curves.matrix }
+    ui: { decimals: 1 }
+  - id: erreurs
+    type: distribution
+    title: "Erreur sur 200 systèmes"
+    bind: { stat: reps.log_error }
+    ui: { x_title: "Erreur relative (puissance de 10)" }
+  - id: sens-dominance
+    type: sensitivity
+    title: "Selon la diagonale"
+    sweep: { axes: [h.dominance] }
+  - id: sens-iters
+    type: sensitivity
+    title: "Selon le nombre d'itérations"
+    sweep: { axes: [p.iters] }
+
+questions:
+  - id: "sys-q1-jacobi"
+    type: misconception
+    prompt: "La matrice A est inversible. La méthode de Jacobi converge-t-elle vers la solution, quelle que soit la matrice ?"
+    hypothesis: "dominance"
+    choices:
+      - id: "a"
+        label: "Oui : si le système a une solution, Jacobi finit toujours par la trouver."
+        correct: false
+        reveal_state: { hypotheses: { dominance: 1.0 } }
+        verify: "s.erreur == 'broken' and s.erreur.gauss_pivot == 'ok'"
+        focus_view: "convergence"
+        explain: "Jacobi n'est pas une résolution exacte : c'est une suite qui converge seulement si le rayon spectral de D^{-1}(A - D) est inférieur à 1. Sinon, l'erreur grandit."
+      - id: "b"
+        label: "Non : il faut que la diagonale domine, sinon l'erreur grandit."
+        correct: true
+        reveal_state: { hypotheses: { dominance: 1.0 } }
+        verify: "s.erreur == 'broken' and s.erreur.gauss_pivot == 'ok'"
+        focus_view: "convergence"
+        explain: "Exact : la convergence dépend du rayon spectral de la matrice d'itération. Le pivot de Gauss, lui, ne demande rien de tel."
+
+  - id: "sys-q2-seidel"
+    type: misconception
+    prompt: "Gauss-Seidel utilise les valeurs déjà mises à jour, donc il converge plus vite que Jacobi. Corrige-t-il aussi une diagonale trop faible ?"
+    hypothesis: "dominance"
+    choices:
+      - id: "a"
+        label: "Oui : il converge dans tous les cas où Jacobi échoue."
+        correct: false
+        reveal_state: { hypotheses: { dominance: 1.0 } }
+        verify: "s.erreur.gauss_seidel == 'broken'"
+        focus_view: "convergence"
+        explain: "Aller plus vite quand la méthode converge ne la fait pas converger quand elle diverge : ici aussi, la matrice d'itération dilate l'erreur."
+      - id: "b"
+        label: "Non : avec une diagonale trop faible, il diverge lui aussi."
+        correct: true
+        reveal_state: { hypotheses: { dominance: 1.0 } }
+        verify: "s.erreur.gauss_seidel == 'broken'"
+        focus_view: "convergence"
+        explain: "Exact : seule une méthode directe, comme le pivot de Gauss, ne dépend pas de la diagonale."
+
+  - id: "sys-q3-iterations"
+    type: prediction
+    prompt: "La diagonale est un peu faible, mais Jacobi converge encore lentement. Si le nombre d'itérations passe de {k} au double, que devient l'erreur ?"
+    procedural_params:
+      k: { min: 20, max: 40, step: 10 }
+    state: { hypotheses: { dominance: 0.3 } }
+    sweep: { target: p.iters, from: "{k}", to: "{k} * 2" }
+    measure: erreur

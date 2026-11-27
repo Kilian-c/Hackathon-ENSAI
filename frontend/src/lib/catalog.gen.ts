@@ -248,6 +248,52 @@ export const CATALOG: Catalog = {
       "doc": "Intègre `system` avec le pas `dt` (arrondi pour tomber pile sur t_end)."
     },
     {
+      "name": "linsolve",
+      "args": [
+        {
+          "name": "a",
+          "default": null
+        },
+        {
+          "name": "d",
+          "default": null
+        },
+        {
+          "name": "shift",
+          "default": "3.0"
+        },
+        {
+          "name": "kind",
+          "default": "'gauss_pivot'"
+        },
+        {
+          "name": "iters",
+          "default": "60"
+        }
+      ],
+      "kinds": [
+        "gauss",
+        "gauss_pivot",
+        "cholesky",
+        "jacobi",
+        "gauss_seidel",
+        "cg"
+      ],
+      "provides": {
+        "reps": [
+          "log_error",
+          "failed"
+        ],
+        "curves": [
+          "matrix",
+          "k",
+          "history"
+        ]
+      },
+      "cost": "repeat * d**3",
+      "doc": "Résout A x = b pour A = (G + Gᵀ) / sqrt(2 d) + shift I et b = A 1 (solution exacte : le vecteur de 1)."
+    },
+    {
       "name": "ols_ci",
       "args": [
         {

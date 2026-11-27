@@ -11,6 +11,7 @@ import pytest
 from backend.contracts import EngineState
 from backend.engine import runner
 from backend.engine.loader import load_experiment_file
+from backend.engine.sweep import axis_values
 from backend.engine.training import _full_state, _partial, _pathologies
 
 EXPERIMENTS_DIR = Path(__file__).resolve().parent.parent / "experiments"
@@ -22,15 +23,6 @@ def experiment(request):
     return load_experiment_file(request.param)
 
 
-def _hyp_values(hyp) -> list:
-    if hyp.type == "choice":
-        return list(hyp.options)
-    if hyp.type == "boolean":
-        return [True, False]
-    lo, hi = hyp.range
-    return [lo, (lo + hi) / 2, hi]
-
-
 def _param_values(param) -> list:
     if param.type == "boolean":
         return [True, False]
@@ -39,7 +31,7 @@ def _param_values(param) -> list:
 
 # Test 5 : chaque défi est atteignable par un balayage (un axe, ou deux axes dont une hypothèse).
 def test_5_every_challenge_is_reachable(experiment) -> None:
-    axes = [("h", k, _hyp_values(h)) for k, h in experiment.hypotheses.items()]
+    axes = [("h", k, axis_values(experiment, f"h.{k}")[0]) for k in experiment.hypotheses]
     axes += [("p", k, _param_values(p)) for k, p in experiment.params.items()]
     wanted = {c.id for c in experiment.challenges}
     reached: set[str] = set()
