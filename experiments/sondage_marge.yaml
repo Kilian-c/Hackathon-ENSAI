@@ -1,0 +1,179 @@
+schema_version: 1
+id: "sondage-marge"
+title: "Sondage : que vaut la marge d'erreur ?"
+discipline: "statistique"
+level: "1"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé (catalogue)
+concepts: ["sondage", "marge-d-erreur", "intervalle-de-confiance", "biais-de-selection"]
+
+theorem:
+  name: "Marge d'erreur d'un sondage"
+  statement: |
+    On interroge n personnes tirées au hasard et on note la part f de celles qui répondent « oui ».
+    Quand n est grand, f est proche de la vraie proportion p, à environ 1/√n près : dans 95 % des
+    sondages, p est dans l'intervalle [f - 1/√n ; f + 1/√n]. Multiplier n par 4 divise la marge
+    par 2. Cette marge ne mesure que le hasard du tirage : si les personnes interrogées ne sont pas
+    un tirage au hasard de la population, l'intervalle peut manquer p, même avec un très grand n.
+
+equation:
+  tex: '{{marge}}'
+  terms:
+    marge:
+      ok: 'p \in \left[ f - \dfrac{1}{\sqrt{n}} \ ;\ f + \dfrac{1}{\sqrt{n}} \right] \ \text{dans 95 \% des sondages}'
+
+params:
+  n: { type: number, label: "Nombre de personnes interrogées n", min: 50, max: 5000, step: 50, default: 400,
+       sweep_values: [50, 100, 400, 1000, 2500, 5000] }
+  vrai: { type: number, label: "Vraie proportion de « oui » p", min: 0.1, max: 0.9, step: 0.05, default: 0.4,
+          sweep_values: [0.2, 0.4, 0.5, 0.7] }
+
+hypotheses:
+  biais:
+    type: continuous
+    range: [0, 1]
+    step: 0.05
+    healthy_value: 0.0
+    label: "Personnes interrogées tirées au hasard"
+    category: "echantillonnage"
+    ok_label: "Tirage au hasard"
+    broken_label: "Les partisans du « oui » répondent plus souvent"
+    statement_tex: 'P(\text{répondre}) \ \text{indépendante de l''opinion}'
+    why: "La marge d'erreur compte seulement les écarts dus au hasard du tirage : elle suppose que chaque personne a la même chance d'être interrogée, quelle que soit son opinion."
+    when_broken: "Si les partisans du « oui » répondent plus volontiers, la fréquence observée est décalée dans le même sens à chaque sondage. La marge, qui rétrécit quand n grandit, finit par ne plus contenir la vraie proportion : interroger plus de monde n'y change rien."
+    affects: [marge]
+
+counterexamples:
+  - id: "reponses-biaisees"
+    label: "Réponses biaisées"
+    explain: "Les partisans du « oui » répondent plus souvent : la fréquence observée est décalée, et la vraie proportion sort souvent de la marge."
+    state: { hypotheses: { biais: 0.6 } }
+  - id: "gros-sondage-biaise"
+    label: "Gros sondage biaisé, n = 5000"
+    explain: "Avec beaucoup de monde, la marge est très étroite, mais autour d'une valeur décalée : la vraie proportion n'est presque jamais dedans."
+    state: { params: { n: 5000 }, hypotheses: { biais: 0.6 } }
+
+generator:
+  type: random
+  n: p.n                          # n personnes interrogées
+  repeat: 500                     # 500 sondages
+  variables:
+    oui: { expr: "bernoulli(p.vrai + 0.25 * h.biais * (1 - p.vrai))" }   # biais = 0 : tirage au hasard
+
+methods:
+  - id: frequence
+    role: method
+    call: statistic
+    label: "Fréquence observée f"
+    args: { x: oui, kind: "mean" }
+
+measures:
+  couverture:
+    agg: "rate(abs(reps.stat - p.vrai) < 1 / sqrt(p.n))"
+    label: "Part des sondages dont la marge ±1/√n contient la vraie proportion (95 % annoncés)"
+    unit: "%"
+    scale: 100
+    decimals: 0
+    primary: true
+    target: 0.95
+    direction: below
+    ok_within: 0.03
+    broken_beyond: 0.10
+    texts:
+      ok: "La marge tient sa promesse : la vraie proportion est dedans dans {value} des sondages."
+      warning: "La marge est trop optimiste : la vraie proportion n'est dedans que dans {value} des sondages."
+      broken: "La marge est fausse : la vraie proportion n'est dedans que dans {value} des sondages."
+  ecart:
+    agg: "bias(reps.stat, p.vrai)"
+    label: "Écart moyen de la fréquence observée à la vraie proportion"
+    decimals: 3
+
+challenges:
+  - id: "gros-n-ne-sauve-pas"
+    goal: "Avec au moins 1000 personnes, rendez la marge Rompue."
+    when: "p.n >= 1000 and s.couverture == 'broken'"
+    unlock: "Des réponses biaisées décalent la fréquence ; plus n est grand, plus la marge est étroite autour de cette valeur décalée."
+  - id: "petit-biais"
+    goal: "Trouvez un biais assez faible pour que la marge reste Fiable à n = 400."
+    when: "p.n == 400 and h.biais > 0 and s.couverture == 'ok'"
+    unlock: "Un petit décalage se noie dans la marge quand n est modeste : le biais ne se voit qu'avec un grand n."
+
+auto_sweep: [h.biais, p.n]
+
+views:
+  - id: frequences
+    type: distribution
+    title: "La fréquence observée sur 500 sondages"
+    bind: { stat: reps.stat }
+    ui: { x_title: "Fréquence de « oui » observée", x_range: [0, 1], labels: { stat: "Fréquences observées" } }
+  - id: sens-biais
+    type: sensitivity
+    title: "Selon le biais de réponse"
+    sweep: { axes: [h.biais] }
+  - id: sens-n
+    type: sensitivity
+    title: "Selon le nombre de personnes interrogées"
+    sweep: { axes: [p.n] }
+
+questions:
+  - id: "sond-q1-marge"
+    type: misconception
+    prompt: "Vous interrogez 400 personnes tirées au hasard et vous annoncez la marge ±1/√n. Que garantit cette marge ?"
+    hypothesis: "biais"
+    choices:
+      - id: "a"
+        label: "Dans environ 19 sondages sur 20, la vraie proportion est dans la marge."
+        correct: true
+        reveal_state: { hypotheses: { biais: 0.0 } }
+        verify: "s.couverture == 'ok'"
+        focus_view: "frequences"
+        explain: "Exact : la marge est faite pour contenir la vraie proportion dans environ 95 % des tirages au hasard."
+      - id: "b"
+        label: "La vraie proportion est toujours dans la marge."
+        correct: false
+        reveal_state: { hypotheses: { biais: 0.0 } }
+        verify: "s.couverture == 'ok'"
+        focus_view: "frequences"
+        explain: "Même avec un tirage parfait, environ un sondage sur vingt tombe à côté : la marge n'est jamais une certitude."
+
+  - id: "sond-q2-biais"
+    type: misconception
+    prompt: "Les partisans du « oui » répondent plus souvent. Pour compenser, vous interrogez {n} personnes au lieu de 400. La marge devient-elle fiable ?"
+    hypothesis: "biais"
+    procedural_params:
+      n: { min: 2000, max: 5000, step: 500 }
+    choices:
+      - id: "a"
+        label: "Oui : avec autant de monde, le biais s'efface."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { biais: 0.6 } }
+        verify: "s.couverture == 'broken'"
+        focus_view: "frequences"
+        explain: "Regardez l'histogramme : il est étroit, mais loin de la vraie proportion. Plus de monde ne corrige pas un défaut de tirage."
+      - id: "b"
+        label: "Non : la marge rétrécit, mais autour d'une valeur décalée."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { biais: 0.6 } }
+        verify: "s.couverture == 'broken'"
+        focus_view: "frequences"
+        explain: "Exact : la marge ne compte que le hasard. Un biais de réponse reste le même quel que soit n, donc il pèse de plus en plus par rapport à la marge."
+
+  - id: "sond-q3-petit-n"
+    type: misconception
+    prompt: "Vous n'interrogez que {n} personnes, tirées au hasard. La marge ±1/√n est-elle encore valable ?"
+    hypothesis: "biais"
+    procedural_params:
+      n: { min: 50, max: 150, step: 50 }
+    choices:
+      - id: "a"
+        label: "Non : en dessous de 1000 personnes, la marge ne veut plus rien dire."
+        correct: false
+        reveal_state: { params: { n: "{n}" }, hypotheses: { biais: 0.0 } }
+        verify: "s.couverture == 'ok'"
+        focus_view: "frequences"
+        explain: "La marge s'élargit quand n baisse, et elle reste juste : c'est un petit échantillon tiré au hasard, pas un échantillon mal tiré."
+      - id: "b"
+        label: "Oui : elle est plus large, mais elle tient encore sa promesse."
+        correct: true
+        reveal_state: { params: { n: "{n}" }, hypotheses: { biais: 0.0 } }
+        verify: "s.couverture == 'ok'"
+        focus_view: "frequences"
+        explain: "Exact : un petit échantillon tiré au hasard donne une marge large, mais honnête."

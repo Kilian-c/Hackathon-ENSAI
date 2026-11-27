@@ -7,7 +7,7 @@
 | Fichier | Niveau | Méthodes |
 |---|---|---|
 | `regression_lineaire`, `multicolinearite`, `theoreme_central_limite`, `tests_multiples` | 3, 3, 2, 2 | `ols_ci`, `ols_two`, `clt_mean`, `pairwise_tests` |
-| `somme_des`, `moyenne_mediane` | 1 | `statistic` |
+| `somme_des`, `moyenne_mediane`, `sondage_marge` | 1 | `statistic` |
 | `seuil_roc`, `desequilibre` | 1 | `classifier` (kind « seuil ») |
 | `carres_residus` | 1 | `regressor` (ols, manuelle) |
 
