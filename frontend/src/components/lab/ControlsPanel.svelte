@@ -1,8 +1,9 @@
 <!--
   ControlsPanel.svelte : les contrôles de l'étape « Expérimenter » (R3).
-  Version compacte : pour chaque hypothèse, son nom, son état et son contrôle ; l'explication
-  (when_broken) n'apparaît que lorsqu'elle est cassée, avec un lien vers l'étape Comprendre.
-  Puis les paramètres. Le composant ne garde aucun état.
+  Version compacte : pour chaque hypothèse, son nom et son contrôle (l'état en mots est sur le
+  contrôle). L'explication d'une hypothèse relâchée (when_broken) est dans le panneau « Que se
+  passe-t-il ? » (ResultPanel), avec un lien vers l'étape Comprendre. Puis les paramètres.
+  Le composant ne garde aucun état.
 -->
 <script lang="ts">
   import HypothesisControl from './HypothesisControl.svelte'
@@ -17,12 +18,10 @@
     engine: EngineState
     onhypothesis: (id: string, value: Value) => void
     onparam: (id: string, value: number | boolean) => void
-    /** Ouvrir l'explication complète d'une hypothèse (étape Comprendre). */
-    onexplain: (id: string) => void
     onheal: () => void
   }
 
-  let { spec, engine, onhypothesis, onparam, onexplain, onheal }: Props = $props()
+  let { spec, engine, onhypothesis, onparam, onheal }: Props = $props()
 
   const anyBroken = $derived(Object.entries(spec.hypotheses).some(([id, h]) => !isHealthy(h, engine.hypotheses[id])))
 </script>
@@ -40,16 +39,14 @@
       {@const healthy = isHealthy(h, value)}
       <li class:broken={!healthy}>
         <div class="head">
-          <span class="name"><span class="dot" aria-hidden="true">{healthy ? '●' : '✕'}</span>{h.label}</span>
-          <span class="status">{hypothesisStatus(h, value)}</span>
+          <span class="name">
+            <span class="dot" aria-hidden="true">{healthy ? '●' : '✕'}</span>{h.label}
+          </span>
+          {#if h.type === 'continuous'}
+            <span class="status">{hypothesisStatus(h, value)}</span>
+          {/if}
         </div>
         <HypothesisControl {id} hypothesis={h} {value} onchange={(v) => onhypothesis(id, v)} />
-        {#if !healthy}
-          <p class="effect">
-            {h.when_broken}
-            <button type="button" class="link" onclick={() => onexplain(id)}>Pourquoi ?</button>
-          </p>
-        {/if}
       </li>
     {/each}
   </ul>
@@ -93,13 +90,14 @@
   .hyps li {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--ct-space-1);
+    gap: var(--ct-space-2);
   }
   .head {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: baseline;
-    gap: var(--ct-space-2);
+    gap: 0 var(--ct-space-3);
     font-size: var(--ct-text-sm);
   }
   .name {
@@ -115,15 +113,9 @@
     color: var(--ct-role-rupture);
   }
   .status {
+    margin-left: auto;
     color: var(--ct-muted);
     text-align: right;
-  }
-  .effect {
-    margin: var(--ct-space-1) 0 0;
-    padding-left: var(--ct-space-3);
-    border-left: 2px solid var(--ct-role-rupture);
-    font-size: var(--ct-text-sm);
-    color: var(--ct-muted);
   }
   .link {
     padding: 0;

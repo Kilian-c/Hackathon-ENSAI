@@ -3,8 +3,10 @@
 
   Une seule expérience à l'écran, entièrement décrite par son YAML (ExperimentSpec) : aucun code
   propre à un théorème. Trois étapes, une seule visible à la fois, pour alléger l'écran (parcours du
-  cahier, section 2.2) : Comprendre (lecture), Expérimenter (contrôles, mesure principale, graphique),
-  Défis. Deux états :
+  cahier, section 2.2) : Comprendre (lecture), Expérimenter, Défis.
+  Expérimenter montre l'essentiel d'abord : les contrôles à gauche (cas limites et animation repliés),
+  puis le Résultat (jauge de la mesure principale, phrase « Que se passe-t-il ? », bouton Correction),
+  puis le graphique ; l'équation dynamique et toutes les mesures sont repliées dessous. Deux états :
   - engine (EngineState) : part au moteur à chaque changement (regroupé à 100 ms, ancien appel annulé) ;
   - ui (UiState) et showReference : affichage seul, aucun appel.
   Les deux sont recopiés dans l'URL (lien de partage) à chaque changement.
@@ -20,11 +22,10 @@
   import ControlsPanel from './ControlsPanel.svelte'
   import CounterexampleBar from './CounterexampleBar.svelte'
   import MeasurePanel from './MeasurePanel.svelte'
-  import MeasureStrip from './MeasureStrip.svelte'
-  import MethodBench from './MethodBench.svelte'
+  import ResultPanel from './ResultPanel.svelte'
   import UnderstandStage from './UnderstandStage.svelte'
-  import VerdictBadge from './VerdictBadge.svelte'
   import { ApiError, createLatest, type Latest } from '../../lib/executor'
+  import { equationTerms } from '../../lib/equation'
   import {
     addPoint,
     allowsPoints,
@@ -32,10 +33,10 @@
     clearPoints,
     brokenValue,
     currentOnAxes,
-    headlineVerdict,
     healAll,
     methodLabels,
     primaryMeasureId,
+    primaryStates,
     removePoint,
     setValue,
     sweepRequest,
@@ -238,7 +239,19 @@
   const labels = $derived(result ? methodLabels(result.methods) : {})
   const primaryId = $derived(result ? primaryMeasureId(result) : null)
   const sweptMeasure = $derived(result ? (result.measures[sweep?.measure ?? primaryId ?? ''] ?? null) : null)
-  const verdict = $derived(result ? headlineVerdict(result) : null)
+  /** Termes de l'équation en cause (résumé du bloc repliable « Équation dynamique »). */
+  const termTones = $derived.by(() => {
+    if (!spec || !result) return { broken: 0, repaired: 0 }
+    const terms = equationTerms(spec.equation, result.equation, {
+      methods: result.methods,
+      primaryStates: primaryStates(result),
+      methodsOn: ui.methodsOn,
+    })
+    return {
+      broken: terms.filter((t) => t.tone === 'broken').length,
+      repaired: terms.filter((t) => t.tone === 'repaired').length,
+    }
+  })
   const pointsHere = $derived(spec ? allowsPoints(spec, activeView?.id ?? null) : false)
   const placed = $derived(spec && engine ? viewPoints(spec, engine) : [])
 
@@ -381,7 +394,6 @@
       </div>
       <div class="actions">
         {#if loading}<span class="busy" aria-live="polite">Calcul…</span>{/if}
-        {#if verdict}<VerdictBadge {verdict} large />{/if}
         <button type="button" class="ghost" onclick={newDraw} title="Tirer de nouveaux échantillons (graine {engine.seed})">
           ↻ Nouveau tirage
         </button>
@@ -436,32 +448,31 @@
     {:else}
       <div class="workspace">
         <aside class="side">
-          <ControlsPanel
-            {spec}
-            {engine}
-            onhypothesis={changeHypothesis}
-            onparam={changeParam}
-            onexplain={explainHypothesis}
-            onheal={heal}
-          />
-          {#if spec.counterexamples.length > 0}
-            <div class="side-block">
-              <CounterexampleBar counterexamples={spec.counterexamples} active={activeCounterexample?.id ?? null} onpick={pickCounterexample} />
+          <ControlsPanel {spec} {engine} onhypothesis={changeHypothesis} onparam={changeParam} onheal={heal} />
+          {#if spec.counterexamples.length > 0 || source}
+            <div class="side-block extras">
+              <h2 class="extras-title">Pour aller plus loin</h2>
+              {#if spec.counterexamples.length > 0}
+                <details class="more">
+                  <summary>Cas limites ({spec.counterexamples.length})</summary>
+                  <CounterexampleBar counterexamples={spec.counterexamples} active={activeCounterexample?.id ?? null} onpick={pickCounterexample} />
+                </details>
+              {/if}
+              {#if source}
+                <details class="more">
+                  <summary>Animer un contrôle</summary>
+                  <AutoSweepPlayer
+                    {spec}
+                    {engine}
+                    {ui}
+                    {source}
+                    onframe={sweepFrame}
+                    onfinish={(u) => (ui = u)}
+                    onplaying={sweepPlaying}
+                  />
+                </details>
+              {/if}
             </div>
-          {/if}
-          {#if source}
-            <details class="side-block more">
-              <summary>Animer un contrôle</summary>
-              <AutoSweepPlayer
-                {spec}
-                {engine}
-                {ui}
-                {source}
-                onframe={sweepFrame}
-                onfinish={(u) => (ui = u)}
-                onplaying={sweepPlaying}
-              />
-            </details>
           {/if}
         </aside>
 
@@ -476,36 +487,38 @@
           {/if}
           {#if activeCounterexample}
             <p class="banner counter">
-              <strong>{activeCounterexample.label}.</strong>
+              <strong>Cas limite : {activeCounterexample.label}.</strong>
               {activeCounterexample.explain}
               <button type="button" class="link" onclick={() => (activeCounterexample = null)}>Fermer</button>
             </p>
           {/if}
 
           {#if result}
-            <div class="panel summary">
-              <MeasureStrip {result} methodsOn={ui.methodsOn} {showReference} />
-              <div class="summary-side">
-                <MethodBench methods={spec.methods} {roles} methodsOn={ui.methodsOn} ontoggle={toggle} />
-                <label class="ref">
-                  <input type="checkbox" bind:checked={showReference} />
-                  <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
-                </label>
-              </div>
-            </div>
-
-            <div class="panel equation">
-              <DynamicEquation equation={spec.equation} {result} hypotheses={spec.hypotheses} methodsOn={ui.methodsOn} />
-            </div>
+            <ResultPanel
+              {spec}
+              {engine}
+              {result}
+              methodsOn={ui.methodsOn}
+              {showReference}
+              ontoggle={toggle}
+              onheal={heal}
+              onexplain={explainHypothesis}
+            />
           {/if}
 
           <div class="panel chart">
-            <div class="tabs" role="tablist" aria-label="Vues">
-              {#each tabs as t (t.id)}
-                <button type="button" role="tab" aria-selected={t.id === activeTab} onclick={() => selectTab(t.id)}>
-                  {t.title}
-                </button>
-              {/each}
+            <div class="chart-head">
+              <div class="tabs" role="tablist" aria-label="Vues">
+                {#each tabs as t (t.id)}
+                  <button type="button" role="tab" aria-selected={t.id === activeTab} onclick={() => selectTab(t.id)}>
+                    {t.title}
+                  </button>
+                {/each}
+              </div>
+              <label class="ref" title="La même expérience avec toutes les hypothèses respectées (même graine)">
+                <input type="checkbox" bind:checked={showReference} />
+                <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
+              </label>
             </div>
 
             <div class="view" role="tabpanel">
@@ -522,8 +535,8 @@
                   {#if pointsHere}
                     <div class="points-bar">
                       <span>
-                        Cliquez dans le graphique pour poser un point, sur une étoile pour la retirer ·
-                        <strong>{placed.length} / {MAX_EXTRA_POINTS} points</strong>
+                        Cliquez dans le graphique pour ajouter un point (sur une étoile pour la retirer) :
+                        <strong>{placed.length} / {MAX_EXTRA_POINTS}</strong>
                       </span>
                       {#if placed.length > 0}
                         <button type="button" class="link" onclick={clearAllPoints}>Retirer tous les points</button>
@@ -548,6 +561,7 @@
                       methodLabels={labels}
                       axisLabel={sweepShown ? axisTitle(spec, sweepShown.axes[0].target) : undefined}
                       height={440}
+                      bare
                       injected={pointsHere ? placed : []}
                       onaddpoint={pointsHere ? placePoint : undefined}
                       onremovepoint={pointsHere ? unplacePoint : undefined}
@@ -565,6 +579,19 @@
           </div>
 
           {#if result}
+            <details class="panel more">
+              <summary>
+                Équation dynamique
+                {#if termTones.broken > 0}
+                  <span class="sum-tag broken">✕ {termTones.broken} terme{termTones.broken > 1 ? 's' : ''} en cause</span>
+                {:else if termTones.repaired > 0}
+                  <span class="sum-tag repaired">✓ corrigée</span>
+                {/if}
+              </summary>
+              <div class="equation">
+                <DynamicEquation equation={spec.equation} {result} hypotheses={spec.hypotheses} methodsOn={ui.methodsOn} />
+              </div>
+            </details>
             <details class="panel more">
               <summary>Toutes les mesures</summary>
               <MeasurePanel {result} methodsOn={ui.methodsOn} {showReference} />
@@ -758,6 +785,18 @@
     padding-top: var(--ct-space-4);
     border-top: 1px solid var(--ct-border);
   }
+  .extras {
+    display: grid;
+    gap: var(--ct-space-3);
+  }
+  .extras-title {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ct-muted);
+  }
   .main {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -771,29 +810,18 @@
     border-radius: var(--ct-radius-lg);
     min-width: 0;
   }
-  .summary {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--ct-space-4) var(--ct-space-8);
-  }
-  .summary-side {
-    display: grid;
-    gap: var(--ct-space-2);
-    align-content: start;
-    max-width: 28rem;
-  }
   .equation {
-    padding-top: var(--ct-space-3);
-    padding-bottom: var(--ct-space-3);
     overflow-x: auto;
   }
   .ref {
     display: flex;
     align-items: center;
     gap: var(--ct-space-2);
+    padding: var(--ct-space-2) 0;
     font-size: var(--ct-text-sm);
     color: var(--ct-muted);
+    white-space: nowrap;
+    cursor: pointer;
   }
   .ref-mark {
     color: var(--ct-role-reference);
@@ -802,12 +830,19 @@
   .chart {
     padding-top: 0;
   }
+  .chart-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0 var(--ct-space-4);
+    margin: 0 calc(-1 * var(--ct-space-2)) var(--ct-space-3);
+    border-bottom: 1px solid var(--ct-border);
+  }
   .tabs {
     display: flex;
     flex-wrap: wrap;
     gap: var(--ct-space-1);
-    margin: 0 calc(-1 * var(--ct-space-2)) var(--ct-space-3);
-    border-bottom: 1px solid var(--ct-border);
   }
   .tabs button {
     border: none;
@@ -841,6 +876,20 @@
     font-size: var(--ct-text-sm);
     font-weight: 600;
     color: var(--ct-muted);
+  }
+  details.panel.more {
+    padding-top: var(--ct-space-3);
+    padding-bottom: var(--ct-space-3);
+  }
+  .sum-tag {
+    margin-left: var(--ct-space-2);
+    font-weight: 400;
+  }
+  .sum-tag.broken {
+    color: var(--ct-role-rupture);
+  }
+  .sum-tag.repaired {
+    color: var(--ct-role-correction);
   }
   details.more > summary:hover {
     color: var(--ct-text);
