@@ -89,17 +89,19 @@ Hackathon-ENSAI/
 │   ├── engine/
 │   │   ├── schema.py               [Contrat] Schéma YAML v1                                  R1
 │   │   ├── loader.py               Lecture du YAML, erreurs avec numéro de ligne             R1
-│   │   ├── method_contract.py      [Contrat] Décorateur et MethodResult (à venir)            R2
-│   │   ├── laws.py, aggregators.py Lois et agrégateurs (à venir)                             R2
-│   │   ├── expr, rng, sanitize, runner, training .py  (à venir)                              R1
-│   │   └── generators/             random, ode                                               R1
-│   └── methods/                    ols_ci, one_sample_test, integrate (à venir)              R2
-├── tests/                          test_engine, test_loader (R4), test_experiments (R2)…
+│   │   ├── expr.py, rng.py, state.py  Expressions, aléatoire, état canonique                 R1
+│   │   ├── method_contract.py      [Contrat] Décorateur et MethodResult                      R2
+│   │   ├── laws.py, aggregators.py Lois et agrégateurs                                       R2
+│   │   ├── sanitize, runner, training .py  (à venir)                                         R1
+│   │   └── generators/             random (ode à venir)                                      R1
+│   └── methods/                    ols_ci, one_sample_test, integrate                        R2
+├── tests/                          test_engine, test_experiments, tests des méthodes ;
+│                                   test_api (R1) et test_loader (R4) à venir
 ├── scripts/
 │   ├── pack.mjs                    Contexte pour LLM de discussion                           R3
 │   ├── gen_types.sh                contracts.py + schema.py vers types.gen.ts (--check)     R3
 │   ├── export_schema.py            JSON Schema des contrats, lu par gen_types.sh             R3
-│   └── make_fixtures.py            Vrais résultats vers frontend/src/fixtures (à venir)      R1
+│   └── make_fixtures.py            Fixtures de l'interface (simulation provisoire)           R1
 └── frontend/                       Vite + Svelte 5 + TypeScript                              R3
     ├── scripts/test.mjs            Lanceur de Vitest (corrige c: en C: sous Windows)
     └── src/
@@ -111,14 +113,17 @@ Hackathon-ENSAI/
         │   ├── views.ts            Format des vues attendu du moteur
         │   ├── plot.ts             Construction des graphiques Plotly
         │   ├── types.gen.ts        Généré depuis contracts.py et schema.py, jamais à la main
-        │   ├── executor.ts, state.ts, share.ts  Client API, état et URL (à venir)
+        │   ├── executor.ts, state.ts  Client API, état et lien de partage
+        │   ├── lab.ts, labSource.ts, format.ts  Règles du Laboratoire, source des données, nombres
         │   └── calibration.ts      Crans de confiance, score de Brier (à venir)            R4
         ├── components/
         │   ├── PlotlyChart.svelte  Le composant graphique unique
-        │   ├── lab/, training/     Laboratoire, Entraînement (à venir)
+        │   ├── DynamicEquation.svelte, Tex.svelte  Équation dynamique (KaTeX)
+        │   ├── lab/                Laboratoire
+        │   ├── training/           Entraînement (à venir)
         │   └── home/, summary/, ImportView.svelte  Accueil, Bilan, Import (à venir)         R4
         ├── fixtures/               Faux résultats JSON, puis vrais (make_fixtures)          R1
-        └── dev/                    Fixture provisoire et banc d'essai des graphiques (à supprimer)
+        └── dev/                    Banc d'essai et specs de repli (à supprimer plus tard)
 ```
 
 ---

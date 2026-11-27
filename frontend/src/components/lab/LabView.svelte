@@ -10,6 +10,7 @@
 -->
 <script lang="ts">
   import { onDestroy } from 'svelte'
+  import { SvelteSet } from 'svelte/reactivity'
   import DynamicEquation from '../DynamicEquation.svelte'
   import PlotlyChart from '../PlotlyChart.svelte'
   import ChallengesPanel from './ChallengesPanel.svelte'
@@ -115,6 +116,13 @@
         loading = false
       },
     )
+  })
+
+  // --- Défis réussis : retenus ici, quel que soit l'onglet ouvert ---
+  const wonChallenges = new SvelteSet<string>()
+
+  $effect(() => {
+    for (const c of result?.challenges ?? []) if (c.passed) wonChallenges.add(c.id)
   })
 
   // --- Lien de partage : recopié dans l'URL (sans nouvelle entrée d'historique) ---
@@ -324,7 +332,7 @@
 
         <div class="view" role="tabpanel">
           {#if activeTab === CHALLENGES_TAB}
-            <ChallengesPanel challenges={spec.challenges} results={result?.challenges ?? []} />
+            <ChallengesPanel challenges={spec.challenges} results={result?.challenges ?? []} won={wonChallenges} />
           {:else if activeView}
             {#if activeView.type === 'sensitivity' && !sweepShown}
               <p class="muted">
