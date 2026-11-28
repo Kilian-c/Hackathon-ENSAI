@@ -343,10 +343,6 @@ export const CATALOG: Catalog = {
         {
           "name": "f",
           "default": null
-        },
-        {
-          "name": "x0",
-          "default": "0.5"
         }
       ],
       "kinds": [
@@ -360,15 +356,12 @@ export const CATALOG: Catalog = {
           "dy_dx",
           "dx_dy",
           "gap",
-          "abs_int",
-          "slice_int"
+          "abs_int"
         ],
         "curves": [
           "t",
           "dy",
-          "dx",
-          "slice_y",
-          "slice_f"
+          "dx"
         ]
       },
       "cost": "repeat * n",

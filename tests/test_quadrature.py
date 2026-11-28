@@ -220,17 +220,3 @@ def test_iterated_integrals_abs_integral_grows_when_truncation_shrinks() -> None
     assert values == sorted(values) and values[0] == pytest.approx(0.216, abs=0.01)
     assert values[2] == pytest.approx(1.996, abs=0.05)
     assert abs(float(run(0.1).reps["gap"][0])) < 0.02
-
-
-def test_iterated_integrals_slice_area_is_the_inner_integral() -> None:
-    """La tranche y ↦ f(x0, y) a pour aire F(x0) = 1 / (1 + x0²) ; elle change de signe en y = x0."""
-    from backend.methods.quadrature import iterated_integrals
-
-    idx = np.arange(4900)
-    x = np.where(idx < 2450, ((idx // 98) + 0.5) / 25, (((idx - 2450) // 25) + 0.5) / 98)[None, :]
-    y = np.where(idx < 2450, ((idx % 98) + 0.5) / 98, (((idx - 2450) % 25) + 0.5) / 25)[None, :]
-    f = (x**2 - y**2) / (x**2 + y**2) ** 2
-    res = iterated_integrals(x=x, y=y, f=f, x0=0.5, rng=np.random.default_rng(0))
-    assert res.reps["slice_int"][0] == pytest.approx(1 / (1 + 0.5**2), abs=0.02)
-    assert res.curves["slice_f"][0] > 0 > res.curves["slice_f"][-1]
-    assert len(res.curves["slice_y"]) == len(res.curves["slice_f"])
