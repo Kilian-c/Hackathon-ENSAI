@@ -13,7 +13,8 @@ theorem:
     $f$ est intégrable pour $\mu \otimes \nu$ (Fubini), alors
     $$\int_{X \times Y} f \, d(\mu \otimes \nu) = \int_X \left( \int_Y f \, d\nu \right) d\mu = \int_Y \left( \int_X f \, d\mu \right) d\nu.$$
     Sans l'une de ces hypothèses, les deux intégrales itérées peuvent exister et différer. Ici $X = Y = [0, 1]$ :
-    l'ordre d'intégration est choisi dans l'expérience, il n'a pas d'effet quand le théorème s'applique.
+    l'expérience calcule les deux intégrales itérées et trace les intégrales intérieures : leurs aires sont les
+    deux valeurs. Elles coïncident quand le théorème s'applique.
 
 equation:
   tex: '\int_X \left( \int_Y f \, d\nu \right) d\mu = {{membre}}'
@@ -21,9 +22,7 @@ equation:
     membre:
       ok: '\int_{X \times Y} f \, d(\mu \otimes \nu)'
 
-params:
-  ordre: { type: number, label: "Ordre d'intégration (1 : d'abord en y, −1 : d'abord en x, 0 : simultané)",
-           min: -1, max: 1, step: 1, default: 1, sweep_values: [-1, 0, 1] }
+params: {}
 
 hypotheses:
   integrabilite:
@@ -70,36 +69,31 @@ hypotheses:
     affects: []
 
 counterexamples:
-  - id: "ordre-dy-dx"
-    label: "Intégrer d'abord en y"
-    explain: "Pour $f(x, y) = (x^2 - y^2)/(x^2 + y^2)^2$, l'intégrale intérieure en $y$ vaut $1/(1 + x^2)$, puis l'intégrale en $x$ vaut $\\pi/4$ : l'intégrale itérée ne donne pas la valeur attendue."
-    state: { params: { ordre: 1 }, hypotheses: { integrabilite: "diverge" } }
-  - id: "ordre-dx-dy"
-    label: "Intégrer d'abord en x"
-    explain: "En échangeant les rôles de $x$ et de $y$, la fonction change de signe : l'intégrale itérée vaut $-\\pi/4$. Les deux ordres donnent des valeurs opposées."
-    state: { params: { ordre: -1 }, hypotheses: { integrabilite: "diverge" } }
+  - id: "deux-ordres"
+    label: "Intégrer dans un ordre, puis dans l'autre"
+    explain: "Pour $f(x, y) = (x^2 - y^2)/(x^2 + y^2)^2$, l'intégrale intérieure en $y$ vaut $1/(1 + x^2)$, positive, d'aire $\\pi/4$ ; l'intégrale intérieure en $x$ vaut $-1/(1 + y^2)$, négative, d'aire $-\\pi/4$. Les deux intégrales itérées existent et sont opposées."
+    state: { hypotheses: { integrabilite: "diverge" } }
 
 generator:
   type: random
-  n: 4900                         # 5 x 980, 70 x 70 ou 980 x 5 cellules selon l'ordre
+  n: 4900                         # deux grilles de 2450 points : 25 x 98 (intégrale en y précise), 98 x 25 (en x)
   repeat: 1                       # calcul déterministe : une seule « répétition »
   variables:
-    a: { expr: "0 * idx + 5 * (p.ordre > 0.5) + 980 * (p.ordre < -0.5) + 70 * (p.ordre == 0)" }
-    x: { expr: "((idx // (4900 / a)) + 0.5) / a" }
-    y: { expr: "((idx % (4900 / a)) + 0.5) / (4900 / a)" }
+    x: { expr: "where(idx < 2450, ((idx // 98) + 0.5) / 25, (((idx - 2450) // 25) + 0.5) / 98)" }
+    y: { expr: "where(idx < 2450, ((idx % 98) + 0.5) / 98, (((idx - 2450) % 25) + 0.5) / 25)" }
     f: { expr: "@h.integrabilite" }
 
 methods:
   - id: integrale
     role: method
-    call: iterated_integral
-    label: "Intégrale itérée sur [0, 1]²"
-    args: { x: x, y: y, f: f, truth: "where(h.integrabilite == 'integrable', 0.83167, 0.0)" }
+    call: iterated_integrals
+    label: "Intégrales itérées sur [0, 1]²"
+    args: { x: x, y: y, f: f }
 
 measures:
   ecart:
-    agg: "mean(reps.error)"
-    label: "Intégrale itérée moins intégrale double"
+    agg: "mean(reps.gap)"
+    label: "Écart entre les deux intégrales itérées"
     decimals: 3
     primary: true
     target: 0
@@ -107,36 +101,34 @@ measures:
     ok_within: 0.1
     broken_beyond: 0.3
     texts:
-      ok: "L'intégrale itérée est à {value} de l'intégrale double."
-      warning: "L'intégrale itérée s'écarte de l'intégrale double de {value}."
-      broken: "L'intégrale itérée s'écarte de l'intégrale double de {value} : l'ordre d'intégration compte."
-  integrale:
-    agg: "mean(reps.est)"
-    label: "Intégrale itérée"
+      ok: "Les deux intégrales itérées sont à {value} l'une de l'autre."
+      warning: "Les deux intégrales itérées diffèrent de {value}."
+      broken: "Les deux intégrales itérées diffèrent de {value} : l'ordre d'intégration compte."
+  dy_dx:
+    agg: "mean(reps.dy_dx)"
+    label: "Intégrale d'abord en y, puis en x"
+    decimals: 3
+  dx_dy:
+    agg: "mean(reps.dx_dy)"
+    label: "Intégrale d'abord en x, puis en y"
     decimals: 3
 
 challenges:
   - id: "deux-valeurs"
     goal: "Faites échouer l'échange des intégrales en rendant la fonction non intégrable."
-    when: "h.integrabilite == 'diverge' and p.ordre != 0 and s.ecart == 'broken'"
+    when: "h.integrabilite == 'diverge' and s.ecart == 'broken'"
     unlock: "Sans intégrabilité, l'ordre d'intégration décide du résultat : $\\pi/4$ dans un sens, $-\\pi/4$ dans l'autre."
-  - id: "grille-carree"
-    goal: "Retrouvez une intégrale itérée correcte avec la fonction non intégrable, en intégrant « simultanément »."
-    when: "h.integrabilite == 'diverge' and p.ordre == 0 and s.ecart == 'ok'"
-    unlock: "Une grille carrée intègre les deux variables en même temps : l'antisymétrie compense, et le problème reste caché. Ce n'est pas une preuve d'intégrabilité."
-
-auto_sweep: [p.ordre]
 
 views:
-  - id: grille
-    type: heatmap
-    title: "La fonction sur la grille d'intégration (x en ligne, y en colonne)"
-    bind: { matrix: curves.matrix }
-    ui: { decimals: 1 }
-  - id: ordre
-    type: sensitivity
-    title: "Selon l'ordre d'intégration"
-    sweep: { axes: [p.ordre] }
+  - id: integrales
+    type: curves
+    title: "Les deux intégrales intérieures : leurs aires sont les deux intégrales itérées"
+    ui:
+      x_title: "x (pour ∫ f dy) ou y (pour ∫ f dx)"
+      y_title: "intégrale intérieure"
+      fill_area: true
+      labels: { h1: "∫ f dx, en fonction de y" }
+    bind: { t: curves.t, series: [ { y: curves.dy, label: "∫ f dy, en fonction de x" } ], h1: curves.dx }
   - id: famille
     type: sensitivity
     title: "Selon la fonction intégrée"
@@ -151,41 +143,54 @@ questions:
       - id: "a"
         label: "Oui : on peut toujours échanger l'ordre de deux intégrales."
         correct: false
-        reveal_state: { params: { ordre: 1 }, hypotheses: { integrabilite: "diverge" } }
+        reveal_state: { hypotheses: { integrabilite: "diverge" } }
         verify: "s.ecart == 'broken'"
-        focus_view: "ordre"
-        explain: "Non : l'échange demande Tonelli (fonction positive) ou Fubini (fonction intégrable sur le produit). Ici la fonction change de signe et n'est pas intégrable : les deux intégrales itérées valent $\\pi/4$ et $-\\pi/4$."
+        focus_view: "integrales"
+        explain: "Non : l'échange demande Tonelli (fonction positive) ou Fubini (fonction intégrable sur le produit). Ici la fonction change de signe et n'est pas intégrable : les deux intégrales intérieures ont des aires opposées, $\\pi/4$ et $-\\pi/4$."
       - id: "b"
         label: "Non : il faut que la fonction soit positive ou intégrable sur le produit."
         correct: true
-        reveal_state: { params: { ordre: 1 }, hypotheses: { integrabilite: "diverge" } }
+        reveal_state: { hypotheses: { integrabilite: "diverge" } }
         verify: "s.ecart == 'broken'"
-        focus_view: "ordre"
+        focus_view: "integrales"
         explain: "Exact : sans positivité ni intégrabilité, l'ordre d'intégration peut changer le résultat."
 
-  - id: "ft-q2-grille-carree"
+  - id: "ft-q2-fonction-integrable"
     type: misconception
-    prompt: "On intègre la même fonction sur une grille carrée, qui traite $x$ et $y$ en même temps, et l'on trouve une valeur proche de $0$. Cela prouve-t-il que Fubini s'applique ?"
+    prompt: "On prend $f(x, y) = y(1 + \\sin 3x)$, intégrable sur $[0, 1]^2$. Intégrer d'abord en $x$ ou d'abord en $y$ change-t-il la valeur de l'intégrale ?"
     hypothesis: "integrabilite"
     choices:
       - id: "a"
-        label: "Oui : un calcul numérique sans écart valide l'échange."
+        label: "Oui : l'ordre d'intégration peut toujours changer le résultat."
         correct: false
-        reveal_state: { params: { ordre: 0 }, hypotheses: { integrabilite: "diverge" } }
+        reveal_state: { hypotheses: { integrabilite: "integrable" } }
         verify: "s.ecart == 'ok'"
-        focus_view: "ordre"
-        explain: "Non : la fonction est antisymétrique, donc les contributions se compensent sur une grille symétrique. L'intégrabilité n'est pas vérifiée pour autant, et les intégrales itérées valent toujours $\\pm\\pi/4$."
+        focus_view: "integrales"
+        explain: "Non : quand $f$ est intégrable sur le produit, Fubini garantit l'égalité des deux intégrales itérées. Les deux aires coïncident sur la courbe."
       - id: "b"
-        label: "Non : seule l'intégrabilité de $|f|$ garantit l'échange."
+        label: "Non : l'intégrabilité sur le produit garantit la même valeur dans les deux ordres."
         correct: true
-        reveal_state: { params: { ordre: 0 }, hypotheses: { integrabilite: "diverge" } }
+        reveal_state: { hypotheses: { integrabilite: "integrable" } }
         verify: "s.ecart == 'ok'"
-        focus_view: "ordre"
-        explain: "Exact : la valeur près de $0$ vient d'une compensation par symétrie, pas du théorème de Fubini."
+        focus_view: "integrales"
+        explain: "Exact : c'est le théorème de Fubini. Les deux aires sont égales."
 
-  - id: "ft-q3-prediction"
-    type: prediction
-    prompt: "Avec $f(x, y) = y(1 + \\sin 3x)$, intégrable sur le carré, que devient l'intégrale itérée quand on passe de l'ordre $1$ à l'ordre $-1$ ?"
-    state: { params: { ordre: 1 }, hypotheses: { integrabilite: "integrable" } }
-    sweep: { target: p.ordre, from: "1", to: "-1" }
-    measure: integrale
+  - id: "ft-q3-deux-valeurs"
+    type: misconception
+    prompt: "On trouve $\\pi/4$ en intégrant d'abord en $y$ et $-\\pi/4$ en intégrant d'abord en $x$. Qu'en conclure ?"
+    hypothesis: "integrabilite"
+    choices:
+      - id: "a"
+        label: "Une erreur de calcul s'est glissée quelque part."
+        correct: false
+        reveal_state: { hypotheses: { integrabilite: "diverge" } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "integrales"
+        explain: "Non : les deux calculs sont corrects. Chaque intégrale intérieure est bien définie, mais $f$ n'est pas intégrable sur le carré, donc l'échange est interdit."
+      - id: "b"
+        label: "$f$ n'est pas intégrable sur le carré : le théorème de Fubini ne s'applique pas."
+        correct: true
+        reveal_state: { hypotheses: { integrabilite: "diverge" } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "integrales"
+        explain: "Exact : deux intégrales itérées différentes sont le signe que l'hypothèse d'intégrabilité est violée."
