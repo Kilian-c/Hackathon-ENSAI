@@ -203,6 +203,7 @@ views:
     type: residuals
     title: "Résidus"
     ui: { x_title: "x", y_title: "Résidu" }
+    inspect: true                   # fiche F.6, même observation que sur le nuage
     bind: { x: example.x, resid: example.resid }
   - id: ic
     type: repetitions

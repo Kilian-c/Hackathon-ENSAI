@@ -19,7 +19,11 @@
   import Plotly from 'plotly.js-dist-min'
   import { onMount } from 'svelte'
   import MeasuresTable from './MeasuresTable.svelte'
-  import { buildFigure, DOMAIN_SUFFIX, INJECTED_SUFFIX, type ChartOptions, syncInitialRanges } from '../lib/plot'
+  import {
+    buildFigure, DOMAIN_SUFFIX, INJECTED_SUFFIX, INSPECT_HOVER_DISTANCE, OBSERVATION_META, pointTargets,
+    syncInitialRanges, type ChartOptions,
+  } from '../lib/plot'
+  import { nearestTarget } from '../lib/inspect'
   import { PLOTLY_FR } from '../lib/plotlyLocale'
   import type { DisplayRole } from '../lib/roles'
   import type { RunResult } from '../lib/types.gen'
@@ -42,6 +46,13 @@
     injected?: ReadonlyArray<{ x: number; y?: number | null }>
     onaddpoint?: (point: { x: number; y: number }) => void
     onremovepoint?: (index: number) => void
+    /**
+     * Inspecteur (vue `inspect: true`) : un clic sur une observation (`index` dans l'échantillon) ou sur
+     * une étoile (`injected` : rang du point posé) l'ouvre ; le retrait passe alors par la fiche.
+     */
+    oninspect?: (target: { index: number } | { injected: number }) => void
+    /** Observation ouverte dans l'inspecteur, entourée d'un anneau. */
+    selected?: number | null
     /** Domaine de validité : titres des deux axes, et clic sur une case (indices sur l'axe 1 et l'axe 2). */
     axisLabels?: readonly [string, string]
     onpickcell?: (i: number, j: number) => void
@@ -63,6 +74,8 @@
     injected = [],
     onaddpoint,
     onremovepoint,
+    oninspect,
+    selected = null,
     axisLabels,
     onpickcell,
     bare = false,
@@ -71,7 +84,10 @@
   let el: HTMLDivElement | undefined = $state()
 
   const figure = $derived.by(() => {
-    const opts: ChartOptions = { roles, methodsOn, showReference, sweep, measure, methodLabels, axisLabel, injected, axisLabels }
+    const opts: ChartOptions = {
+      roles, methodsOn, showReference, sweep, measure, methodLabels, axisLabel, injected, axisLabels,
+      inspectable: !!oninspect, selected,
+    }
     return buildFigure(view, opts)
   })
 
@@ -100,25 +116,29 @@
   // Plotly n'émet plotly_click que sur un point : le clic dans le vide est lu sur le conteneur et
   // converti en coordonnées de données par les axes de Plotly (p2d). plotly_click part avant le
   // clic du navigateur : un clic sur une étoile la retire et n'en pose pas une autre.
-  interface PlotAxis { _offset: number; _length: number; p2d: (px: number) => number }
+  interface PlotAxis { _offset: number; _length: number; p2d: (px: number) => number; d2p: (v: number) => number }
   type PlotDiv = HTMLDivElement & {
     _fullLayout?: { xaxis?: PlotAxis; yaxis?: PlotAxis }
-    on?: (event: string, cb: (e: { points?: { data?: { uid?: string }; customdata?: unknown; x?: unknown; y?: unknown }[] }) => void) => void
+    on?: (event: string, cb: (e: { points?: { data?: { uid?: string; meta?: unknown }; customdata?: unknown; x?: unknown; y?: unknown }[] }) => void) => void
   }
 
   let downAt: { x: number; y: number } | null = null
-  let removedJustNow = false
+  /** Le clic en cours a visé un point (retrait ou inspection) : il ne doit pas en ajouter un. */
+  let pointClicked = false
 
   function onPointerDown(e: PointerEvent): void {
     downAt = { x: e.clientX, y: e.clientY }
+    pointClicked = false
   }
 
   function onClick(e: MouseEvent): void {
-    if (!onaddpoint || !el) return
-    if (removedJustNow) {
-      removedJustNow = false
+    if (pointClicked) {
+      pointClicked = false
       return
     }
+    if ((!onaddpoint && !oninspect) || !el) return
+    // La barre d'outils de Plotly recouvre le haut du cadre : ses boutons ne visent aucun point.
+    if ((e.target as Element | null)?.closest?.('.modebar')) return
     // Un glissement (zoom, déplacement) n'est pas un clic.
     if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 4) return
     const div = el as PlotDiv
@@ -128,6 +148,16 @@
     const box = el.getBoundingClientRect()
     const px = e.clientX - box.left - xa._offset
     const py = e.clientY - box.top - ya._offset
+    // Inspecteur : un point à portée, même sur le bord du cadre où Plotly ne signale pas le clic.
+    if (oninspect && figure) {
+      const targets = pointTargets(figure.data as Record<string, unknown>[])
+      const hit = nearestTarget(targets, (x, y) => [xa.d2p(x), ya.d2p(y)], [px, py], INSPECT_HOVER_DISTANCE)
+      if (hit) {
+        oninspect(hit)
+        return
+      }
+    }
+    if (!onaddpoint) return
     // Hors de la zone de tracé (légende, axes, barre d'outils) : rien.
     if (px < 0 || px > xa._length || py < 0 || py > ya._length) return
     const x = xa.p2d(px)
@@ -148,9 +178,14 @@
         onpickcell?.(pt.x, pt.y)
         return
       }
-      if (pt && String(pt.data?.uid ?? '').endsWith(INJECTED_SUFFIX) && typeof pt.customdata === 'number') {
-        removedJustNow = true
-        onremovepoint?.(pt.customdata)
+      if (!pt || typeof pt.customdata !== 'number') return
+      if (uid.endsWith(INJECTED_SUFFIX)) {
+        pointClicked = true
+        if (oninspect) oninspect({ injected: pt.customdata })
+        else onremovepoint?.(pt.customdata)
+      } else if (oninspect && pt.data?.meta === OBSERVATION_META) {
+        pointClicked = true
+        oninspect({ index: pt.customdata })
       }
     })
   })

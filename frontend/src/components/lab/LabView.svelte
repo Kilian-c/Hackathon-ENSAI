@@ -17,6 +17,15 @@
   import { SvelteSet } from 'svelte/reactivity'
   import DynamicEquation from '../DynamicEquation.svelte'
   import PlotlyChart from '../PlotlyChart.svelte'
+  import Inspector from './Inspector.svelte'
+  import {
+    inspectableCount,
+    inspectionFor,
+    injectedIndex,
+    selectionFor,
+    selectionHolds,
+    type Selection,
+  } from '../../lib/inspect'
   import AutoSweepPlayer from './AutoSweepPlayer.svelte'
   import ChallengesPanel from './ChallengesPanel.svelte'
   import ControlsPanel from './ControlsPanel.svelte'
@@ -86,6 +95,10 @@
   let ui = $state<UiState>({ methodsOn: [], tab: null })
   let showReference = $state(true)
   let result = $state<RunResult | null>(null)
+  /** État qui a produit `result` (l'inspecteur s'y réfère : `engine` peut être en avance d'un calcul). */
+  let resultState = $state.raw<EngineState | null>(null)
+  /** Observation ouverte dans l'inspecteur (lib/inspect.ts). */
+  let selection = $state.raw<Selection | null>(null)
   let loading = $state(false)
   let error = $state<string | null>(null)
   let openHyp = $state<string | null>(null)
@@ -168,6 +181,7 @@
       (res) => {
         if (res === null) return // remplacé par un appel plus récent
         result = res
+        resultState = state
         error = null
         loading = false
       },
@@ -338,6 +352,34 @@
     pointsFull = false
   }
 
+  // --- Inspecteur d'observation (fiche F.6) : clic sur un point d'une vue `inspect: true` ---
+  const canInspectHere = $derived(activeView ? inspectableCount(activeView) > 0 : false)
+  const inspection = $derived(
+    canInspectHere && activeView && selection ? inspectionFor(activeView, selection.index) : null,
+  )
+
+  // La fiche se ferme si le point disparaît (nouveau tirage, n changé, point posé retiré).
+  $effect(() => {
+    if (selection && activeView && resultState && !selectionHolds(selection, activeView, resultState)) {
+      selection = null
+    }
+  })
+
+  function inspect(target: { index: number } | { injected: number }): void {
+    if (!activeView || !resultState) return
+    const index =
+      'index' in target
+        ? target.index
+        : injectedIndex(inspectableCount(activeView), resultState.extra_points.length, target.injected)
+    selection = selectionFor(activeView, resultState, index)
+  }
+
+  function removeInspected(): void {
+    if (selection?.injected == null) return
+    unplacePoint(selection.injected)
+    selection = null
+  }
+
   function clearAllPoints(): void {
     if (!spec || !engine) return
     engine = clearPoints(spec, engine)
@@ -348,6 +390,7 @@
   function sweepFrame(state: EngineState, res: RunResult, first: boolean): void {
     engine = state
     result = res
+    resultState = state
     activeCounterexample = null
     if (first && animating?.startsWith('p.')) frozenAxes = Object.fromEntries(res.views.map((v) => [v.id, v.axes]))
   }
@@ -552,8 +595,13 @@
             </div>
             <div class="chart-tools">
               <span>
+                {#if canInspectHere && !pointsHere}
+                  Cliquez sur un point pour l'inspecter.
+                {/if}
                 {#if pointsHere}
-                  Cliquez pour ajouter un point, sur une étoile pour la retirer :
+                  {canInspectHere
+                    ? 'Cliquez sur un point pour l’inspecter, dans le vide pour en ajouter un :'
+                    : 'Cliquez pour ajouter un point, sur une étoile pour la retirer :'}
                   <strong>{placed.length} / {MAX_EXTRA_POINTS}</strong>
                   {#if placed.length > 0}
                     <button type="button" class="link" onclick={clearAllPoints}>Tout retirer</button>
@@ -602,12 +650,22 @@
                       injected={pointsHere ? placed : []}
                       onaddpoint={pointsHere ? placePoint : undefined}
                       onremovepoint={pointsHere ? unplacePoint : undefined}
+                      oninspect={canInspectHere ? inspect : undefined}
+                      selected={inspection ? inspection.index : null}
                       axisLabels={sweepShown && sweepShown.axes.length >= 2
                         ? [axisTitle(spec, sweepShown.axes[0].target), axisTitle(spec, sweepShown.axes[1].target)]
                         : undefined}
                       onpickcell={activeView.type === 'validity_domain' ? pickCell : undefined}
                     />
                   {/key}
+                  {#if inspection && selection}
+                    <Inspector
+                      {inspection}
+                      posed={selection.injected !== null}
+                      onclose={() => (selection = null)}
+                      onremove={removeInspected}
+                    />
+                  {/if}
                 {/if}
               {:else}
                 <p class="muted" style:min-height="{chartHeight}px">Calcul en cours…</p>
@@ -959,6 +1017,9 @@
     color: var(--ct-text);
     border-bottom-color: var(--ct-role-method);
     font-weight: 600;
+  }
+  .view {
+    position: relative; /* la fiche de l'inspecteur se pose sur le graphique */
   }
   .view .banner {
     margin-bottom: var(--ct-space-2);

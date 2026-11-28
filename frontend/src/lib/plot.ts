@@ -13,6 +13,7 @@
  */
 
 import { formatMeasure } from './format'
+import { inspectableCount, isInspectSeries, isObservationSeries, type Candidate } from './inspect'
 import { cssVar, plotlyStyle, roleColor, verdictColor, verdictIcon, verdictLabel, type DisplayRole, type Verdict } from './roles'
 import {
   axisRange,
@@ -60,6 +61,10 @@ export interface ChartOptions {
   injected?: ReadonlyArray<{ x: number; y?: number | null }>
   /** Domaine de validité : titres des deux axes balayés (lab.axisTitle). */
   axisLabels?: readonly [string, string]
+  /** Inspecteur actif (vue `inspect: true` dans le Laboratoire) : un clic sur une observation l'ouvre. */
+  inspectable?: boolean
+  /** Observation ouverte dans l'inspecteur (position dans l'échantillon), entourée d'un anneau. */
+  selected?: number | null
 }
 
 /**
@@ -94,9 +99,37 @@ export const VIEW_UI_KEYS: Readonly<Record<string, string>> = {
 
 /** Identifiant de la trace des points posés : PlotlyChart le reconnaît au clic (pour un retrait). */
 export const INJECTED_SUFFIX = '.points-poses'
+/** Anneau autour de l'observation ouverte dans l'inspecteur ; marque des tracés d'observations. */
+export const SELECTION_SUFFIX = '.inspect.selection'
+export const OBSERVATION_META = 'observation'
+/** Distance (px) en deçà de laquelle un clic vise un point : au-delà, le clic ajoute un point. */
+export const INSPECT_HOVER_DISTANCE = 8
+/** Marge haute (px) d'une vue inspectable : barre d'outils (environ 30 px) et demi-triangle. */
+const INSPECT_MARGIN_TOP = 40
+
+/** Points cliquables d'une figure inspectable : observations (cadre et bord) puis étoiles, au-dessus. */
+export function pointTargets(data: readonly Record<string, unknown>[]): Candidate[] {
+  const out: Candidate[] = []
+  for (const t of data) {
+    const star = String(t.uid ?? '').endsWith(INJECTED_SUFFIX)
+    if (!star && t.meta !== OBSERVATION_META) continue
+    const { x, y, customdata } = t as { x?: unknown[]; y?: unknown[]; customdata?: unknown[] }
+    customdata?.forEach((id, k) => {
+      const px = x?.[k]
+      const py = y?.[k]
+      if (typeof id !== 'number' || typeof px !== 'number' || typeof py !== 'number') return
+      out.push({ x: px, y: py, target: star ? { injected: id } : { index: id } })
+    })
+  }
+  return out
+}
 
 /** Points posés au clic, en étoiles ; y absent (vue à une dimension) : posés sur l'axe horizontal. */
-export function injectedTrace(viewId: string, points: NonNullable<ChartOptions['injected']>): Trace {
+export function injectedTrace(
+  viewId: string,
+  points: NonNullable<ChartOptions['injected']>,
+  inspectable = false,
+): Trace {
   const style = pointsStyle('injected')
   return {
     type: 'scatter',
@@ -106,7 +139,7 @@ export function injectedTrace(viewId: string, points: NonNullable<ChartOptions['
     x: points.map((p) => p.x),
     y: points.map((p) => (typeof p.y === 'number' ? p.y : 0)),
     customdata: points.map((_, i) => i),
-    hovertemplate: 'Point posé (cliquez pour le retirer)<extra></extra>',
+    hovertemplate: `Point posé (cliquez pour ${inspectable ? 'l’inspecter' : 'le retirer'})<extra></extra>`,
     cliponaxis: false,
   }
 }
@@ -134,6 +167,7 @@ export function seriesRole(s: Series): DisplayRole | null {
 }
 
 export function isVisible(s: Series, opts: ChartOptions): boolean {
+  if (isInspectSeries(s)) return false // données de la fiche, jamais dessinées
   if (isGeneratorData(s) || s.role === 'truth' || s.role === 'injected') return true
   const methodShown = s.method === null || opts.methodsOn.has(s.method)
   return s.role === 'reference' ? opts.showReference && methodShown : methodShown
@@ -161,13 +195,14 @@ function markerSymbol(role: DisplayRole): string {
 }
 
 export interface Clamped {
-  inside: { x: number[]; y: number[] }
-  outside: { x: number[]; y: number[]; symbol: string[] }
+  /** `index` : position d'origine de chaque point (les deux listes et les trous la décalent). */
+  inside: { x: number[]; y: number[]; index: number[] }
+  outside: { x: number[]; y: number[]; symbol: string[]; index: number[] }
 }
 
 /** Sépare les points dans le cadre de ceux qui en sortent ; ces derniers sont ramenés au bord. */
 export function clampPoints(x: Num[], y: Num[], rx?: Range | null, ry?: Range | null): Clamped {
-  const out: Clamped = { inside: { x: [], y: [] }, outside: { x: [], y: [], symbol: [] } }
+  const out: Clamped = { inside: { x: [], y: [], index: [] }, outside: { x: [], y: [], symbol: [], index: [] } }
   const n = Math.min(x.length, y.length)
   for (let i = 0; i < n; i++) {
     const xi = x[i]
@@ -188,9 +223,11 @@ export function clampPoints(x: Num[], y: Num[], rx?: Range | null, ry?: Range | 
       out.outside.x.push(cx)
       out.outside.y.push(cy)
       out.outside.symbol.push(symbol)
+      out.outside.index.push(i)
     } else {
       out.inside.x.push(cx)
       out.inside.y.push(cy)
+      out.inside.index.push(i)
     }
   }
   return out
@@ -208,7 +245,7 @@ function pointsStyle(role: DisplayRole | null): Trace {
 }
 
 /** Points d'une série, avec les points hors cadre ramenés au bord (triangles). */
-function markerTraces(s: Series, view: ViewResult): { traces: Trace[]; clipped: number } {
+function markerTraces(s: Series, view: ViewResult, observations = false): { traces: Trace[]; clipped: number } {
   const { inside, outside } = clampPoints(nums(s, 'x'), nums(s, 'y'), axisRange(view, 'x'), axisRange(view, 'y'))
   const style = pointsStyle(seriesRole(s))
   const marker = style.marker as Record<string, unknown>
@@ -220,6 +257,7 @@ function markerTraces(s: Series, view: ViewResult): { traces: Trace[]; clipped: 
   const traces: Trace[] = [
     {
       type: 'scatter', uid: s.id, name: s.label, x: inside.x, y: inside.y, ...style, legendgroup: s.id,
+      ...(observations ? { customdata: inside.index, meta: OBSERVATION_META } : {}),
       ...(named ? { mode: 'markers+text', text: labels, textposition: 'bottom center' } : {}),
     },
   ]
@@ -236,9 +274,32 @@ function markerTraces(s: Series, view: ViewResult): { traces: Trace[]; clipped: 
       showlegend: false,
       legendgroup: s.id,
       hovertemplate: 'Point hors cadre<extra></extra>',
+      // Un point hors cadre s'inspecte aussi : ce sont souvent les plus intéressants.
+      ...(observations ? { customdata: outside.index, meta: OBSERVATION_META } : {}),
     })
   }
   return { traces, clipped: outside.x.length }
+}
+
+/** Anneau autour de l'observation ouverte dans l'inspecteur (ramené au bord si elle est hors cadre). */
+function selectionTrace(s: Series, index: number, view: ViewResult): Trace | null {
+  const px = nums(s, 'x')[index]
+  const py = nums(s, 'y')[index]
+  const { inside, outside } = clampPoints([px], [py], axisRange(view, 'x'), axisRange(view, 'y'))
+  const point = inside.x.length > 0 ? inside : outside
+  if (point.x.length === 0) return null
+  return {
+    type: 'scatter',
+    uid: `${view.id}${SELECTION_SUFFIX}`,
+    name: 'Point inspecté',
+    mode: 'markers',
+    x: point.x,
+    y: point.y,
+    marker: { symbol: 'circle-open', size: 18, color: cssVar('--ct-text'), line: { width: 2.5 } },
+    hoverinfo: 'skip', // l'anneau ne capte pas les clics : ils visent le point en dessous
+    showlegend: false,
+    cliponaxis: false,
+  }
 }
 
 /** Ligne d'une série ; triée par x pour une droite ajustée (qui arrive dans l'ordre des observations). */
@@ -466,17 +527,25 @@ function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
   )
   // Référence d'abord, pour qu'elle reste derrière.
   visible.sort((a, b) => Number(b.role === 'reference') - Number(a.role === 'reference'))
+  const inspectable = opts.inspectable === true && inspectableCount(view) > 0
+  let observed: Series | null = null
   for (const s of visible) {
     if (LINE_SLOTS.has(s.slot) || view.type === 'curves') {
       // Une courbe dans le temps arrive déjà dans l'ordre ; une droite ajustée doit être triée.
       data.push(lineTrace(s, view.type !== 'curves', { x: uiFlag(view, 'log_x'), y: uiFlag(view, 'log_y') }))
     } else {
-      const m = markerTraces(s, view)
+      const observations = inspectable && isObservationSeries(view, s)
+      if (observations) observed ??= s
+      const m = markerTraces(s, view, observations)
       data.push(...m.traces)
       clipped += m.clipped
     }
   }
-  if (opts.injected && opts.injected.length > 0) data.push(injectedTrace(view.id, opts.injected))
+  if (opts.injected && opts.injected.length > 0) data.push(injectedTrace(view.id, opts.injected, inspectable))
+  if (observed && opts.selected != null) {
+    const ring = selectionTrace(observed, opts.selected, view)
+    if (ring) data.push(ring)
+  }
   const shapes: Trace[] = []
   // La ligne 0 et le cercle centré en 0 n'existent pas en échelle logarithmique (et Plotly y attend
   // des coordonnées en log10) : ils ne sont dessinés qu'en échelle linéaire.
@@ -498,7 +567,14 @@ function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
         : `${hidden} valeurs négatives ou nulles non affichées (échelle logarithmique)`,
     )
   }
-  return { data, layout: baseLayout(view, { shapes }), caption }
+  const layout = baseLayout(view, { shapes })
+  if (inspectable) {
+    layout.hoverdistance = INSPECT_HOVER_DISTANCE
+    // La barre d'outils de Plotly (au survol, en haut à droite) recouvrait les points posés sur le bord
+    // supérieur : on lui laisse sa place au-dessus du cadre pour qu'ils restent cliquables.
+    layout.margin = { ...(layout.margin as Record<string, number>), t: INSPECT_MARGIN_TOP }
+  }
+  return { data, layout, caption }
 }
 
 /** Valeurs qu'une échelle logarithmique ne peut pas placer (≤ 0) : Plotly les tait, on les compte. */

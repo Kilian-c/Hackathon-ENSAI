@@ -403,6 +403,33 @@ def _arr(value: Any) -> np.ndarray | None:
     return None if value is None else np.asarray(value, dtype=float)
 
 
+# Inspecteur d'observation (cahier, fiche F.6) : grandeurs par observation, lues sur la méthode principale.
+INSPECT_KEYS = ("y", "y_hat", "resid", "leverage", "cooks_d")
+
+
+def _inspect_series(view_id: str, method: str, comp: Computed, x_path: str, rs: ResolvedState) -> list[Series]:
+    """Une série `inspect.<clé>` par grandeur fournie, dans l'ordre de l'échantillon (points posés à la
+    fin). L'interface ne les dessine pas : elle y lit la fiche de l'observation cliquée."""
+    x = _arr(_path(comp, method, x_path, rs))
+    out: list[Series] = []
+    for key in INSPECT_KEYS:
+        values = _arr(_path(comp, method, f"example.{key}", rs))
+        if x is None or values is None or x.ndim != 1 or values.shape != x.shape:
+            continue
+        out.append(
+            Series(
+                id=f"{view_id}.inspect.{key}",
+                slot=f"inspect.{key}",
+                method=method,
+                role="method",
+                label=f"Inspecteur : {key}",
+                x=_floats(x),
+                y=_floats(values),
+            )
+        )
+    return out
+
+
 def _build_view(
     spec: ExperimentSpec, view: Any, rs: ResolvedState, comp: Computed, base: Computed
 ) -> ViewResult:
@@ -659,6 +686,9 @@ def _build_view(
                     high=_floats(end),
                 )
             )
+
+    if view.inspect and x_path:
+        result.series.extend(_inspect_series(view.id, primary, comp, x_path, rs))
 
     result.shown, result.total = shown, total or shown
     if "matrix" in paths:  # pas d'axes : la couleur est mise à l'échelle par l'interface

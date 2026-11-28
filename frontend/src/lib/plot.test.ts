@@ -20,7 +20,8 @@ const uids = (view: ViewResult, o: ChartOptions) => buildFigure(view, o)!.data.m
 describe('clampPoints', () => {
   it('ramène au bord les points hors cadre, avec un triangle orienté', () => {
     const r = clampPoints([0, 5, -5, 0, null], [0, 0, 0, 9, 1], [-1, 1], [-1, 1])
-    expect(r.inside).toEqual({ x: [0], y: [0] })
+    expect(r.inside).toEqual({ x: [0], y: [0], index: [0] })
+    expect(r.outside.index).toEqual([1, 2, 3]) // positions d'origine ; la valeur manquante (4) est sautée
     expect(r.outside.x).toEqual([1, -1, 0])
     expect(r.outside.y).toEqual([0, 0, 1])
     expect(r.outside.symbol).toEqual(['triangle-right', 'triangle-left', 'triangle-up'])
