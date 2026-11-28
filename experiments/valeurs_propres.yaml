@@ -9,10 +9,10 @@ concepts: ["valeur propre", "méthode de la puissance", "algorithme QR", "écart
 theorem:
   name: "Convergence de la méthode de la puissance"
   statement: |
-    Soit A une matrice symétrique dont la valeur propre de plus grand module, lambda_1, est isolée :
-    |lambda_1| > |lambda_2| >= ... La méthode de la puissance, qui remplace v par A v / ||A v||, converge
-    alors vers un vecteur propre associé à lambda_1, à la vitesse |lambda_2 / lambda_1| par itération, et
-    le quotient de Rayleigh converge vers lambda_1 à la vitesse |lambda_2 / lambda_1|^2. Quand deux valeurs
+    Soit A une matrice symétrique dont la valeur propre de plus grand module, λ₁, est isolée :
+    |λ₁| > |λ₂| >= ... La méthode de la puissance, qui remplace v par A v / ||A v||, converge
+    alors vers un vecteur propre associé à λ₁, à la vitesse |λ₂ / λ₁| par itération, et
+    le quotient de Rayleigh converge vers λ₁ à la vitesse |λ₂ / λ₁|². Quand deux valeurs
     propres ont presque le même module, la convergence est très lente ; quand elles sont opposées, le
     vecteur oscille entre deux directions et seule l'estimation de la valeur propre progresse, lentement.
     L'algorithme QR a la même vitesse. Un calcul direct (LAPACK) n'a pas cette limite.
@@ -41,7 +41,7 @@ hypotheses:
     ok_label: "Isolée"
     broken_label: "Noyée dans le spectre"
     statement_tex: '|\lambda_1| > |\lambda_2|'
-    why: "Chaque itération multiplie les autres composantes du vecteur par |lambda_2 / lambda_1| : elles disparaissent seulement si ce rapport est nettement inférieur à 1."
+    why: "Chaque itération multiplie les autres composantes du vecteur par |λ₂ / λ₁| : elles disparaissent seulement si ce rapport est nettement inférieur à 1."
     when_broken: "Quand la valeur propre dominante est noyée dans le spectre (rapport proche de 1, ou deux valeurs propres opposées de même module), les autres composantes ne s'éteignent presque plus : l'estimation reste imprécise, même après beaucoup d'itérations."
     affects: [limite]
 
@@ -52,7 +52,7 @@ counterexamples:
     state: { hypotheses: { separation: 1.0 } }
   - id: "pic-faible"
     label: "Pic à peine séparé"
-    explain: "La valeur propre dominante est à peine plus grande que le bord du spectre : le rapport |lambda_2 / lambda_1| est proche de 1, et l'erreur reste grande."
+    explain: "La valeur propre dominante est à peine plus grande que le bord du spectre : le rapport |λ₂ / λ₁| est proche de 1, et l'erreur reste grande."
     state: { hypotheses: { separation: 0.8 } }
 
 generator:
@@ -93,9 +93,9 @@ measures:
     ok_within: 2.5
     broken_beyond: 5
     texts:
-      ok: "Valeur propre précise : erreur relative de 10^{value}."
-      warning: "Valeur propre peu précise : erreur relative de 10^{value}."
-      broken: "Valeur propre fausse : erreur relative de 10^{value}."
+      ok: "Valeur propre précise : erreur relative de 10 puissance {value}."
+      warning: "Valeur propre peu précise : erreur relative de 10 puissance {value}."
+      broken: "Valeur propre fausse : erreur relative de 10 puissance {value}."
 
 challenges:
   - id: "puissance-echoue"
@@ -105,7 +105,7 @@ challenges:
   - id: "plus-d-iterations"
     goal: "Avec une valeur propre dominante un peu noyée, retrouvez un verdict Fiable en augmentant le nombre d'itérations."
     when: "h.separation >= 0.4 and p.iters >= 40 and s.erreur == 'ok'"
-    unlock: "Tant que |lambda_2 / lambda_1| reste sous 1, plus d'itérations réduisent encore l'erreur : plus le rapport est proche de 1, plus il en faut."
+    unlock: "Tant que |λ₂ / λ₁| reste sous 1, plus d'itérations réduisent encore l'erreur : plus le rapport est proche de 1, plus il en faut."
 
 auto_sweep: [h.separation]
 
@@ -146,7 +146,7 @@ questions:
         reveal_state: { hypotheses: { separation: 1.0 } }
         verify: "s.erreur == 'broken' and s.erreur.directe == 'ok'"
         focus_view: "convergence"
-        explain: "La vitesse est |lambda_2 / lambda_1| par itération. Quand la valeur propre dominante n'est pas isolée, ce rapport est proche de 1 et l'erreur reste grande."
+        explain: "La vitesse est |λ₂ / λ₁| par itération. Quand la valeur propre dominante n'est pas isolée, ce rapport est proche de 1 et l'erreur reste grande."
       - id: "b"
         label: "Non : elle est lente quand la valeur propre dominante n'est pas isolée."
         correct: true

@@ -10,7 +10,7 @@ theorem:
   name: "Loi du demi-cercle de Wigner"
   statement: |
     Soit G une matrice d x d dont les entrées sont indépendantes, centrées, de variance 1, et
-    W = (G + G^T) / racine(2 d). Quand d grandit, les valeurs propres de W se répartissent selon la loi
+    W = (G + G') / √(2d), où G' est la transposée de G. Quand d grandit, les valeurs propres de W se répartissent selon la loi
     du demi-cercle sur [-2, 2], et la plus grande valeur propre tend vers 2. Ce résultat ne dépend pas de
     la loi des entrées : seule compte l'existence de la variance.
 
@@ -37,7 +37,7 @@ hypotheses:
       student_2:   { label: "Student à 2 ddl (variance infinie)", law: student_2 }
       cauchy:      { label: "Cauchy (sans espérance)", law: cauchy }
     statement_tex: '\mathrm{Var}(G_{ij}) = 1 < \infty'
-    why: "La normalisation par racine de 2 d suppose que les entrées ont une variance finie : c'est elle qui fixe la taille du spectre."
+    why: "La normalisation par √(2d) suppose que les entrées ont une variance finie : c'est elle qui fixe la taille du spectre."
     when_broken: "Sans variance finie, quelques entrées énormes dominent : la plus grande valeur propre dépasse largement 2 et ne se stabilise pas quand d grandit."
     affects: [edge]
 
@@ -62,7 +62,7 @@ methods:
   - id: spectre
     role: method
     call: spectrum
-    label: "Spectre de W = (G + G^T) / racine(2 d)"
+    label: "Spectre de W = (G + G') / √(2d)"
     args: { x: x, d: p.d }
 
 measures:

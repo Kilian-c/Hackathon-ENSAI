@@ -9,8 +9,8 @@ concepts: ["MCO", "intervalle de confiance", "résidus", "hétéroscédasticité
 theorem:
   name: "Intervalle de confiance d'un coefficient des MCO"
   statement: |
-    Dans le modèle Y = X beta + epsilon avec E(epsilon) = 0, V(epsilon) = sigma^2 I_n et X de rang
-    plein, l'estimateur des MCO est sans biais. Si de plus epsilon est gaussien, l'intervalle formé
+    Dans le modèle Y = X β + ε avec E(ε) = 0, V(ε) = σ² Iₙ et X de rang
+    plein, l'estimateur des MCO est sans biais. Si de plus ε est gaussien, l'intervalle formé
     de l'estimateur, plus ou moins le quantile de Student à n - p degrés de liberté fois son écart
     type estimé, contient le vrai coefficient avec probabilité 95 %. Sans normalité, cela reste vrai
     approximativement quand n est grand.
@@ -41,7 +41,7 @@ hypotheses:
     ok_label: "Respectée"
     broken_label: "Relâchée"
     statement_tex: '\mathrm{Var}(\varepsilon_i \mid X) = \sigma^2'
-    why: "La formule sigma^2 (X'X)^-1 suppose le même sigma^2 pour toutes les observations."
+    why: "La formule σ² (X'X)⁻¹ suppose le même σ² pour toutes les observations."
     when_broken: "La pente reste juste en moyenne, mais les intervalles sont trop étroits : ils contiennent la vraie pente moins de 95 fois sur 100."
     affects: [var]
   autocorr:                       # P1
@@ -133,7 +133,7 @@ methods:
     role: correction
     call: ols_ci
     label: "Écarts-types corrigés (White, HC3)"
-    explain: "Au lieu d'un seul sigma^2 pour tout le monde, chaque observation reçoit sa propre variance, estimée à partir de son résidu."
+    explain: "Au lieu d'un seul σ² pour tout le monde, chaque observation reçoit sa propre variance, estimée à partir de son résidu."
     repairs: [hetero, relation]
     args: { x: x, y: y, truth: p.beta1, alpha: 0.05, se_type: "HC3" }
 

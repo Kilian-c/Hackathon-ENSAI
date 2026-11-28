@@ -9,9 +9,9 @@ concepts: ["système linéaire", "méthode de Jacobi", "diagonale dominante", "p
 theorem:
   name: "Convergence de la méthode de Jacobi"
   statement: |
-    Pour résoudre A x = b, la méthode de Jacobi remplace x par D^{-1} (b - (A - D) x), où D est la
+    Pour résoudre A x = b, la méthode de Jacobi remplace x par D⁻¹ (b - (A - D) x), où D est la
     diagonale de A. Elle converge, quel que soit le point de départ, si et seulement si le rayon spectral de
-    D^{-1} (A - D) est strictement inférieur à 1, ce qui est le cas quand A est à diagonale strictement
+    D⁻¹ (A - D) est strictement inférieur à 1, ce qui est le cas quand A est à diagonale strictement
     dominante. Une méthode directe, comme le pivot de Gauss, donne la solution exacte à l'erreur d'arrondi
     près, sans condition sur la diagonale.
 
@@ -39,7 +39,7 @@ hypotheses:
     ok_label: "Dominante"
     broken_label: "Diagonale trop faible"
     statement_tex: '\rho\!\left(D^{-1}(A - D)\right) < 1'
-    why: "Les itérations de Jacobi multiplient l'erreur par la matrice D^{-1}(A - D) : elles se rapprochent de la solution seulement si cette matrice « contracte »."
+    why: "Les itérations de Jacobi multiplient l'erreur par la matrice D⁻¹(A - D) : elles se rapprochent de la solution seulement si cette matrice « contracte »."
     when_broken: "Quand la diagonale ne domine plus les autres coefficients, l'erreur est multipliée à chaque itération au lieu d'être réduite : la méthode diverge, aussi longtemps qu'on itère."
     affects: [limite]
 
@@ -91,9 +91,9 @@ measures:
     ok_within: 1.5
     broken_beyond: 4
     texts:
-      ok: "Solution précise : erreur relative de 10^{value}."
-      warning: "Solution peu précise : erreur relative de 10^{value}."
-      broken: "La solution est fausse : erreur relative de 10^{value} (16 = échec ou divergence)."
+      ok: "Solution précise : erreur relative de 10 puissance {value}."
+      warning: "Solution peu précise : erreur relative de 10 puissance {value}."
+      broken: "La solution est fausse : erreur relative de 10 puissance {value} (16 = échec ou divergence)."
   echecs:
     agg: "rate(reps.failed)"
     label: "Systèmes dont la résolution échoue (divergence)"
@@ -150,7 +150,7 @@ questions:
         reveal_state: { hypotheses: { dominance: 1.0 } }
         verify: "s.erreur == 'broken' and s.erreur.gauss_pivot == 'ok'"
         focus_view: "convergence"
-        explain: "Jacobi n'est pas une résolution exacte : c'est une suite qui converge seulement si le rayon spectral de D^{-1}(A - D) est inférieur à 1. Sinon, l'erreur grandit."
+        explain: "Jacobi n'est pas une résolution exacte : c'est une suite qui converge seulement si le rayon spectral de D⁻¹(A - D) est inférieur à 1. Sinon, l'erreur grandit."
       - id: "b"
         label: "Non : il faut que la diagonale domine, sinon l'erreur grandit."
         correct: true

@@ -33,9 +33,9 @@ hypotheses:
     category: "tests-multiples"
     ok_label: "Un test"
     broken_label: "Plusieurs tests"
-    statement_tex: 'm = \dfrac{I(I-1)}{2} = 1'
+    statement_tex: 'm = \dfrac{k(k-1)}{2} = 1'
     why: "Le niveau de 5 % garantit le risque d'un test, pas celui de tous les tests pris ensemble."
-    when_broken: "Avec I groupes, on fait I(I-1)/2 comparaisons : la chance qu'au moins une paraisse différente par hasard grandit vite."
+    when_broken: "Avec k groupes, on fait k (k − 1) / 2 comparaisons : la chance qu'au moins une paraisse différente par hasard grandit vite."
     affects: [bound]
 
 counterexamples:
