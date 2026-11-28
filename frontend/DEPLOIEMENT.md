@@ -27,3 +27,17 @@ La variable `CORS_ORIGINS` du moteur doit contenir l'adresse de l'interface, san
 
 Avant la démo, ouvrez la page d'accueil quelques minutes à l'avance : un hébergeur gratuit endormi
 met un moment à se réveiller.
+
+## Version locale de secours (un seul port, sans Node à l'exécution)
+
+Le moteur sait servir l'interface lui-même : si `frontend/dist` existe, `uvicorn` la sert sur `/` et garde `/api/...` pour l'API. Un seul processus, un seul port, aucun CORS.
+
+1. Construire l'interface **sans** `VITE_API_URL` (elle appelle alors `/api` sur le même serveur) : `cd frontend && npm ci && npm run build`. Si `frontend/.env` définit `VITE_API_URL`, videz-la le temps du build.
+2. Lancer : `uv run uvicorn backend.main:app --port 8000`, puis ouvrir `http://127.0.0.1:8000/`.
+3. Au démarrage, le moteur charge les expériences (environ 3 s) : le premier clic est ensuite instantané. Le journal dit « Interface servie sur / ».
+
+- `CRASHTEST_DIST=/autre/dossier` désigne un autre dossier construit (par exemple celui d'une copie de secours).
+- `dist` est ignoré par git : il ne se récupère pas avec un `git pull`. Une machine sans Node doit recevoir le dossier `frontend/dist` d'une autre façon (copie, ou branche de secours).
+- Un `dist` doit correspondre à la version du moteur : reconstruisez-le après toute modification de l'API ou de l'interface.
+- Si le port 8000 est pris, changez `--port` : rien d'autre à régler.
+

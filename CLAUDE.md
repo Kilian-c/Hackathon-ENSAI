@@ -166,6 +166,7 @@ uv run ruff check .
 cd frontend && npm install && npm run dev        # proxy /api vers le port 8000
 cd frontend && npm run check
 cd frontend && npm test                         # tests unitaires (Vitest) des règles de lib/
+cd frontend && npm run build                   # sans VITE_API_URL : puis uvicorn sert l'interface sur / (secours, un seul port : frontend/DEPLOIEMENT.md)
 
 # Contrats et fixtures
 bash scripts/gen_types.sh                        # contracts.py -> types.gen.ts, schema.py -> experiments/schema.json
