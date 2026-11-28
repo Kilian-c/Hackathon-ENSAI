@@ -1,4 +1,52 @@
-# Mise en ligne de l'interface (Cloudflare Pages)
+# Mise en ligne
+
+## Hugging Face Spaces : une seule image (choix retenu)
+
+Une seule image Docker (`Dockerfile` à la racine) : l'interface est construite dans l'image, puis le moteur la sert sur `/` et l'API sur `/api`. Une seule adresse à donner au jury, aucun CORS à régler, une seule plateforme. Offre gratuite « CPU basic » : 2 processeurs, 16 Go de mémoire, mise en veille après 48 h sans visite.
+
+### Une fois : créer le Space (à faire par un membre de l'équipe, avec son compte)
+
+1. Sur huggingface.co : **New Space**, nom (par exemple `crash-test`), **SDK : Docker**, modèle **Blank**, matériel **CPU basic (gratuit)**, visibilité au choix.
+2. **Settings > Variables and secrets > New variable** (des *variables*, pas des *secrets* : elles sont passées au build de l'image) :
+   - `VITE_SUPABASE_URL` : adresse du projet, `https://<projet>.supabase.co` ;
+   - `VITE_SUPABASE_ANON_KEY` : la clé **publique** (`anon` ou `sb_publishable_…`). Jamais la clé `service_role` ni `sb_secret_…` : tout ce qui commence par `VITE_` finit dans le JavaScript envoyé aux visiteurs.
+   Sans ces deux variables, le site marche et seul le bouton « Créer un lien de partage » est grisé.
+3. Se connecter en ligne de commande (jeton « write » créé dans Settings > Access Tokens du compte) :
+   `uvx --from huggingface_hub hf auth login`
+
+### À chaque mise en ligne
+
+On envoie les fichiers avec l'outil officiel plutôt qu'avec `git push` : Hugging Face refuse les fichiers binaires dans l'historique git (le PDF du cahier y est), et le Space n'a besoin que du code.
+
+```bash
+# depuis la racine du dépôt, sur la version à mettre en ligne (main à jour, tests verts)
+SPACE=<compte>/crash-test
+uvx --from huggingface_hub hf upload $SPACE . . --repo-type=space   --exclude ".git/*" "**/node_modules/*" "**/.venv/*" "**/__pycache__/*" "**/.env" "**/.env.*"             "frontend/dist/*" "docs/*" "tests/*" "scripts/*" "deploy/*" "experiments/archives/*"             "*.patch" "package-lock.json" "README.md"   --commit-message "Mise en ligne"
+uvx --from huggingface_hub hf upload $SPACE deploy/huggingface/README.md README.md --repo-type=space   --commit-message "En-tête du Space"
+```
+
+Le second envoi pose `README.md` : son en-tête (`sdk: docker`, `app_port: 7860`) indique à Hugging Face comment lancer le Space. Chaque envoi relance la construction de l'image (environ 3 à 5 minutes : onglet « Logs » du Space).
+
+### Vérifier après la mise en ligne
+
+1. `https://<compte>-crash-test.hf.space/api/health` répond `{"status":"ok"}`.
+2. L'accueil s'affiche, la galerie liste les expériences, une expérience s'ouvre, une série d'Entraînement se prépare.
+3. Import : un YAML se vérifie ; si Supabase est réglé, « Créer un lien de partage » donne un lien qui se rouvre.
+4. Avant la démo, ouvrir la page quelques minutes à l'avance (réveil si le Space dormait).
+
+### Tester l'image en local (Docker Desktop lancé)
+
+```bash
+docker build -t crash-test .
+docker run --rm -p 7860:7860 crash-test      # puis http://127.0.0.1:7860/
+```
+
+Avec Supabase : `docker build -t crash-test --build-arg VITE_SUPABASE_URL=... --build-arg VITE_SUPABASE_ANON_KEY=... .`
+
+---
+
+# Autre possibilité : interface sur Cloudflare Pages, moteur à part
+
 
 ## Réglages du projet
 

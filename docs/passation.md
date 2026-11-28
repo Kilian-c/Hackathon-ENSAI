@@ -1,5 +1,12 @@
 # Notes de passation (la plus récente en haut)
 
+## Mise en ligne : une seule image Docker sur Hugging Face Spaces (R4, branche `r1/dockerfile`, pas une relève)
+- Décision de l'équipe (R4) : **une seule image** (le moteur sert l'interface sur `/` et l'API sur `/api`, mécanisme déjà testé par `tests/test_frontend_serving.py`), **sur Hugging Face Spaces** (2 processeurs, 16 Go), **avec Supabase**. Cloudflare n'est plus nécessaire.
+- **R1, à relire** (vos fichiers) : `Dockerfile` (deux étapes : Node 24 construit l'interface, avec `experiments/` pour les YAML d'exemple de l'Import ; Python 3.12 + `uv sync --frozen --no-dev` ; `OMP_NUM_THREADS=1` ; utilisateur 1000 ; port 7860 ou `PORT` ; contrôle de santé sur `/api/health`), `.dockerignore` (pas de `.env`, ni `docs`, `tests`, `scripts`). Nouveau : `deploy/huggingface/README.md` (en-tête `sdk: docker`, `app_port: 7860`). Guide : `frontend/DEPLOIEMENT.md`, section « Hugging Face Spaces ».
+- Supabase : `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` sont des **variables** du Space (passées au build), jamais dans le dépôt ; clé publique seulement.
+- Envoi par `hf upload` (pas `git push`) : Hugging Face refuse les binaires dans l'historique git (le PDF du cahier).
+- Vérifié sans Docker (Docker Desktop non lancé) : interface construite sans `VITE_API_URL` puis un seul `uvicorn` : `/`, `?labo`, `/api/health`, `/api/run`, série d'Entraînement en 200 ; Laboratoire et Import vus au navigateur, partage actif, console sans erreur. **Pas encore vérifié** : la construction de l'image elle-même (`docker build`) et le Space en ligne.
+
 ## Thème clair / sombre / auto (R4, branche `r4/theme`, pas une relève)
 - Bouton « Auto · Clair · Sombre » en bas de chaque page (dans le flux, jamais par-dessus un contrôle). « Auto » suit le système, même s'il change pendant la visite. Choix gardé dans le navigateur (`crash-test.theme`).
 - Palette claire = celle de l'impression (cahier, annexe E), posée sur `:root[data-theme='light']` dans `tokens.css` : **modifier les deux blocs ensemble**. `cssVar` (`lib/roles.ts`) garde ses couleurs par thème : graphiques Plotly et équation se redessinent au changement (vérifié). `index.html` pose le thème avant l'affichage (pas de flash sombre).

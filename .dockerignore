@@ -1,0 +1,22 @@
+# Ce qui n'entre jamais dans l'image (voir Dockerfile).
+.git
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.hypothesis
+frontend/dist
+
+# Secrets et réglages locaux : les variables passent par les build args (Hugging Face : Settings > Variables).
+**/.env
+**/.env.*
+
+# Inutile à l'exécution.
+docs
+tests
+scripts
+deploy
+experiments/archives
+*.patch
+/package-lock.json
