@@ -14,7 +14,7 @@
  ],
  "theorem": {
   "name": "Intervalle de confiance d'un coefficient des MCO",
-  "statement": "Dans le modèle Y = X beta + epsilon avec E(epsilon) = 0, V(epsilon) = sigma^2 I_n et X de rang\nplein, l'estimateur des MCO est sans biais. Si de plus epsilon est gaussien, l'intervalle formé\nde l'estimateur, plus ou moins le quantile de Student à n - p degrés de liberté fois son écart\ntype estimé, contient le vrai coefficient avec probabilité 95 %. Sans normalité, cela reste vrai\napproximativement quand n est grand.\n"
+  "statement": "Dans le modèle Y = X β + ε avec E(ε) = 0, V(ε) = σ² Iₙ et X de rang\nplein, l'estimateur des MCO est sans biais. Si de plus ε est gaussien, l'intervalle formé\nde l'estimateur, plus ou moins le quantile de Student à n - p degrés de liberté fois son écart\ntype estimé, contient le vrai coefficient avec probabilité 95 %. Sans normalité, cela reste vrai\napproximativement quand n est grand.\n"
  },
  "equation": {
   "tex": "\\widehat{\\mathrm{Var}}(\\hat{\\beta}) = {{var}}",
@@ -57,7 +57,7 @@
    "label": "Homoscédasticité (variance constante)",
    "category": "homoscedasticite",
    "statement_tex": "\\mathrm{Var}(\\varepsilon_i \\mid X) = \\sigma^2",
-   "why": "La formule sigma^2 (X'X)^-1 suppose le même sigma^2 pour toutes les observations.",
+   "why": "La formule σ² (X'X)⁻¹ suppose le même σ² pour toutes les observations.",
    "when_broken": "La pente reste juste en moyenne, mais les intervalles sont trop étroits : ils contiennent la vraie pente moins de 95 fois sur 100.",
    "affects": [
     "var"
@@ -304,7 +304,7 @@
     "alpha": 0.05,
     "se_type": "HC3"
    },
-   "explain": "Au lieu d'un seul sigma^2 pour tout le monde, chaque observation reçoit sa propre variance, estimée à partir de son résidu.",
+   "explain": "Au lieu d'un seul σ² pour tout le monde, chaque observation reçoit sa propre variance, estimée à partir de son résidu.",
    "repairs": [
     "hetero",
     "relation"
@@ -400,62 +400,16 @@
    "type": "scatter",
    "title": "Nuage et droite ajustée",
    "bind": {
-    "x": {
-     "path": "example.x",
-     "layer": "nuage"
-    },
-    "y": {
-     "path": "example.y",
-     "layer": "nuage"
-    },
-    "fit": {
-     "path": "example.y_hat",
-     "layer": "sce"
-    },
-    "segments": [
-     {
-      "from": "example.y",
-      "to": "example.y_mean",
-      "layer": "sct",
-      "label": "y - moyenne"
-     },
-     {
-      "from": "example.y_hat",
-      "to": "example.y_mean",
-      "layer": "sce",
-      "label": "prédiction - moyenne"
-     },
-     {
-      "from": "example.y",
-      "to": "example.y_hat",
-      "layer": "scr",
-      "label": "résidu"
-     }
-    ]
+    "x": "example.x",
+    "y": "example.y",
+    "fit": "example.y_hat"
    },
    "sweep": null,
    "axes": {
     "x": "auto",
     "y": "auto"
    },
-   "layers": [
-    {
-     "id": "nuage",
-     "label": "Le nuage"
-    },
-    {
-     "id": "sct",
-     "label": "Écarts à la moyenne (SCT)"
-    },
-    {
-     "id": "sce",
-     "label": "Écarts expliqués (SCE)"
-    },
-    {
-     "id": "scr",
-     "label": "Résidus (SCR)"
-    }
-   ],
+   "layers": null,
    "inspect": true,
    "allow_point_injection": true,
    "mode": null,
@@ -538,6 +492,75 @@
    "allow_point_injection": false,
    "mode": null,
    "ui": null
+  },
+  {
+   "id": "decomposition",
+   "type": "scatter",
+   "title": "Décomposition SCT = SCE + SCR",
+   "bind": {
+    "x": {
+     "path": "example.x",
+     "layer": "nuage"
+    },
+    "y": {
+     "path": "example.y",
+     "layer": "nuage"
+    },
+    "fit": {
+     "path": "example.y_hat",
+     "layer": "sce"
+    },
+    "segments": [
+     {
+      "from": "example.y",
+      "to": "example.y_mean",
+      "layer": "sct",
+      "label": "y - moyenne"
+     },
+     {
+      "from": "example.y_hat",
+      "to": "example.y_mean",
+      "layer": "sce",
+      "label": "prédiction - moyenne"
+     },
+     {
+      "from": "example.y",
+      "to": "example.y_hat",
+      "layer": "scr",
+      "label": "résidu"
+     }
+    ]
+   },
+   "sweep": null,
+   "axes": {
+    "x": "auto",
+    "y": "auto"
+   },
+   "layers": [
+    {
+     "id": "nuage",
+     "label": "Le nuage"
+    },
+    {
+     "id": "sct",
+     "label": "Écarts à la moyenne (SCT)"
+    },
+    {
+     "id": "sce",
+     "label": "Écarts expliqués (SCE)"
+    },
+    {
+     "id": "scr",
+     "label": "Résidus (SCR)"
+    }
+   ],
+   "inspect": false,
+   "allow_point_injection": false,
+   "mode": null,
+   "ui": {
+    "x_title": "x",
+    "y_title": "y"
+   }
   }
  ],
  "opening_question": "reg-q1-biais",

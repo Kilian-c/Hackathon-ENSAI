@@ -43,9 +43,9 @@ hypotheses:
     label: "Dé équilibré"
     category: "loi"
     options:
-      equilibre: { label: "Équilibré (chaque face : 1 fois sur 6)",
+      equilibre: { label: "Équilibré, chaque face une fois sur 6",
                    expr: "1 + (z > -0.9674) + (z > -0.4307) + (z > 0) + (z > 0.4307) + (z > 0.9674)" }
-      pipe:      { label: "Pipé (le 6 sort 1 fois sur 3)", robust_expected: true,
+      pipe:      { label: "Pipé, le 6 sort une fois sur 3", robust_expected: true,
                    expr: "1 + (z > -1.1108) + (z > -0.6229) + (z > -0.2533) + (z > 0.0837) + (z > 0.4307)" }
     statement_tex: 'P(X_i = j) = 1/6'
     why: "On pense souvent que la cloche vient de dés parfaits. En réalité, il suffit que chaque dé ait une variance finie : c'est toujours le cas pour un dé."
