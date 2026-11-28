@@ -1,0 +1,186 @@
+# yaml-language-server: $schema=./schema.json
+schema_version: 1
+id: "convergence-monotone"
+title: "Convergence monotone : l'intégrale d'une suite croissante"
+discipline: "intégration"
+level: "2"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé
+concepts: ["intégrale de Lebesgue", "théorème de Beppo-Lévy", "suite croissante", "fonctions positives"]
+
+theorem:
+  name: "Théorème de Beppo-Lévy (convergence monotone)"
+  statement: |
+    Soit $(f_n)_{n \ge 0}$ une suite de fonctions mesurables positives et croissante : $0 \le f_n \le f_{n+1}$ pour
+    tout $n$. Alors $f = \lim_n f_n = \sup_n f_n$ est mesurable positive et
+    $$\lim_{n \to \infty} \int f_n \, d\mu = \int f \, d\mu.$$
+    Contrairement à la convergence dominée, la limite n'a pas besoin d'être intégrable a priori : les deux
+    membres peuvent valoir $+\infty$. Ici les intégrales sont calculées sur $[0, 1]$.
+
+equation:
+  tex: '\lim_{n \to \infty} \int f_n \, d\mu = {{limite}}'
+  terms:
+    limite:
+      ok: '\int \sup_{n} f_n \, d\mu'
+
+params:
+  k: { type: number, label: "Rang n de la suite", min: 1, max: 100, step: 1, default: 100,
+       sweep_values: [1, 3, 10, 30, 100] }
+
+hypotheses:
+  monotonie:
+    type: choice
+    healthy_value: "croissante"
+    label: "Suite croissante"
+    category: "monotonie"
+    options:
+      croissante: { label: "min(n, 1/√x) : croissante", expr: "minimum(p.k, 1 / sqrt(x))" }
+      bosse:      { label: "n·1[0, 1/n] : pas croissante",
+                    expr: "(x < floor(5000 / p.k + 0.5) * 0.0002) / (floor(5000 / p.k + 0.5) * 0.0002)" }
+    statement_tex: 'f_n \le f_{n+1}'
+    why: "La croissance garantit que l'intégrale de $f_n$ ne peut que monter vers celle de la limite : aucune masse ne peut s'échapper, puisque chaque $f_{n+1}$ reste au-dessus de $f_n$."
+    when_broken: "Sans croissance, la masse peut se concentrer puis disparaître à la limite : les bosses $n \\cdot 1_{[0, 1/n]}$ ont toutes une intégrale égale à $1$ et convergent vers $0$."
+    affects: [limite]
+  positivite:
+    type: boolean
+    healthy_value: true
+    label: "Fonctions positives"
+    category: "positivité"
+    ok_label: "Positives"
+    broken_label: "De signe quelconque"
+    robust_expected: true
+    disabled_when: "True"
+    disabled_text: "Toutes les fonctions de cette expérience sont positives ($f_n \\ge 0$) : le théorème de Beppo-Lévy est énoncé pour des fonctions positives, et rien ne se simule autrement ici."
+    statement_tex: 'f_n \ge 0'
+    why: "La positivité permet de définir l'intégrale de la limite dans $[0, +\\infty]$, même quand elle n'est pas intégrable."
+    when_broken: "Pour des fonctions de signe quelconque, il faut d'autres hypothèses (par exemple l'intégrabilité de $f_0$) : c'est le rôle du théorème de convergence dominée."
+    affects: []
+  mesurabilite:
+    type: boolean
+    healthy_value: true
+    label: "Fonctions mesurables"
+    category: "mesurabilité"
+    ok_label: "Mesurables"
+    broken_label: "Non mesurables"
+    robust_expected: true
+    disabled_when: "True"
+    disabled_text: "Toujours vraie ici : une fonction non mesurable ne se construit pas numériquement ($f_n^{-1}(B)$ doit être mesurable pour tout borélien $B$)."
+    statement_tex: 'f_n^{-1}(B) \in \mathcal{A}'
+    why: "Sans mesurabilité, l'intégrale n'est pas définie : on ne peut même pas parler de $\\int f_n \\, d\\mu$."
+    when_broken: "L'intégrale n'a plus de sens : l'énoncé du théorème tombe, avant même le calcul d'une limite."
+    affects: []
+
+counterexamples:
+  - id: "bosse-concentree"
+    label: "La bosse qui se concentre"
+    explain: "Les bosses positives $n \\cdot 1_{[0, 1/n]}$ convergent vers $0$, mais leur intégrale vaut toujours $1$ : la suite n'est pas croissante, et la conclusion du théorème est fausse."
+    state: { params: { k: 100 }, hypotheses: { monotonie: "bosse" } }
+
+generator:
+  type: random
+  n: 5000
+  repeat: 1                      # calcul déterministe : une seule « répétition »
+  variables:
+    x: { expr: "(idx + 0.5) / 5000" }     # milieux de cellules sur [0, 1]
+    f: { expr: "@h.monotonie" }
+
+methods:
+  - id: integrale
+    role: method
+    call: quadrature
+    label: "Intégrale de fₙ sur [0, 1]"
+    args: { x: x, f: f, a: 0, b: 1, kind: "rectangles", truth: "where(h.monotonie == 'croissante', 2.0, 0.0)" }
+
+measures:
+  ecart:
+    agg: "mean(reps.error)"
+    label: "Intégrale de fₙ moins intégrale de la limite"
+    decimals: 3
+    primary: true
+    target: 0
+    direction: both
+    ok_within: 0.05
+    broken_beyond: 0.3
+    texts:
+      ok: "L'intégrale de fₙ est à {value} de celle de la limite."
+      warning: "L'intégrale de fₙ est encore à {value} de celle de la limite : le rang est trop petit."
+      broken: "L'intégrale de fₙ reste à {value} de celle de la limite : l'échange échoue."
+  integrale:
+    agg: "mean(reps.est)"
+    label: "Intégrale de fₙ"
+    decimals: 3
+
+challenges:
+  - id: "convergence-lente"
+    goal: "Avec la suite croissante, rendez la méthode principale Rompue en choisissant un rang trop petit."
+    when: "h.monotonie == 'croissante' and p.k <= 3 and s.ecart == 'broken'"
+    unlock: "Le théorème ne dit rien de la vitesse : l'intégrale monte vers la limite, mais il faut un rang assez grand pour s'en approcher."
+  - id: "masse-constante"
+    goal: "Obtenez une suite dont l'intégrale ne bouge pas quand le rang augmente, tout en convergeant vers $0$."
+    when: "h.monotonie == 'bosse' and p.k >= 30 and s.ecart == 'broken'"
+    unlock: "L'intégrale reste égale à $1$ : sans croissance, la convergence simple ne dit rien sur les intégrales."
+
+auto_sweep: [p.k]
+
+views:
+  - id: courbe
+    type: curves
+    title: "La fonction fₙ, et l'aire qu'elle délimite"
+    ui: { x_title: "x", y_title: "fₙ(x)", fill_area: true, y_range: [0, 20] }
+    bind: { t: example.x, series: [ { y: example.f, label: "fₙ" } ] }
+  - id: suite
+    type: sensitivity
+    title: "Selon le rang n"
+    sweep: { axes: [p.k] }
+  - id: famille
+    type: sensitivity
+    title: "Selon la suite de fonctions"
+    sweep: { axes: [h.monotonie] }
+
+questions:
+  - id: "bl-q1-positives"
+    type: misconception
+    prompt: "Des fonctions positives $f_n$ convergent simplement vers $0$. L'intégrale de $f_n$ tend-elle forcément vers $0$ ?"
+    hypothesis: "monotonie"
+    choices:
+      - id: "a"
+        label: "Oui : une limite nulle impose des intégrales qui tendent vers $0$."
+        correct: false
+        reveal_state: { params: { k: 100 }, hypotheses: { monotonie: "bosse" } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "courbe"
+        explain: "Non : la positivité ne suffit pas. Les bosses $n \\cdot 1_{[0, 1/n]}$ sont positives, tendent vers $0$ en tout point $x > 0$, et ont une intégrale égale à $1$."
+      - id: "b"
+        label: "Non : il faut en plus que la suite soit croissante, ou dominée."
+        correct: true
+        reveal_state: { params: { k: 100 }, hypotheses: { monotonie: "bosse" } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "courbe"
+        explain: "Exact : Beppo-Lévy demande la croissance, la convergence dominée une fonction dominante intégrable. Sans l'une des deux, la masse peut disparaître à la limite."
+
+  - id: "bl-q2-limite-infinie"
+    type: misconception
+    prompt: "La suite croissante $f_n(x) = \\min(n, 1/\\sqrt x)$ tend vers $1/\\sqrt x$, qui n'est pas bornée en $0$. Peut-on quand même passer à la limite dans l'intégrale ?"
+    hypothesis: "monotonie"
+    choices:
+      - id: "a"
+        label: "Non : la limite n'est pas bornée, donc l'échange est impossible."
+        correct: false
+        reveal_state: { params: { k: 100 }, hypotheses: { monotonie: "croissante" } }
+        verify: "s.ecart == 'ok'"
+        focus_view: "courbe"
+        explain: "Si : le théorème de Beppo-Lévy ne demande ni limite bornée, ni limite intégrable a priori. Ici les intégrales $2 - 1/n$ montent vers $2$, l'intégrale de la limite."
+      - id: "b"
+        label: "Oui : la croissance et la positivité suffisent."
+        correct: true
+        reveal_state: { params: { k: 100 }, hypotheses: { monotonie: "croissante" } }
+        verify: "s.ecart == 'ok'"
+        focus_view: "courbe"
+        explain: "Exact : l'intégrale de la limite vaut ici $2$, et les intégrales des $f_n$ montent vers $2$."
+
+  - id: "bl-q3-prediction"
+    type: prediction
+    prompt: "Avec la suite croissante $\\min(n, 1/\\sqrt x)$, si le rang passe de {k} à quatre fois plus, que devient l'intégrale de $f_n$ ?"
+    procedural_params:
+      k: { min: 5, max: 20, step: 5 }
+    state: { hypotheses: { monotonie: "croissante" } }
+    sweep: { target: p.k, from: "{k}", to: "{k} * 4" }
+    measure: integrale

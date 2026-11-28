@@ -12,14 +12,13 @@
     gauge: Gauge
     /** Couleur du repère (rôle de la méthode). */
     color: string
-    showReference: boolean
     /** Écrire le nom des zones sous la jauge (première jauge seulement). */
     labels?: boolean
     /** Description pour les lecteurs d'écran. */
     description: string
   }
 
-  let { gauge, color, showReference, labels = false, description }: Props = $props()
+  let { gauge, color, labels = false, description }: Props = $props()
 
   const pct = (v: number): string => `${(v * 100).toFixed(2)}%`
 </script>
@@ -32,7 +31,7 @@
       {/each}
     </div>
     <span class="target" style:left={pct(gauge.target)}></span>
-    {#if showReference && gauge.baseline !== null}
+    {#if gauge.baseline !== null}
       <span class="ref" style:left={pct(gauge.baseline)}></span>
     {/if}
     {#if gauge.value !== null}

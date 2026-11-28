@@ -4,6 +4,7 @@
   valeur de la Référence. Une mesure sans cible est informative : pas de verdict.
 -->
 <script lang="ts">
+  import MathText from '../MathText.svelte'
   import VerdictBadge from './VerdictBadge.svelte'
   import { formatMargin, formatMeasure } from '../../lib/format'
   import { displayRoles, roleColorVar } from '../../lib/roles'
@@ -12,19 +13,27 @@
   interface Props {
     result: RunResult
     methodsOn: readonly string[]
-    showReference: boolean
+    /**
+     * Partie affichée : toutes les mesures en colonne (défaut), la mesure principale seule, ou les
+     * autres mesures en grille (cartes côte à côte), avec les avertissements et le pied.
+     */
+    part?: 'all' | 'primary' | 'others'
   }
 
-  let { result, methodsOn, showReference }: Props = $props()
+  let { result, methodsOn, part = 'all' }: Props = $props()
 
   const roles = $derived(displayRoles(result.methods))
   const shown = $derived(result.methods.filter((m) => methodsOn.includes(m.id)))
   const principal = $derived(result.methods.find((x) => x.role === 'method') ?? null)
   // La mesure primaire d'abord.
-  const measures = $derived(Object.entries(result.measures).sort(([, a], [, b]) => Number(b.primary) - Number(a.primary)))
+  const measures = $derived(
+    Object.entries(result.measures)
+      .filter(([, m]) => part === 'all' || (part === 'primary') === m.primary)
+      .sort(([, a], [, b]) => Number(b.primary) - Number(a.primary)),
+  )
 </script>
 
-<section class="measures" aria-label="Mesures">
+<section class="measures" class:tiles={part === 'others'} aria-label="Mesures">
   {#each measures as [id, m] (id)}
     <article class:primary={m.primary}>
       <h3>{m.label}{#if m.primary}<span class="tag">mesure principale</span>{/if}</h3>
@@ -43,43 +52,50 @@
               <!-- Banc de méthodes : le prix d'une méthode robuste se lit sur une mesure sans cible. -->
               <p class="cost">contre {formatMeasure(m.values[principal.id], m)} pour {principal.label}</p>
             {/if}
-            {#if m.texts[method.id]}<p class="text">{m.texts[method.id]}</p>{/if}
+            {#if m.texts[method.id]}<p class="text"><MathText text={m.texts[method.id]} /></p>{/if}
           </li>
         {/each}
       </ul>
-      {#if showReference}
-        {#if principal && m.baseline[principal.id] != null}
-          <p class="ref">Référence (état sain) : {formatMeasure(m.baseline[principal.id], m)}</p>
-        {/if}
+      {#if principal && m.baseline[principal.id] != null}
+        <p class="ref">Référence (état sain) : {formatMeasure(m.baseline[principal.id], m)}</p>
       {/if}
     </article>
   {/each}
 
-  {#each Object.entries(result.invalid_rate) as [method, rate] (method)}
-    {#if rate > 0.05}
-      <p class="warn">
-        {result.methods.find((x) => x.id === method)?.label ?? method} : {formatMeasure(rate, { unit: '%', scale: 100, decimals: 1 })}
-        de répétitions inexploitables, exclues des mesures.
-      </p>
-    {/if}
-  {/each}
-  <!-- Clé par position : le moteur peut envoyer plusieurs avertissements de même code. -->
-  {#each result.warnings as w, i (i)}
-    <p class="warn">{w.text}</p>
-  {/each}
-  <p class="foot">
-    {#if result.repeat_used > 1}
-      Calculé sur {result.repeat_used} répétitions · marge : ± 2 erreurs Monte Carlo.
-    {:else}
-      Calcul sur une seule trajectoire : pas de marge Monte Carlo.
-    {/if}
-  </p>
+  {#if part !== 'primary'}
+    {#each Object.entries(result.invalid_rate) as [method, rate] (method)}
+      {#if rate > 0.05}
+        <p class="warn">
+          {result.methods.find((x) => x.id === method)?.label ?? method} : {formatMeasure(rate, { unit: '%', scale: 100, decimals: 1 })}
+          de répétitions inexploitables, exclues des mesures.
+        </p>
+      {/if}
+    {/each}
+    <!-- Clé par position : le moteur peut envoyer plusieurs avertissements de même code. -->
+    {#each result.warnings as w, i (i)}
+      <p class="warn">{w.text}</p>
+    {/each}
+    <p class="foot">
+      {#if result.repeat_used > 1}
+        Calculé sur {result.repeat_used} répétitions · marge : ± 2 erreurs Monte Carlo.
+      {:else}
+        Calcul sur une seule trajectoire : pas de marge Monte Carlo.
+      {/if}
+    </p>
+  {/if}
 </section>
 
 <style>
   .measures {
     display: grid;
     gap: var(--ct-space-3);
+  }
+  /* Cartes côte à côte, à hauteur égale par rangée ; avertissements et pied sur toute la largeur. */
+  .measures.tiles {
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  }
+  .measures.tiles > p {
+    grid-column: 1 / -1;
   }
   article {
     padding: var(--ct-space-3);

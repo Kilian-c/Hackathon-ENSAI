@@ -7,7 +7,9 @@
 -->
 <script lang="ts">
   import DynamicEquation from '../DynamicEquation.svelte'
+  import MathText from '../MathText.svelte'
   import Tex from '../Tex.svelte'
+  import { disabledNotice } from '../../lib/disabled'
   import { isHealthy } from '../../lib/lab'
   import type { Counterexample, EngineState, ExperimentSpec, RunResult } from '../../lib/types.gen'
 
@@ -35,7 +37,7 @@
   <section class="theorem">
     <p class="kicker">Le théorème</p>
     <h2>{spec.theorem.name}</h2>
-    <p class="statement">{spec.theorem.statement}</p>
+    <p class="statement"><MathText text={spec.theorem.statement} /></p>
     {#if result}
       <div class="equation">
         <DynamicEquation equation={spec.equation} {result} hypotheses={spec.hypotheses} {methodsOn} />
@@ -50,6 +52,7 @@
     <ol class="hyps">
       {#each hypotheses as [id, h], k (id)}
         {@const healthy = isHealthy(h, engine.hypotheses[id])}
+        {@const locked = disabledNotice(h, { hypotheses: engine.hypotheses, params: engine.params })}
         <li class="hyp" class:focus={focus === id} class:broken={!healthy}>
           <div class="hyp-head">
             <span class="num" aria-hidden="true">{k + 1}</span>
@@ -58,18 +61,25 @@
               <div class="formula"><Tex tex={h.statement_tex} /></div>
             </div>
             {#if !healthy}<span class="state">✕ Cassée</span>{/if}
-            <button type="button" class="try" onclick={() => ontry(id)}>
-              {healthy ? 'Casser cette hypothèse' : "Voir l'effet"} →
-            </button>
+            {#if locked === null}
+              <button type="button" class="try" onclick={() => ontry(id)}>
+                {healthy ? 'Casser cette hypothèse' : "Voir l'effet"} →
+              </button>
+            {:else}
+              <span class="locked" title={locked.replace(/\$/g, '')}>🔒 Non cassable ici</span>
+            {/if}
           </div>
+          {#if locked !== null}
+            <p class="locked-note"><MathText text={locked} /></p>
+          {/if}
           <div class="sides">
             <div class="side ok">
               <p class="side-title"><span aria-hidden="true">✓</span> À quoi elle sert</p>
-              <p>{h.why}</p>
+              <p><MathText text={h.why} /></p>
             </div>
             <div class="side ko">
               <p class="side-title"><span aria-hidden="true">✕</span> Ce que l'on voit quand elle tombe</p>
-              <p>{h.when_broken}</p>
+              <p><MathText text={h.when_broken} /></p>
             </div>
           </div>
         </li>
@@ -86,7 +96,7 @@
           <li>
             <div>
               <strong>{c.label}</strong>
-              <p>{c.explain}</p>
+              <p><MathText text={c.explain} /></p>
             </div>
             <button type="button" class="try" onclick={() => onpreset(c)}>Essayer →</button>
           </li>
@@ -310,5 +320,18 @@
   }
   .primary:hover {
     background: color-mix(in srgb, var(--ct-role-method) 85%, var(--ct-text));
+  }
+  .locked {
+    flex: none;
+    padding: 0.2rem 0.7rem;
+    border: 1px dashed var(--ct-border);
+    border-radius: 999px;
+    color: var(--ct-muted);
+    font-size: 0.8rem;
+  }
+  .locked-note {
+    margin: var(--ct-space-2) 0 0;
+    font-size: 0.85rem;
+    color: var(--ct-muted);
   }
 </style>

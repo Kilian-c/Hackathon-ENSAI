@@ -146,10 +146,10 @@
       </div>
     {:else}
       <ul class="grid">
-        {#each shown as e (e.id)}
+        {#each shown as e, i (e.id)}
           {@const t = splitTitle(e.title)}
           {@const lvl = Number(e.level) || 1}
-          <li class="card">
+          <li class="card" style:--i={Math.min(i, 8)}>
             <a class="card-main" href={labHref(e.id)}>
               <span class="card-meta">
                 <span class="tag">{disciplineLabel(e.discipline)}</span>
@@ -343,6 +343,30 @@
       border-color 0.15s,
       transform 0.15s;
   }
+  /* Ouverture comme l'accueil : en-tête et filtres en fondu, puis les cartes montent l'une après l'autre.
+     `backwards` : une fois l'animation finie, le transform du survol reprend la main. */
+  @keyframes ct-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ct-rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(24px) scale(0.98);
+    }
+  }
+  .back,
+  .head {
+    animation: ct-fade-in 0.6s ease-out backwards;
+  }
+  .toolbar {
+    animation: ct-fade-in 0.6s ease-out 0.15s backwards;
+  }
+  .card:not(.skeleton) {
+    animation: ct-rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(0.2s + var(--i, 0) * 0.06s);
+  }
   .card:hover {
     border-color: var(--ct-role-method);
     transform: translateY(-2px);
@@ -453,6 +477,12 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .back,
+    .head,
+    .toolbar,
+    .card:not(.skeleton) {
+      animation: none;
+    }
     .card {
       transition: none;
     }

@@ -253,3 +253,65 @@ def test_a_real_series_is_balanced_and_in_a_shuffled_order() -> None:
     experiments = [q.experiment_id for q in session.questions]
     assert len(session.questions) == 10 and len(set(experiments)) == 10
     assert experiments != sorted(experiments)  # remélangée : pas rangée par expérience
+
+
+# --- Choix de théorèmes précis : filtre `exp:<id>[,<id>...]` ------------------------------------------------
+
+
+def test_chosen_theorems_are_the_only_ones_in_the_series_and_each_is_represented() -> None:
+    chosen = ["regression-lineaire", "theoreme-central-limite", "multicolinearite"]
+    s = _session("exp:" + ",".join(chosen), 5)
+    assert _experiments_of(s) == set(chosen)
+    assert len(s.questions) == 10
+
+
+def test_a_single_chosen_theorem_gives_its_own_questions() -> None:
+    s = _session("exp:multicolinearite", 2)
+    assert s.questions and _experiments_of(s) == {"multicolinearite"}
+
+
+def test_order_and_duplicates_of_chosen_theorems_do_not_change_the_series() -> None:
+    reference = _session("exp:multicolinearite,regression-lineaire", 9)
+    again = _session("exp:regression-lineaire,multicolinearite,regression-lineaire", 9)
+    assert [q.qid for q in again.questions] == [q.qid for q in reference.questions]
+    assert _choices(again) == _choices(reference)
+
+
+def test_fewer_chosen_theorems_than_questions_still_represents_each_one_when_possible() -> None:
+    ids = sorted(registry.official())[:4]
+    s = _session("exp:" + ",".join(ids), 3, count=4)
+    assert _experiments_of(s) == set(ids) and len(s.questions) == 4
+
+
+def test_unknown_or_empty_chosen_theorem_is_a_french_error() -> None:
+    import pytest
+
+    from backend.engine.runner import RunError
+
+    with pytest.raises(RunError, match="Expérience inconnue.*inexistant"):
+        _session("exp:multicolinearite,inexistant", 1)
+    with pytest.raises(RunError, match="au moins un théorème"):
+        _session("exp:", 1)
+
+
+def test_exp_filter_contract_and_route() -> None:
+    import pytest
+    from pydantic import ValidationError
+
+    from backend.contracts import TrainingRequest
+
+    TrainingRequest.model_validate({"filter": "exp:a,b-c,d_e"})
+    ids15 = ",".join(f"e{i}" for i in range(15))
+    TrainingRequest.model_validate({"filter": f"exp:{ids15}"})
+    for bad in ("exp:", "exp:a,", "exp:A", f"exp:{ids15},e15", "exp:a b"):
+        with pytest.raises(ValidationError):
+            TrainingRequest.model_validate({"filter": bad})
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+
+    client = TestClient(app)
+    ok = client.post("/api/training/session", json={"filter": "exp:multicolinearite", "seed": 4})
+    assert ok.status_code == 200 and ok.json()["filter"] == "exp:multicolinearite"
+    bad = client.post("/api/training/session", json={"filter": "exp:inexistant", "seed": 4})
+    assert bad.status_code == 422

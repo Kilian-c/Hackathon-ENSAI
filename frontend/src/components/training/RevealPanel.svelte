@@ -5,6 +5,7 @@
   ouverte). À recréer à chaque question ({#key qid}).
 -->
 <script lang="ts">
+  import MathText from '../MathText.svelte'
   import PlotlyChart from '../PlotlyChart.svelte'
   import MeasurePanel from '../lab/MeasurePanel.svelte'
   import { methodWithRole, toggleMethod } from '../../lib/lab'
@@ -83,16 +84,16 @@
 <section class="reveal" aria-label="Correction de la question">
   <div class="feedback" class:right={answer.correct} role="status">
     <h3>{answer.correct ? '✓ Bonne réponse' : '✗ Ce n’est pas la bonne réponse'}</h3>
-    {#if picked}<p>{picked.explain}</p>{/if}
+    {#if picked}<p><MathText text={picked.explain} /></p>{/if}
     {#if !answer.correct}
-      <p><strong>La bonne réponse : {right.label}.</strong> {right.explain}</p>
+      <p><strong>La bonne réponse : <MathText text={right.label} />.</strong> <MathText text={right.explain} /></p>
     {/if}
   </div>
 
   {#if hypothesis}
     <div class="why">
       <h4>Quand l'hypothèse « {hypothesis.label} » est cassée</h4>
-      <p>{hypothesis.when_broken}</p>
+      <p><MathText text={hypothesis.when_broken} /></p>
     </div>
   {/if}
 
@@ -117,17 +118,21 @@
           <span aria-hidden="true">◆</span> Correction : {correction.label}
         </button>
       {/if}
-      <label>
-        <input type="checkbox" bind:checked={showReference} />
-        Référence (état sain)
-      </label>
+      {#if view?.series.some((s) => s.role === 'reference')}
+        <label>
+          <input type="checkbox" bind:checked={showReference} />
+          Référence (état sain)
+        </label>
+      {/if}
     </div>
     <div class="grid">
       {#if view}
         <PlotlyChart {view} {result} methodsOn={new Set(ui.methodsOn)} {showReference} height={380} />
       {/if}
-      <MeasurePanel {result} methodsOn={ui.methodsOn} {showReference} />
+      <!-- La mesure principale à côté du graphique, les autres en grille dessous : colonnes équilibrées. -->
+      <MeasurePanel {result} methodsOn={ui.methodsOn} part="primary" />
     </div>
+    <MeasurePanel {result} methodsOn={ui.methodsOn} part="others" />
     <p>
       <a class="lab-link" href={labUrl} target="_blank" rel="noopener">Ouvrir dans le Laboratoire ↗</a>
     </p>

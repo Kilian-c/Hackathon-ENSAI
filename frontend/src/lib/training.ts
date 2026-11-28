@@ -7,7 +7,7 @@
  * Le score de Brier et la calibration ne sont pas calculés ici (lib/calibration.ts, R4).
  */
 
-import { disciplineLabel, joinLabels, selectedFromFilter } from './trainChoice'
+import { disciplineLabel, experimentsFromFilter, joinLabels, selectedFromFilter } from './trainChoice'
 import type { TrainingChoice, TrainingQuestion, TrainingSessionResponse } from './types.gen'
 
 export type ConfidenceLevel = keyof TrainingQuestion['confidence']
@@ -154,6 +154,10 @@ export function seriesTitle(size: number): string {
 
 export function filterLabel(filter: string): string {
   if (filter === 'toutes') return 'Toutes les expériences'
+  if (filter.startsWith('exp:')) {
+    const n = experimentsFromFilter(filter).length
+    return n > 1 ? `${n} théorèmes choisis` : 'Un théorème choisi'
+  }
   if (filter.startsWith('discipline:')) return joinLabels(selectedFromFilter(filter).map(disciplineLabel))
   return 'Une seule expérience'
 }
@@ -169,6 +173,11 @@ export function shortSeriesNotice(received: number, filter: string): string | nu
   if (received <= 0 || received >= SERIES_SIZE) return null
   const label = filterLabel(filter)
   const questions = received > 1 ? 'questions' : 'question'
-  const advice = filter === 'toutes' ? '' : ' Ajoutez une autre discipline pour une série complète.'
+  const advice =
+    filter === 'toutes'
+      ? ''
+      : filter.startsWith('exp:')
+        ? ' Ajoutez un autre théorème pour une série complète.'
+        : ' Ajoutez une autre discipline pour une série complète.'
   return `Il n'existe que ${received} ${questions} pour « ${label} » : cette série est plus courte que les ${SERIES_SIZE} habituelles.${advice}`
 }

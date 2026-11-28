@@ -634,8 +634,11 @@ def _build_view(
                     )
                 )
             shown = total = int(yv.shape[0])
-            # Référence : même grandeur à l'état sain (une fois par emplacement), pas pour les données
-            if root in ("example", "curves") and slot not in ref_done and not (paired and slot == "y"):
+            # Référence : même grandeur à l'état sain (une fois par emplacement), pas pour les données.
+            # Distribution sur `reps` : la Référence est celle de la méthode principale (histogramme sain).
+            reps_hist = root == "reps" and is_distribution and m.id == primary
+            wants_ref = root in ("example", "curves") or reps_hist
+            if wants_ref and slot not in ref_done and not (paired and slot == "y"):
                 ref_done.add(slot)
                 by = _arr(_path(base, m.id, path, rs))
                 bx = _arr(_path(base, m.id, x_path, rs)) if x_path else None

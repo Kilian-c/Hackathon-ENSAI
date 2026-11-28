@@ -332,6 +332,30 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         15,
     ),
+    "quadrature": (
+        {
+            "x": (np.arange(8) + 0.5)[None, :].repeat(20, axis=0) / 8,
+            "f": ((np.arange(8) + 0.5) / 8)[None, :].repeat(20, axis=0) ** 2,
+            "a": 0.0,
+            "b": 1.0,
+            "kind": "trapezes",
+            "truth": 1 / 3,
+            "rng": np.random.default_rng(0),
+        },
+        20,
+        8,
+    ),
+    "iterated_integral": (
+        {
+            "x": ((np.arange(12) // 4 + 0.5) / 3)[None, :].repeat(20, axis=0),
+            "y": ((np.arange(12) % 4 + 0.5) / 4)[None, :].repeat(20, axis=0),
+            "f": np.ones((20, 12)),
+            "truth": 1.0,
+            "rng": np.random.default_rng(0),
+        },
+        20,
+        12,
+    ),
     "orthonormalize": (
         {
             "a": np.random.default_rng(6).standard_normal((20, 9)),

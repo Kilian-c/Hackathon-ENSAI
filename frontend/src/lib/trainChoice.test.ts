@@ -3,6 +3,11 @@ import { parseLink } from './state'
 import { filterLabel, shortSeriesNotice, SERIES_SIZE } from './training'
 import {
   describeSelection,
+  experimentFilter,
+  experimentsFromFilter,
+  groupByDiscipline,
+  MAX_CHOSEN_EXPERIMENTS,
+  toggleExperiment,
   disciplineChoices,
   disciplineLabel,
   disciplineSlug,
@@ -126,5 +131,46 @@ describe('série plus courte que demandée', () => {
   it('aucun message pour une série complète ou vide', () => {
     expect(shortSeriesNotice(SERIES_SIZE, 'toutes')).toBeNull()
     expect(shortSeriesNotice(0, 'discipline:apprentissage')).toBeNull()
+  })
+})
+
+describe('théorèmes choisis un à un', () => {
+  it('filtre exp: trié, sans doublon, plafonné ; null si rien', () => {
+    expect(experimentFilter([])).toBeNull()
+    expect(experimentFilter(['b', 'a', 'b'])).toBe('exp:a,b')
+    const many = Array.from({ length: 20 }, (_, i) => `e${String(i).padStart(2, '0')}`)
+    expect(experimentsFromFilter(experimentFilter(many) as string)).toHaveLength(MAX_CHOSEN_EXPERIMENTS)
+  })
+  it('lit un filtre exp: et ignore les autres', () => {
+    expect(experimentsFromFilter('exp:regression-lineaire,multicolinearite')).toEqual([
+      'multicolinearite',
+      'regression-lineaire',
+    ])
+    expect(experimentsFromFilter('toutes')).toEqual([])
+    expect(experimentsFromFilter('discipline:statistique')).toEqual([])
+  })
+  it('coche, décoche, et refuse une case au-delà du plafond', () => {
+    expect(toggleExperiment(['a'], 'b')).toEqual(['a', 'b'])
+    expect(toggleExperiment(['a', 'b'], 'a')).toEqual(['b'])
+    const full = Array.from({ length: MAX_CHOSEN_EXPERIMENTS }, (_, i) => `e${i}`)
+    expect(toggleExperiment(full, 'nouveau')).toEqual(full)
+  })
+  it('regroupe par discipline, titres triés', () => {
+    const groups = groupByDiscipline([
+      { discipline: 'statistique', title: 'Zéta' },
+      { discipline: 'algèbre linéaire', title: 'B' },
+      { discipline: 'statistique', title: 'Alpha' },
+    ])
+    expect(groups.map((g) => g.label)).toEqual(['Algèbre linéaire', 'Statistique'])
+    expect(groups[1].items.map((i) => i.title)).toEqual(['Alpha', 'Zéta'])
+  })
+  it('libellé et message de série courte', () => {
+    expect(filterLabel('exp:a,b,c')).toBe('3 théorèmes choisis')
+    expect(filterLabel('exp:a')).toBe('Un théorème choisi')
+    expect(shortSeriesNotice(4, 'exp:a,b')).toContain('Ajoutez un autre théorème')
+  })
+  it('lien partageable : la virgule et les deux-points survivent', () => {
+    const link = parseLink('?train=exp%3Aa%2Cb&seed=3&v=1')
+    expect(link).toMatchObject({ kind: 'training', filter: 'exp:a,b', seed: 3 })
   })
 })

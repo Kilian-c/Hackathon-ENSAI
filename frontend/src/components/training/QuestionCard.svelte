@@ -4,6 +4,7 @@
   couleur seule). À recréer à chaque question ({#key qid}).
 -->
 <script lang="ts">
+  import MathText from '../MathText.svelte'
   import PlotlyChart from '../PlotlyChart.svelte'
   import { CONFIDENCE_LEVELS, confidenceLabel, type Answer, type ConfidenceLevel } from '../../lib/training'
   import type { TrainingQuestion } from '../../lib/types.gen'
@@ -11,10 +12,12 @@
   interface Props {
     question: TrainingQuestion
     answer: Answer | null
+    /** Titre du théorème de la question, quand il est connu. */
+    theorem?: string
     onanswer: (choiceId: string, level: ConfidenceLevel) => void
   }
 
-  let { question, answer, onanswer }: Props = $props()
+  let { question, answer, onanswer, theorem }: Props = $props()
 
   let selected = $state<string | null>(null)
   let level = $state<ConfidenceLevel | null>(null)
@@ -35,7 +38,8 @@
 </script>
 
 <form class="card" onsubmit={submit}>
-  <h2 id="enonce">{question.prompt}</h2>
+  {#if theorem}<p class="theorem">Théorème : {theorem}</p>{/if}
+  <h2 id="enonce"><MathText text={question.prompt} /></h2>
 
   {#if question.initial_view}
     <PlotlyChart view={question.initial_view} methodsOn={methodsShown} showReference={false} height={320} />
@@ -51,7 +55,7 @@
           class:wrong={!!answer && !c.correct && picked === c.id}
         >
           <input type="radio" name="choix" value={c.id} checked={picked === c.id} onchange={() => (selected = c.id)} />
-          <span class="label">{c.label}</span>
+          <span class="label"><MathText text={c.label} /></span>
           {#if answer && c.correct}
             <span class="mark">✓ Bonne réponse{picked === c.id ? ' (la vôtre)' : ''}</span>
           {:else if answer && picked === c.id}
@@ -86,6 +90,12 @@
 </form>
 
 <style>
+  .theorem {
+    margin: 0;
+    font-size: var(--ct-text-sm);
+    font-weight: 600;
+    color: var(--ct-role-method);
+  }
   .card {
     display: grid;
     grid-template-columns: minmax(0, 1fr);

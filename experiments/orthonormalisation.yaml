@@ -81,7 +81,7 @@ methods:
 measures:
   orthogonalite:
     agg: "median(reps.log_ortho)"
-    label: "Perte d'orthogonalité de Q (puissance de 10)"
+    label: "log₁₀ de la perte d'orthogonalité de Q"
     decimals: 1
     primary: true
     target: -10
@@ -89,12 +89,12 @@ measures:
     ok_within: 2
     broken_beyond: 4.5
     texts:
-      ok: "Q est orthonormée : ||Q'Q - I|| de l'ordre de 10 puissance {value}."
-      warning: "Q perd de son orthogonalité : ||Q'Q - I|| de l'ordre de 10 puissance {value}."
-      broken: "Q n'est plus orthogonale : ||Q'Q - I|| de l'ordre de 10 puissance {value} (0 : colonnes sans aucune orthogonalité)."
+      ok: "Q est orthonormée : ||Q'Q - I|| de l'ordre de 10^{value}."
+      warning: "Q perd de son orthogonalité : ||Q'Q - I|| de l'ordre de 10^{value}."
+      broken: "Q n'est plus orthogonale : ||Q'Q - I|| de l'ordre de 10^{value} (0 : colonnes sans aucune orthogonalité)."
   reconstruction:
     agg: "median(reps.log_resid)"
-    label: "Erreur sur A = Q R (puissance de 10)"
+    label: "log₁₀ de l'erreur sur A = Q R"
     decimals: 1
 
 challenges:
@@ -119,7 +119,7 @@ views:
     type: distribution
     title: "Perte d'orthogonalité sur 100 matrices"
     bind: { stat: reps.log_ortho }
-    ui: { x_title: "Perte d'orthogonalité (puissance de 10)" }
+    ui: { x_title: "log₁₀ de la perte d'orthogonalité" }
   - id: sens-conditionnement
     type: sensitivity
     title: "Selon le conditionnement"

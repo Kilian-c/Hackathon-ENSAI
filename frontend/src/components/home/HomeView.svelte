@@ -53,8 +53,8 @@
           <svg viewBox="0 0 160 80">
             <line x1="10" y1="70" x2="150" y2="14" class="line-ref" />
             <line x1="10" y1="62" x2="150" y2="26" class="line-fit" />
-            {#each [[22, 58], [36, 60], [48, 48], [60, 52], [74, 40], [86, 46], [98, 30], [112, 38], [124, 22], [138, 34]] as [cx, cy] (cx)}
-              <circle {cx} {cy} r="3.2" class="dot" />
+            {#each [[22, 58], [36, 60], [48, 48], [60, 52], [74, 40], [86, 46], [98, 30], [112, 38], [124, 22], [138, 34]] as [cx, cy], i (cx)}
+              <circle {cx} {cy} r="3.2" class="dot" style:--i={i} />
             {/each}
           </svg>
         </div>
@@ -271,7 +271,123 @@
     background: var(--ct-surface-2);
   }
 
+  /* Taille qui suit la hauteur de la fenêtre, sans retirer d'élément : version resserrée
+     jusqu'à 1000 px de haut, version complète à partir de 1150 px, et un passage continu entre les deux.
+     Chaque valeur vaut clamp(resserrée, resserrée + pente × (hauteur − 1000 px), complète). */
+  .screen {
+    --fit: (100vh - 1000px);
+  }
+  .home {
+    padding-block: clamp(12px, calc(12px + var(--fit) * 0.08), 24px);
+  }
+  .hero {
+    margin-bottom: clamp(16px, calc(16px + var(--fit) * 0.1067), 32px);
+  }
+  .eyebrow {
+    margin-bottom: clamp(8px, calc(8px + var(--fit) * 0.0267), 12px);
+  }
+  h1 {
+    font-size: clamp(2rem, min(5vw, calc(44px + var(--fit) * 0.0533)), 3.25rem);
+  }
+  .tagline {
+    max-width: 44rem;
+    margin-top: clamp(8px, calc(8px + var(--fit) * 0.0267), 12px);
+    font-size: clamp(16px, calc(16px + var(--fit) * 0.0107), 17.6px);
+  }
+  .mode {
+    padding: clamp(16px, calc(16px + var(--fit) * 0.0533), 24px)
+      clamp(24px, calc(24px + var(--fit) * 0.0533), 32px);
+  }
+  .mode-art {
+    height: clamp(40px, calc(40px + var(--fit) * 0.1067), 56px);
+    margin-bottom: clamp(8px, calc(8px + var(--fit) * 0.0267), 12px);
+  }
+  .mode h2 {
+    margin-bottom: clamp(4px, calc(4px + var(--fit) * 0.0267), 8px);
+    font-size: clamp(20px, calc(20px + var(--fit) * 0.0533), 28px);
+  }
+  .mode-text {
+    line-height: clamp(1.45em, calc(1.45em + var(--fit) * 0.0053), 1.5em);
+  }
+  .mode-points {
+    margin: clamp(12px, calc(12px + var(--fit) * 0.0267), 16px) 0
+      clamp(16px, calc(16px + var(--fit) * 0.0533), 24px);
+    gap: clamp(0px, calc(var(--fit) * 0.0267), 4px);
+  }
+  .import-link {
+    margin-top: clamp(12px, calc(12px + var(--fit) * 0.08), 24px);
+  }
+
+  /* --- Ouverture : fondu de l'en-tête, puis les deux cartes qui montent l'une après l'autre.
+     `backwards` (et non `both`) : une fois l'animation finie, le transform du survol reprend la main. --- */
+  @keyframes ct-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ct-rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(24px) scale(0.98);
+    }
+  }
+  @keyframes ct-grow-x {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes ct-draw {
+    from {
+      stroke-dashoffset: 160;
+    }
+  }
+  @keyframes ct-pop {
+    from {
+      opacity: 0;
+      transform: scale(0);
+    }
+  }
+  .hero {
+    animation: ct-fade-in 0.6s ease-out backwards;
+  }
+  .mode {
+    animation: ct-rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: 0.15s;
+  }
+  .mode-lab {
+    animation-delay: 0.3s;
+  }
+  .import-link {
+    animation: ct-fade-in 0.6s ease-out 0.6s backwards;
+  }
+  /* Petits dessins : barres qui se remplissent, droite tracée, points qui apparaissent. */
+  .mode .fill-a,
+  .mode .fill-b {
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: ct-grow-x 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.45s backwards;
+  }
+  .line-fit {
+    stroke-dasharray: 160;
+    animation: ct-draw 0.9s ease-out 0.55s backwards;
+  }
+  .dot {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ct-pop 0.3s ease-out backwards;
+    animation-delay: calc(0.5s + var(--i) * 0.04s);
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    .hero,
+    .mode,
+    .import-link,
+    .mode .fill-a,
+    .mode .fill-b,
+    .line-fit,
+    .dot {
+      animation: none;
+    }
     .mode {
       transition: none;
     }

@@ -1,0 +1,168 @@
+# yaml-language-server: $schema=./schema.json
+schema_version: 1
+id: "lemme-fatou"
+title: "Lemme de Fatou : l'intégrale de la limite inférieure"
+discipline: "intégration"
+level: "2"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé
+concepts: ["intégrale de Lebesgue", "lemme de Fatou", "limite inférieure", "positivité"]
+
+theorem:
+  name: "Lemme de Fatou"
+  statement: |
+    Si $(f_n)_{n \ge 0}$ est une suite de fonctions mesurables positives, alors
+    $$\int \liminf_{n \to \infty} f_n \, d\mu \;\le\; \liminf_{n \to \infty} \int f_n \, d\mu.$$
+    L'inégalité peut être stricte : de la masse peut disparaître à la limite, jamais en apparaître.
+    Ici les intégrales sont calculées sur $[0, 1]$.
+
+equation:
+  tex: '\int \liminf_{n \to \infty} f_n \, d\mu \;\le\; {{membre}}'
+  terms:
+    membre:
+      ok: '\liminf_{n \to \infty} \int f_n \, d\mu'
+
+params:
+  k: { type: number, label: "Rang n de la suite", min: 1, max: 100, step: 1, default: 100,
+       sweep_values: [1, 3, 10, 30, 100] }
+
+hypotheses:
+  minoration:
+    type: choice
+    healthy_value: "positives"
+    label: "Fonctions positives"
+    category: "positivité"
+    options:
+      positives: { label: "n·1[0, 1/n] : positives",
+                   expr: "(x < floor(5000 / p.k + 0.5) * 0.0002) / (floor(5000 / p.k + 0.5) * 0.0002)" }
+      minorees:  { label: "−1[0, 1/2] : négatives, minorées par −1",
+                   expr: "-1.0 * (x < 0.5)" }
+      negatives: { label: "−n·1[0, 1/n] : négatives, sans minorant intégrable",
+                   expr: "-1.0 * (x < floor(5000 / p.k + 0.5) * 0.0002) / (floor(5000 / p.k + 0.5) * 0.0002)" }
+    statement_tex: 'f_n \ge 0'
+    why: "La positivité interdit à l'intégrale de $f_n$ de descendre sous celle de la limite : la masse peut seulement s'échapper vers l'infini ou se concentrer en un point, jamais être créée."
+    when_broken: "Avec des fonctions négatives sans minorant intégrable, la masse négative qui se concentre en $0$ disparaît de la limite : on obtient $0 \\le -1$, une inégalité fausse. Un minorant intégrable suffit à rétablir l'énoncé."
+    affects: [membre]
+  mesurabilite:
+    type: boolean
+    healthy_value: true
+    label: "Fonctions mesurables"
+    category: "mesurabilité"
+    ok_label: "Mesurables"
+    broken_label: "Non mesurables"
+    robust_expected: true
+    disabled_when: "True"
+    disabled_text: "Toujours vraie ici : une fonction non mesurable ne se construit pas numériquement ($f_n^{-1}(B)$ doit être mesurable pour tout borélien $B$)."
+    statement_tex: 'f_n^{-1}(B) \in \mathcal{A}'
+    why: "Sans mesurabilité, l'intégrale n'est pas définie : on ne peut même pas écrire $\\int f_n \\, d\\mu$."
+    when_broken: "L'intégrale n'a plus de sens : l'énoncé tombe avant tout calcul de limite."
+    affects: []
+
+counterexamples:
+  - id: "masse-negative"
+    label: "La masse négative qui se concentre"
+    explain: "Les fonctions $-n \\cdot 1_{[0, 1/n]}$ tendent vers $0$ en tout point $x > 0$, donc l'intégrale de la limite inférieure vaut $0$, alors que leur intégrale vaut $-1$ : l'inégalité de Fatou est fausse sans positivité."
+    state: { params: { k: 100 }, hypotheses: { minoration: "negatives" } }
+
+generator:
+  type: random
+  n: 5000
+  repeat: 1                      # calcul déterministe : une seule « répétition »
+  variables:
+    x: { expr: "(idx + 0.5) / 5000" }     # milieux de cellules sur [0, 1]
+    f: { expr: "@h.minoration" }
+
+methods:
+  - id: integrale
+    role: method
+    call: quadrature
+    label: "Intégrale de fₙ sur [0, 1]"
+    args: { x: x, f: f, a: 0, b: 1, kind: "rectangles", truth: "where(h.minoration == 'minorees', -0.5, 0.0)" }
+
+measures:
+  violation:
+    agg: "mean(-reps.error)"
+    label: "Intégrale de la limite inférieure moins limite des intégrales"
+    decimals: 3
+    primary: true
+    target: 0
+    direction: above
+    ok_within: 0.05
+    broken_beyond: 0.3
+    texts:
+      ok: "L'inégalité de Fatou tient : l'écart vaut {value}, négatif ou nul."
+      warning: "L'inégalité de Fatou est presque prise en défaut : l'écart vaut {value}."
+      broken: "L'inégalité de Fatou est fausse : l'intégrale de la limite inférieure dépasse la limite des intégrales de {value}."
+  integrale:
+    agg: "mean(reps.est)"
+    label: "Intégrale de fₙ"
+    decimals: 3
+
+challenges:
+  - id: "inegalite-fausse"
+    goal: "Faites échouer l'inégalité de Fatou en retirant la positivité."
+    when: "h.minoration == 'negatives' and s.violation == 'broken'"
+    unlock: "Sans positivité ni minorant intégrable, la masse négative disparaît à la limite et l'inégalité s'inverse."
+  - id: "minorant-suffit"
+    goal: "Choisissez des fonctions négatives pour lesquelles l'inégalité tient malgré tout."
+    when: "h.minoration == 'minorees' and s.violation == 'ok'"
+    unlock: "Un minorant intégrable suffit : on applique Fatou à $f_n + 1$, qui est positive."
+
+views:
+  - id: courbe
+    type: curves
+    title: "La fonction fₙ, et l'aire qu'elle délimite"
+    ui: { x_title: "x", y_title: "fₙ(x)", fill_area: true }
+    bind: { t: example.x, series: [ { y: example.f, label: "fₙ" } ] }
+  - id: famille
+    type: sensitivity
+    title: "Selon le signe des fonctions"
+    sweep: { axes: [h.minoration] }
+
+questions:
+  - id: "fa-q1-egalite"
+    type: misconception
+    prompt: "Des fonctions positives $f_n$ convergent simplement vers $0$. L'inégalité de Fatou peut-elle être une égalité stricte, c'est-à-dire $\\int \\liminf f_n = \\liminf \\int f_n$ ?"
+    hypothesis: "minoration"
+    choices:
+      - id: "a"
+        label: "Toujours : Fatou est un cas particulier de la convergence monotone."
+        correct: false
+        reveal_state: { params: { k: 100 }, hypotheses: { minoration: "positives" } }
+        verify: "m.integrale > 0.5"
+        focus_view: "courbe"
+        explain: "Non : Fatou ne demande ni croissance ni domination, donc l'inégalité est en général stricte. Les bosses $n \\cdot 1_{[0, 1/n]}$ ont une intégrale égale à $1$ alors que leur limite est nulle."
+      - id: "b"
+        label: "Non : l'inégalité peut être stricte, la masse peut disparaître."
+        correct: true
+        reveal_state: { params: { k: 100 }, hypotheses: { minoration: "positives" } }
+        verify: "m.integrale > 0.5"
+        focus_view: "courbe"
+        explain: "Exact : l'intégrale de la limite vaut $0$ et la limite des intégrales vaut $1$. Fatou ne dit que « moins ou égal »."
+
+  - id: "fa-q2-negatives"
+    type: misconception
+    prompt: "Les fonctions $f_n = -n \\cdot 1_{[0, 1/n]}$ sont négatives. L'inégalité de Fatou reste-t-elle vraie ?"
+    hypothesis: "minoration"
+    choices:
+      - id: "a"
+        label: "Oui : le lemme de Fatou vaut pour toute suite de fonctions mesurables."
+        correct: false
+        reveal_state: { params: { k: 100 }, hypotheses: { minoration: "negatives" } }
+        verify: "s.violation == 'broken'"
+        focus_view: "courbe"
+        explain: "Non : la positivité est une hypothèse. Ici l'intégrale de la limite inférieure vaut $0$ et la limite des intégrales vaut $-1$, donc $0 \\le -1$ est faux."
+      - id: "b"
+        label: "Non : il faut des fonctions positives, ou au moins un minorant intégrable."
+        correct: true
+        reveal_state: { params: { k: 100 }, hypotheses: { minoration: "negatives" } }
+        verify: "s.violation == 'broken'"
+        focus_view: "courbe"
+        explain: "Exact : sans minorant intégrable, la masse négative se concentre en $0$ puis disparaît à la limite."
+
+  - id: "fa-q3-prediction"
+    type: prediction
+    prompt: "Avec les fonctions $-n \\cdot 1_{[0, 1/n]}$, si le rang passe de {k} à quatre fois plus, que devient l'intégrale de $f_n$ ?"
+    procedural_params:
+      k: { min: 5, max: 20, step: 5 }
+    state: { hypotheses: { minoration: "negatives" } }
+    sweep: { target: p.k, from: "{k}", to: "{k} * 4" }
+    measure: integrale

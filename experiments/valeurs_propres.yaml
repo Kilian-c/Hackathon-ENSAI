@@ -85,7 +85,7 @@ methods:
 measures:
   erreur:
     agg: "median(reps.log_error)"
-    label: "Erreur relative sur la valeur propre dominante (puissance de 10)"
+    label: "log₁₀ de l'erreur relative sur la valeur propre dominante"
     decimals: 1
     primary: true
     target: -8
@@ -93,9 +93,9 @@ measures:
     ok_within: 2.5
     broken_beyond: 5
     texts:
-      ok: "Valeur propre précise : erreur relative de 10 puissance {value}."
-      warning: "Valeur propre peu précise : erreur relative de 10 puissance {value}."
-      broken: "Valeur propre fausse : erreur relative de 10 puissance {value}."
+      ok: "Valeur propre précise : erreur relative de 10^{value}."
+      warning: "Valeur propre peu précise : erreur relative de 10^{value}."
+      broken: "Valeur propre fausse : erreur relative de 10^{value}."
 
 challenges:
   - id: "puissance-echoue"
@@ -113,7 +113,7 @@ views:
   - id: convergence
     type: curves
     title: "Erreur au fil des itérations (médiane)"
-    ui: { x_title: "Itération", y_title: "Erreur relative (puissance de 10)" }
+    ui: { x_title: "Itération", y_title: "log₁₀ de l'erreur relative" }
     bind: { t: curves.k, series: [ { y: curves.history, label: "Erreur" } ] }
   - id: matrice
     type: heatmap
@@ -124,7 +124,7 @@ views:
     type: distribution
     title: "Erreur sur 80 matrices"
     bind: { stat: reps.log_error }
-    ui: { x_title: "Erreur relative (puissance de 10)" }
+    ui: { x_title: "log₁₀ de l'erreur relative" }
   - id: sens-separation
     type: sensitivity
     title: "Selon l'isolement de la valeur propre"

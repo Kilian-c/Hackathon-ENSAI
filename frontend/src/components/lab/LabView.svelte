@@ -222,6 +222,8 @@
   const activeView = $derived(
     activeViewRaw && frozenAxes?.[activeViewRaw.id] ? { ...activeViewRaw, axes: frozenAxes[activeViewRaw.id] } : activeViewRaw,
   )
+  /** La case « Référence » ne s'affiche que si le graphique a une série de Référence à montrer. */
+  const viewHasReference = $derived(activeView?.series.some((s) => s.role === 'reference') ?? false)
   const sweepTargets = $derived(
     activeView?.type === 'sensitivity' || activeView?.type === 'validity_domain'
       ? (spec?.views.find((v) => v.id === activeView.id)?.sweep?.axes ?? [])
@@ -576,7 +578,6 @@
               {engine}
               {result}
               methodsOn={ui.methodsOn}
-              {showReference}
               ontoggle={toggle}
               onheal={heal}
               onexplain={explainHypothesis}
@@ -610,10 +611,12 @@
               </span>
               <span class="tools-right">
                 {#if loading}<span class="busy" aria-live="polite">Calcul…</span>{/if}
-                <label class="ref" title="La même expérience avec toutes les hypothèses respectées (même graine)">
-                  <input type="checkbox" bind:checked={showReference} />
-                  <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
-                </label>
+                {#if viewHasReference}
+                  <label class="ref" title="La même expérience avec toutes les hypothèses respectées (même graine)">
+                    <input type="checkbox" bind:checked={showReference} />
+                    <span class="ref-mark" aria-hidden="true">┄</span> Référence (état sain)
+                  </label>
+                {/if}
               </span>
             </div>
 
@@ -689,7 +692,7 @@
             </details>
             <details class="panel more">
               <summary>Toutes les mesures</summary>
-              <MeasurePanel {result} methodsOn={ui.methodsOn} {showReference} />
+              <MeasurePanel {result} methodsOn={ui.methodsOn} />
             </details>
           {/if}
         </section>

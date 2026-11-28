@@ -10,7 +10,7 @@
   import { onMount, tick, untrack } from 'svelte'
   import QuestionCard from './QuestionCard.svelte'
   import RevealPanel from './RevealPanel.svelte'
-  import { openSession, type LabSource } from '../../lib/labSource'
+  import { listExperiments, openSession, type LabSource } from '../../lib/labSource'
   import { trainingLink, type Link } from '../../lib/state'
   import {
     addAnswer,
@@ -45,6 +45,7 @@
   let error = $state<string | null>(null)
   let copied = $state(false)
   let top = $state<HTMLElement>()
+  let titles = $state.raw<Record<string, string>>({}) // identifiant d'expérience -> titre du théorème
 
   const total = $derived(session?.questions.length ?? 0)
   const question = $derived(session?.questions[index] ?? null)
@@ -71,6 +72,13 @@
       loading = false
     }
   }
+
+  onMount(() => {
+    // Les titres ne sont pas dans la série : un appel de plus, sans effet sur le contrat. Échec = pas de titre.
+    listExperiments()
+      .then(({ items }) => (titles = Object.fromEntries(items.map((e) => [e.id, e.title]))))
+      .catch(() => {})
+  })
 
   onMount(() => {
     void load(link.seed)
@@ -144,7 +152,7 @@
         <progress max={total} value={answers.length} aria-label="Avancement de la série"></progress>
       </p>
       {#key question.qid}
-        <QuestionCard {question} {answer} onanswer={submit} />
+        <QuestionCard {question} {answer} theorem={titles[question.experiment_id]} onanswer={submit} />
         {#if answer}
           <RevealPanel {question} {answer} />
           <p>
@@ -162,7 +170,9 @@
           {#each session.questions as q (q.qid)}
             {@const a = answers.find((x) => x.qid === q.qid)}
             <li>
-              <span>{q.prompt}</span>
+              <span>
+                {#if titles[q.experiment_id]}<strong>{titles[q.experiment_id]}</strong> · {/if}{q.prompt}
+              </span>
               {#if a}
                 <span class="outcome" class:right={a.correct}>
                   {a.correct ? '✓ Juste' : '✗ Faux'} · {confidenceLabel(a.level)}

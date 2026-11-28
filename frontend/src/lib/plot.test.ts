@@ -548,3 +548,26 @@ describe('segments : plusieurs sortes dans une même vue (décomposition SCT, SC
     expect(segmentsTrace(segment('x', 'e', 'l'), 3, 4)).not.toBeNull()
   })
 })
+
+describe('aire sous la courbe (ui.fill_area)', () => {
+  const base = { layer: null, low: null, high: null, hit: null, value: null, paths: null }
+  const series = (id: string, role: string, label: string) => ({ ...base, id: `f.series.${id}`, slot: 'series', method: 'rect', role, label, x: [0, 0.5, 1], y: [0, 1, 0.5] })
+  const view = (ui: Record<string, unknown> | null) =>
+    ({
+      id: 'f', type: 'curves', total: 0, shown: 0, axes: {}, ui,
+      series: [series('ref', 'reference', 'Référence'), series('rect', 'method', 'f')],
+    }) as unknown as ViewResult
+  const on = { methodsOn: new Set(['rect']), showReference: true }
+  const fills = (ui: Record<string, unknown> | null) =>
+    Object.fromEntries(buildFigure(view(ui), on)!.data.map((t) => [String(t.uid), t.fill ?? null]))
+
+  it('remplit l’aire de la courbe jusqu’à l’axe, pas celle de la Référence', () => {
+    expect(fills({ fill_area: true })).toEqual({ 'f.series.ref': null, 'f.series.rect': 'tozeroy' })
+    const trace = buildFigure(view({ fill_area: true }), on)!.data.find((t) => t.uid === 'f.series.rect')!
+    expect(typeof trace.fillcolor).toBe('string') // translucide dans le navigateur (couleur résolue en hexadécimal)
+  })
+  it('sans le réglage, ou avec false, aucune aire (comportement d’avant)', () => {
+    expect(fills(null)).toEqual({ 'f.series.ref': null, 'f.series.rect': null })
+    expect(fills({ fill_area: false })).toEqual({ 'f.series.ref': null, 'f.series.rect': null })
+  })
+})
