@@ -21,8 +21,8 @@ equation:
       corrected: '\sqrt{n}\,\dfrac{\bar{X}_n - \mu}{\sigma\,\sqrt{(1 + \rho) / (1 - \rho)}}'
 
 params:
-  n: { type: number, label: "Taille d'échantillon n", min: 5, max: 500, step: 5, default: 50,
-       sweep_values: [5, 10, 30, 100, 500] }
+  n: { type: number, label: "Observations par moyenne normalisée n", min: 5, max: 2000, step: 5, default: 50,
+       sweep_values: [5, 10, 30, 100, 500, 2000] }
 
 hypotheses:
   loi:
@@ -126,7 +126,7 @@ auto_sweep: [p.n]
 views:
   - id: moyennes
     type: distribution
-    title: "500 moyennes normalisées"
+    title: "500 moyennes normalisées (une par échantillon de n observations)"
     bind: { stat: reps.z }
     ui: { x_range: [-5, 5] }
   - id: trajectoires
@@ -221,9 +221,9 @@ questions:
 
   - id: "tcl-q4-prediction-cauchy"
     type: prediction
-    prompt: "Les observations suivent une loi de Cauchy. Si n passe de {n} au quadruple, que devient la part des moyennes normalisées comprises entre -1,96 et 1,96 ?"
+    prompt: "Les observations suivent une loi de Cauchy. Si n passe de {n} à 10 fois plus, que devient la part des moyennes normalisées comprises entre -1,96 et 1,96 ?"
     procedural_params:
       n: { min: 50, max: 120, step: 10 }
     state: { hypotheses: { loi: "cauchy" } }
-    sweep: { target: p.n, from: "{n}", to: "{n} * 4" }
+    sweep: { target: p.n, from: "{n}", to: "{n} * 10" }
     measure: inside               # choix fixes ; réponse calculée par le moteur (simulée : elle diminue)

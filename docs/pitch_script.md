@@ -13,7 +13,7 @@ Vérifié sur `main` (fusion `3ac526d`) : pytest, ruff, `npm run check` (0 erreu
   1. Accueil : `http://localhost:5173/`
   2. Dés : `http://localhost:5173/?exp=somme-de-des&v=1&seed=42`
   3. Régression : `http://localhost:5173/?exp=regression-lineaire&v=1&h.hetero=0.8&seed=42&on=ols&tab=ic`
-  4. Entraînement : `http://localhost:5173/?train=regression-lineaire&seed=10&v=1` (la graine 3 de la première version ne convient plus sur `main` : elle ouvre sur une question de résidus)
+  4. Entraînement : `http://localhost:5173/?train=regression-lineaire&seed=262&v=1` (la graine 10 ne convient plus depuis les changements du TCL, qui changent les séries ; la graine 262 redonne la même première question avec les choix dans le même ordre ; deux des questions suivantes diffèrent)
   5. Bilan : `http://localhost:5173/?bilan`
 - Plan B : la vidéo de secours, ouverte dans un onglet à part. Aucun repli par fixtures n'a été testé.
 
@@ -25,7 +25,7 @@ Vérifié sur `main` (fusion `3ac526d`) : pytest, ruff, `npm run check` (0 erreu
 | Dés, `dépendance = 0,95` | aplatissement −1,22, « Rompu » |
 | Régression, `h = 0,8` | classique 79,6 % ± 3,6 « Rompu » ; HC3 96,6 % ± 1,6 « Fiable » ; cible 95 % |
 | Sensibilité | courbe bleue qui chute, courbe verte plate ; seuil critique vers `h ≈ 0,34` (Fragile) et `h ≈ 0,62` (Rompu) |
-| Entraînement, graine 10 | « Série de 4 questions », bandeau jaune « Il n'existe que 4 questions… » (normal) ; première question à 2 choix, énoncé « (n = 200) », bonne réponse : « Il reste sans biais, mais les intervalles de confiance sont invalides. » ; la simulation de validation, très en dessous de l'énoncé, montre les intervalles empilés avec leurs ratés (son état est propre à la question : ne la comparez pas aux 79,6 % du Laboratoire) |
+| Entraînement, graine 262 | « Série de 4 questions », bandeau jaune « Il n'existe que 4 questions… » (normal) ; première question à 2 choix, énoncé « (n = 200) », bonne réponse : « Il reste sans biais, mais les intervalles de confiance sont invalides. » ; la simulation de validation, très en dessous de l'énoncé, montre les intervalles empilés avec leurs ratés (son état est propre à la question : ne la comparez pas aux 79,6 % du Laboratoire) |
 | Bilan (profil de démonstration) | « Certain » : 60 % de réussite (12 sur 20) ; Brier 0,35 ; 50 % de bonnes réponses (16 sur 32) ; confiance annoncée 81 % |
 
 ## Déroulé commun
@@ -118,7 +118,7 @@ La personne parle et manipule. Elle ne regarde l'écran que quand elle clique.
 
 # À ne pas oublier
 
-- Rejoué à l'écran sur `main` : la régression (intervalles, correction, sensibilité), l'Entraînement (graine 10, validation) et le Bilan. Le curseur des dés n'a été testé que par lien direct (`h.dependance=0.95`) et par chargement de la page, pas par glissement.
+- Rejoué à l'écran sur `main` : la régression (intervalles, correction, sensibilité), l'Entraînement (graine 10, validation ; passé à la graine 262 ensuite, à rejouer à l'écran) et le Bilan. Le curseur des dés n'a été testé que par lien direct (`h.dependance=0.95`) et par chargement de la page, pas par glissement.
 - Les erreurs de console vues pendant les tests venaient de l'extension de portefeuille du navigateur (`evmAsk.js`), pas de l'application.
 - La taille de l'écran du projecteur est inconnue : testez en plein écran avant le pitch.
 - Le chronométrage ci-dessus est une estimation, pas une mesure : chronométrez une répétition complète.
