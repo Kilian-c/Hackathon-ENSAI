@@ -27,7 +27,7 @@ export interface UiState {
   methodsOn: string[]
   /** Onglet ouvert du Laboratoire (identifiant de vue), null = premier onglet. */
   tab: string | null
-  /** Étape du Laboratoire (`comprendre`, `defis`) ; absente = Expérimenter. */
+  /** Étape du Laboratoire (`comprendre`, `experimenter`, `defis`) ; absente = Comprendre pour un lien nu, sinon Expérimenter. */
   stage?: string | null
   /** Hypothèse ouverte dans l'étape Comprendre (pont depuis l'Entraînement). */
   focus?: string | null
@@ -269,12 +269,29 @@ export function resolveLabLink(
   const known = new Set(spec.methods.map((m) => m.id))
   const ui = defaultUi(spec)
   const on = link.on?.filter((id) => known.has(id))
-  const stage = link.stage === 'comprendre' || link.stage === 'defis' ? link.stage : null
+  const stage = link.stage === 'comprendre' || link.stage === 'experimenter' || link.stage === 'defis' ? link.stage : null
   const focus = link.focus && link.focus in spec.hypotheses ? link.focus : null
   const out: UiState = { methodsOn: on && on.length > 0 ? on : ui.methodsOn, tab: link.tab }
   if (stage) out.stage = stage
   if (focus) out.focus = focus
   return { engine, ui: out }
+}
+
+/**
+ * Lien « nu » : l'expérience seule, sans état ni affichage (ouverture depuis l'accueil). Il s'ouvre
+ * sur l'étape Comprendre ; un lien qui porte un état (démo, partage) s'ouvre sur Expérimenter.
+ */
+export function isBareLabLink(link: Extract<Link, { kind: 'lab' }>): boolean {
+  return (
+    !link.stage &&
+    Object.keys(link.params).length === 0 &&
+    Object.keys(link.hypotheses).length === 0 &&
+    !link.points &&
+    !link.on &&
+    !link.tab &&
+    !link.focus &&
+    (link.seed === null || link.seed === DEFAULT_SEED)
+  )
 }
 
 function formatValue(v: Value): string {
