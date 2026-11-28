@@ -1,8 +1,8 @@
 # Notes de passation (la plus récente en haut)
 
-## TCL : libellés clarifiés, graine de la démo passée de 10 à 250 (R4, pas une relève)
-- Test utilisateur : sur le TCL, changer n ne changeait pas « 500 » sur le graphique. Pas un bug : 500 = nombre d'échantillons (`repeat`), n = taille de chacun. Libellés clarifiés dans `theoreme_central_limite.yaml` (fichier de R2, prévenu) : « Taille de chaque échantillon n » et « 500 moyennes normalisées (une par échantillon de n observations) ».
-- Conséquence : l'empreinte des YAML change, donc les séries d'Entraînement. `docs/pitch_script.md` passe à la graine 250 (même première question, mêmes choix dans le même ordre, série de 4 questions ; vérifié par script). **À rejouer à l'écran avant le pitch.**
+## TCL : n clarifié et étendu à 2000, graine de la démo passée de 10 à 262 (R4, pas une relève)
+- Test utilisateur : sur le TCL, changer n ne changeait pas « 500 » sur le graphique. Pas un bug : 500 = nombre d'échantillons (`repeat`), n = taille de chacun. Dans `theoreme_central_limite.yaml` (fichier de R2, prévenu) : curseur « Observations par moyenne normalisée n », maximum 500 -> 2000 (calcul 0,13 s, réponse 2,6 Mo à n = 2000 ; 6,5 Mo à 5000, écarté), 2000 ajouté aux `sweep_values` ; titre « 500 moyennes normalisées (une par échantillon de n observations) ». Question de prédiction sous Cauchy : n multiplié par 10 au lieu de 4 (« reste stable » sortait 1 fois sur 60 et faisait échouer `test_prediction_answer_is_computed_by_the_engine` avec la nouvelle empreinte ; 60 sur 60 « diminue » après).
+- Conséquence : l'empreinte des YAML change, donc les séries d'Entraînement. `docs/pitch_script.md` passe à la graine 262 (même première question, mêmes choix dans le même ordre, série de 4 questions ; vérifié par script et au navigateur). **À rejouer à l'écran avant le pitch.**
 - Rappel : toute retouche d'un YAML avant 17 h change de nouveau la série de la démo.
 
 ## Thème clair : les graphiques restaient sombres (R4, branche `r4/bug-theme-graphe`, pas une relève)
