@@ -83,7 +83,7 @@ methods:
 measures:
   erreur:
     agg: "median(reps.log_error)"
-    label: "Erreur relative sur la solution (puissance de 10)"
+    label: "log₁₀ de l'erreur relative sur la solution"
     decimals: 1
     primary: true
     target: -8
@@ -91,9 +91,9 @@ measures:
     ok_within: 1.5
     broken_beyond: 4
     texts:
-      ok: "Solution précise : erreur relative de 10 puissance {value}."
-      warning: "Solution peu précise : erreur relative de 10 puissance {value}."
-      broken: "La solution est fausse : erreur relative de 10 puissance {value} (16 = échec ou divergence)."
+      ok: "Solution précise : erreur relative de 10^{value}."
+      warning: "Solution peu précise : erreur relative de 10^{value}."
+      broken: "La solution est fausse : erreur relative de 10^{value} (16 = échec ou divergence)."
   echecs:
     agg: "rate(reps.failed)"
     label: "Systèmes dont la résolution échoue (divergence)"
@@ -117,7 +117,7 @@ views:
   - id: convergence
     type: curves
     title: "Erreur au fil des itérations (médiane)"
-    ui: { x_title: "Itération", y_title: "Erreur relative (puissance de 10)" }
+    ui: { x_title: "Itération", y_title: "log₁₀ de l'erreur relative" }
     bind: { t: curves.k, series: [ { y: curves.history, label: "Erreur" } ] }
   - id: matrice
     type: heatmap
@@ -128,7 +128,7 @@ views:
     type: distribution
     title: "Erreur sur 200 systèmes"
     bind: { stat: reps.log_error }
-    ui: { x_title: "Erreur relative (puissance de 10)" }
+    ui: { x_title: "log₁₀ de l'erreur relative" }
   - id: sens-dominance
     type: sensitivity
     title: "Selon la diagonale"

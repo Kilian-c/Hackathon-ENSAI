@@ -4,6 +4,7 @@
   valeur de la Référence. Une mesure sans cible est informative : pas de verdict.
 -->
 <script lang="ts">
+  import MathText from '../MathText.svelte'
   import VerdictBadge from './VerdictBadge.svelte'
   import { formatMargin, formatMeasure } from '../../lib/format'
   import { displayRoles, roleColorVar } from '../../lib/roles'
@@ -43,7 +44,7 @@
               <!-- Banc de méthodes : le prix d'une méthode robuste se lit sur une mesure sans cible. -->
               <p class="cost">contre {formatMeasure(m.values[principal.id], m)} pour {principal.label}</p>
             {/if}
-            {#if m.texts[method.id]}<p class="text">{m.texts[method.id]}</p>{/if}
+            {#if m.texts[method.id]}<p class="text"><MathText text={m.texts[method.id]} /></p>{/if}
           </li>
         {/each}
       </ul>

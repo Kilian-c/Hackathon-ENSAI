@@ -9,6 +9,7 @@
   Afficher ou masquer une méthode ne fait aucun appel : tout est déjà dans RunResult.
 -->
 <script lang="ts">
+  import MathText from '../MathText.svelte'
   import MeasureGauge from './MeasureGauge.svelte'
   import VerdictBadge from './VerdictBadge.svelte'
   import { formatMargin, formatMeasure } from '../../lib/format'
@@ -90,7 +91,7 @@
                 </div>
               {/if}
               {#if method.role === 'method' && m.texts[method.id]}
-                <p class="full text">{m.texts[method.id]}</p>
+                <p class="full text"><MathText text={m.texts[method.id]} /></p>
               {/if}
             </li>
           {/each}
