@@ -1,8 +1,10 @@
 # Notes de passation (la plus récente en haut)
 
-## Inspecteur fusionné dans `main` (R4, pas une relève)
-- Essayé et validé à l'œil par R4 ; fusionné **sans relecture des propriétaires** (départ de R1) : **Kilian (R3, moteur compris) ou R2 relit après coup** : `runner.py`, `training.py`, `regression_lineaire.yaml` (`inspect: true` sur les résidus), `lib/plot.ts`, `PlotlyChart.svelte`, `LabView.svelte`, `Inspector.svelte`, `lib/inspect.ts`. Détail et limites dans la note « Inspecteur d'observation » plus bas (écrite avant la fusion).
-- Si un souci apparaît avant la démo, retirer `inspect: true` des deux vues de la régression désactive l'inspecteur (adapter alors `tests/test_inspect.py`).
+## Inspecteur : fusion reportée APRÈS le pitch (R4, pas une relève)
+- **Pas dans `main`** (décision de R4, 10 h). Essayé et validé à l'œil par R4 ; branche `r4/inspecteur` poussée. Détail et limites dans la note « Inspecteur d'observation » plus bas.
+- **Raison** : la ligne `inspect: true` ajoutée à la vue `residus` change l'empreinte des YAML, donc les séries d'Entraînement. Avec la graine 10 de `docs/pitch_script.md`, la première question passe de n = 200 à n = 350 et l'ordre des suivantes change (vérifié).
+- **À la fusion, au choix** : retirer cette ligne (séries identiques à `main`, vérifié ; l'onglet Résidus perd l'inspecteur ; adapter `tests/test_inspect.py` et régénérer la spec de repli et l'empreinte de la série de démonstration), ou la garder (la graine 51 redonne la même première question et la même réponse, sur le `main` du 28/11 à 10 h ; les questions suivantes diffèrent).
+- Relecture des propriétaires à faire (Kilian ou R2).
 
 ## Thème clair : les graphiques restaient sombres (R4, branche `r4/bug-theme-graphe`, pas une relève)
 - Signalé par le test utilisateur. **Serveur de développement seulement** (la version construite a été vérifiée : correcte). Après certaines mises à jour à chaud (changement de branche), Vite charge deux copies de `lib/theme.svelte.ts` : le bouton changeait l'une, `cssVar` lisait l'autre ; page claire, graphiques sombres (ou l'inverse).
