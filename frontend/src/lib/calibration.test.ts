@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   allAnswers,
   calibrationView,
+  clearHistory,
   demoAnswers,
   experimentStats,
   headlineLevel,
@@ -11,7 +12,7 @@ import {
   tendency,
 } from './calibration'
 import { buildFigure } from './plot'
-import type { Answer, ConfidenceLevel, History } from './training'
+import { HISTORY_KEY, loadHistory, type Answer, type ConfidenceLevel, type History } from './training'
 
 function answers(level: ConfidenceLevel, p: number, count: number, right: number, experimentId = 'a'): Answer[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -101,5 +102,30 @@ describe('calibration : démonstration et courbe', () => {
     expect(points.text).toEqual(['Je devine', 'Plutôt sûr', 'Certain'])
     expect((points.marker as { size: number }).size).toBe(14)
     expect(fig.caption).toEqual([])
+  })
+})
+
+describe('calibration : effacer l’historique', () => {
+  it('vide l’historique de l’Entraînement sans toucher au reste', () => {
+    const data = new Map<string, string>([
+      [HISTORY_KEY, JSON.stringify({ version: 1, series: { s1: { filter: 'toutes', seed: 1, contentHash: 'x', size: 1, answers: answers('sure', 0.95, 1, 1) } } })],
+      ['crash-test:import:brouillon', 'mon yaml'],
+    ])
+    const store = { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v) }
+    expect(allAnswers(loadHistory(store))).toHaveLength(1)
+    expect(clearHistory(store)).toBe(true)
+    expect(allAnswers(loadHistory(store))).toEqual([])
+    expect(data.get('crash-test:import:brouillon')).toBe('mon yaml')
+  })
+
+  it('signale un navigateur qui refuse l’écriture', () => {
+    expect(clearHistory(null)).toBe(false)
+    const refused = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error('QuotaExceededError')
+      },
+    }
+    expect(clearHistory(refused)).toBe(false)
   })
 })

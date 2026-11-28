@@ -5,11 +5,12 @@
   Tout vient de l'historique local (lib/training.ts) ; les calculs sont dans lib/calibration.ts.
 -->
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, tick } from 'svelte'
   import PlotlyChart from '../PlotlyChart.svelte'
   import {
     allAnswers,
     calibrationView,
+    clearHistory,
     demoAnswers,
     experimentStats,
     headlineLevel,
@@ -25,7 +26,33 @@
   import { LINK_VERSION } from '../../lib/state'
   import { browserStore, loadHistory } from '../../lib/training'
 
-  const history = allAnswers(loadHistory(browserStore()))
+  let history = $state.raw(allAnswers(loadHistory(browserStore())))
+
+  // Effacement : en deux temps, avec une confirmation dans la page (définitif).
+  let confirming = $state(false)
+  let cleared = $state<'done' | 'failed' | null>(null)
+  let cancelButton = $state<HTMLButtonElement | null>(null)
+  let eraseButton = $state<HTMLButtonElement | null>(null)
+
+  async function askErase(): Promise<void> {
+    cleared = null
+    confirming = true
+    await tick()
+    cancelButton?.focus() // le choix sans risque reçoit le focus
+  }
+
+  async function cancelErase(): Promise<void> {
+    confirming = false
+    await tick()
+    eraseButton?.focus()
+  }
+
+  function erase(): void {
+    const ok = clearHistory(browserStore())
+    cleared = ok ? 'done' : 'failed'
+    if (ok) history = []
+    confirming = false
+  }
 
   const TENDENCIES: Record<Tendency, { icon: string; title: string; advice: string }> = {
     over: {
@@ -93,6 +120,12 @@
       <span><strong>Profil de démonstration</strong> : ces réponses sont fictives et ne sont pas enregistrées.</span>
       <button type="button" onclick={() => (demo = false)}>Revenir à mes réponses</button>
     </p>
+  {/if}
+
+  {#if cleared === 'done' && !demo}
+    <p class="muted" role="status">Votre historique a été effacé.</p>
+  {:else if cleared === 'failed'}
+    <p class="erase-error" role="alert">Votre navigateur a refusé l'effacement : rien n'a été supprimé.</p>
   {/if}
 
   {#if !summary || !headline}
@@ -231,6 +264,24 @@
           <li><strong>Incertitude ({frNumber(parts.uncertainty, 3)})</strong> : la difficulté des questions, indépendante de votre confiance.</li>
         </ul>
       </details>
+    {/if}
+  {/if}
+
+  {#if !demo && history.length > 0}
+    {#if confirming}
+      <div class="card erase" role="group" aria-labelledby="titre-effacer">
+        <p id="titre-effacer"><strong>Effacer votre historique ?</strong></p>
+        <p>
+          {history.length > 1 ? `Vos ${history.length} réponses seront effacées` : 'Votre réponse sera effacée'} de ce
+          navigateur. Les séries en cours repartiront du début. Cette action ne peut pas être annulée.
+        </p>
+        <p class="erase-actions">
+          <button type="button" class="danger" onclick={erase}>Effacer</button>
+          <button type="button" bind:this={cancelButton} onclick={cancelErase}>Annuler</button>
+        </p>
+      </div>
+    {:else}
+      <p class="demo"><button type="button" bind:this={eraseButton} onclick={askErase}>Effacer mon historique</button></p>
     {/if}
   {/if}
 
@@ -513,5 +564,20 @@
     color: var(--ct-muted);
     background: none;
     border-color: transparent;
+  }
+  .erase p {
+    margin: 0 0 var(--ct-space-2);
+  }
+  .erase-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ct-space-2);
+  }
+  .erase .danger {
+    border-color: var(--ct-verdict-broken);
+    color: var(--ct-verdict-broken);
+  }
+  .erase-error {
+    color: var(--ct-verdict-broken);
   }
 </style>
