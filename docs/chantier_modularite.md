@@ -23,7 +23,7 @@ Quand une ligne est terminée et fusionnée sur `main`, rayez-la (`~~...~~`) : l
 | ~~`scripts/new_experiment.py`~~ | oui | ~~crée un YAML à partir d'un modèle~~ **Fait** : 4 modèles (`statistique`, `regression`, `classifieur`, `algebre`) = copies fonctionnelles des expériences de référence, brouillon rangé dans `experiments/brouillons/`, `--check` pour valider, `tests/test_new_experiment.py` | R2 |
 | ~~`experiments/matrices_wigner.yaml`~~ | oui | ~~expérience pilote de l'algèbre~~ **Fait** : universalité de Wigner (normale, uniforme, exponentielle : demi-cercle ; Student à 2 ddl, Cauchy : rompu), 40 graines sans verdict ambigu, test 6 à 50 tirages vert | R2 |
 | ~~`tests/test_formula.py`~~ | oui | ~~tests des méthodes `formula_*`~~ **Fait** | |
-| `tests/test_linalg.py` | oui | tests de `linalg/` (comparaison à `np.linalg`, vectorisation, temps de calcul) | |
+| ~~`tests/test_linalg.py`~~ | oui | ~~tests de `linalg/`~~ **Fait** (spectrum, linsolve, eigen, orthonormalize, vue `heatmap`) | |
 | ~~`tests/test_api.py`~~ | non | ~~`/api/validate` : seuils proposés~~ **Fait** | |
 | ~~`scripts/gen_catalog.py`~~ | | **fait par R3** pour débloquer le prompt de l'Import (voir la liste R3) | R1 |
 
