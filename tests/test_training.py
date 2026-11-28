@@ -81,3 +81,15 @@ def test_prediction_is_deterministic() -> None:
     a = _session("tests-multiples", 11).model_dump()
     b = _session("tests-multiples", 11).model_dump()
     assert a == b
+
+
+def test_no_decimal_number_is_directly_followed_by_a_comma_or_semicolon() -> None:
+    """« passe de 0 à 0,98, que devient... » : la virgule de la phrase se confond avec la virgule décimale."""
+    import re
+
+    risky = re.compile(r"\d+,\d+(?:\s?(?:%|ddl))?\s?[,;]")
+    specs, digest = registry.official(), registry.content_digest()
+    for seed in range(1, 31):
+        for q in build_session(specs, digest, "toutes", 10, seed).questions:
+            for text in [q.prompt, *(c.label for c in q.choices), *(c.explain for c in q.choices)]:
+                assert not risky.search(text), f"{q.qid} : « {text} »"

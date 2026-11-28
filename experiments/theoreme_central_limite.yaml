@@ -199,7 +199,7 @@ questions:
 
   - id: "tcl-q3-dependance"
     type: misconception
-    prompt: "Les observations sont fortement dépendantes (AR(1), ρ = 0,8), de variance 1. Avec n = {n}, peut-on appliquer le théorème tel quel ?"
+    prompt: "Les observations sont fortement dépendantes (AR(1) avec ρ = 0,8) et de variance 1. Avec n = {n}, peut-on appliquer le théorème tel quel ?"
     hypothesis: "rho"
     procedural_params:
       n: { min: 100, max: 400, step: 50 }

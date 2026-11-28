@@ -150,7 +150,7 @@ views:
 questions:
   - id: "car-q1-pente"
     type: misconception
-    prompt: "Votre droite a une pente de {b} ; celle des moindres carrés vaut environ 1,5. Votre droite peut-elle faire moins de carrés ?"
+    prompt: "Votre droite a une pente de {b}. Celle des moindres carrés vaut environ 1,5. Votre droite peut-elle faire moins de carrés ?"
     hypothesis: "bruit"
     procedural_params:
       b: { min: 0, max: 0.8, step: 0.2 }

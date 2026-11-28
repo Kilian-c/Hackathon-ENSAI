@@ -220,7 +220,8 @@ def _prediction(spec: ExperimentSpec, q: Prediction, rng: np.random.Generator) -
         answer = "stable" if stable else ("up" if delta > 0 else "down")
         label = spec.measures[q.measure].label
         facts = (
-            f"{label} : {_measure_text(spec, q.measure, v0)} au départ, "
+            # « puis », pas une virgule : une virgule de liste à côté de virgules décimales prête à confusion.
+            f"{label} : {_measure_text(spec, q.measure, v0)} au départ puis "
             f"{_measure_text(spec, q.measure, v1)} à l'arrivée."
         )
         verdict = {"up": "elle augmente", "down": "elle diminue", "stable": "elle reste stable"}[answer]

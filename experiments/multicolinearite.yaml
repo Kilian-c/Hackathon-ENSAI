@@ -214,7 +214,7 @@ questions:
 
   - id: "mc-q4-prediction-rho"
     type: prediction
-    prompt: "Si la corrélation entre X1 et X2 passe de 0 à {r}, que devient la part des échantillons où le test de Student détecte l'effet de X1 ?"
+    prompt: "Que devient la part des échantillons où le test de Student détecte l'effet de X1 si la corrélation entre X1 et X2 passe de 0 à {r} ?"
     procedural_params:
       r: { min: 0.9, max: 0.98, step: 0.02 }
     sweep: { target: h.rho, from: 0, to: "{r}" }
