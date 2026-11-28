@@ -13,7 +13,6 @@
   La graine ne change qu'avec « Nouveau tirage ».
 -->
 <script lang="ts">
-  import ThemeButton from '../ThemeButton.svelte'
   import { onDestroy } from 'svelte'
   import { SvelteSet } from 'svelte/reactivity'
   import DynamicEquation from '../DynamicEquation.svelte'
@@ -423,7 +422,6 @@
         {#if origin.kind !== 'draft'}
           <button type="button" class="crumb-btn" onclick={copyLink}>{copied ? '✓ Lien copié' : 'Copier le lien'}</button>
         {/if}
-        <ThemeButton push={origin.kind === 'draft'} />
       </p>
       <div class="title-row">
         <h1 title={spec.title}>

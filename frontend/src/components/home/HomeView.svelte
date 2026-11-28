@@ -1,5 +1,4 @@
 <script lang="ts">
-  import ThemeButton from '../ThemeButton.svelte'
   // Accueil : les deux modes (Entraînement, Laboratoire), tenant sur un écran.
   // La liste des expériences est sur une page à part (?labo, LabGallery.svelte).
   import { LAB_GALLERY_HREF, TRAIN_ALL_HREF } from './experiments'
@@ -7,7 +6,6 @@
 
 <div class="screen">
   <main class="home">
-    <div class="corner"><ThemeButton /></div>
     <header class="hero">
       <p class="eyebrow">Réviser par la simulation</p>
       <h1>Crash-Test</h1>
@@ -92,17 +90,11 @@
       var(--ct-bg);
   }
   .home {
-    position: relative;
     width: 100%;
     max-width: 68rem;
     margin: auto;
     padding: var(--ct-space-6);
     box-sizing: border-box;
-  }
-  .corner {
-    position: absolute;
-    top: var(--ct-space-4);
-    right: var(--ct-space-4);
   }
 
   /* --- En-tête --- */

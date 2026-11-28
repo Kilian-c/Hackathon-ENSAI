@@ -7,7 +7,6 @@
   (brouillon) : « Ouvrir dans le Laboratoire » l'ouvre par ?brouillon, sans rien enregistrer ailleurs.
 -->
 <script lang="ts">
-  import ThemeButton from './ThemeButton.svelte'
   import { ApiError, api } from '../lib/executor'
   import { importPrompt } from '../lib/importPrompt'
   import { loadDraft, saveDraft, saveShared, ShareError, shareUrl, sharingAvailable } from '../lib/share'
@@ -181,10 +180,7 @@
 
 <main class="import">
   <header class="top">
-    <div class="bar">
-      <a class="back" href="?">← Accueil</a>
-      <ThemeButton />
-    </div>
+    <a class="back" href="?">← Accueil</a>
     <h1>Importer une expérience</h1>
     <p class="lead">
       Une expérience est un seul fichier YAML. Faites-le écrire par l'assistant IA de votre choix, vérifiez-le
@@ -425,12 +421,6 @@
   }
   .top {
     margin-bottom: var(--ct-space-6);
-  }
-  .bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--ct-space-3);
   }
   .back {
     color: var(--ct-muted);

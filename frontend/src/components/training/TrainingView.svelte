@@ -7,7 +7,6 @@
   Le lien ?train=<filtre>&seed=<graine>&v=1 redonne la même série.
 -->
 <script lang="ts">
-  import ThemeButton from '../ThemeButton.svelte'
   import { onMount, tick, untrack } from 'svelte'
   import QuestionCard from './QuestionCard.svelte'
   import RevealPanel from './RevealPanel.svelte'
@@ -116,12 +115,9 @@
         <p class="meta">{seriesTitle(total)} · {filterLabel(session.filter)}</p>
       {/if}
     </div>
-    <div class="end">
-      {#if session && total > 0}
-        <button type="button" onclick={copyLink}>{copied ? 'Lien copié' : 'Copier le lien de la série'}</button>
-      {/if}
-      <ThemeButton />
-    </div>
+    {#if session && total > 0}
+      <button type="button" onclick={copyLink}>{copied ? 'Lien copié' : 'Copier le lien de la série'}</button>
+    {/if}
   </header>
 
   {#if loading}
@@ -201,11 +197,6 @@
     justify-content: space-between;
     align-items: flex-end;
     gap: var(--ct-space-4);
-  }
-  .end {
-    display: flex;
-    align-items: center;
-    gap: var(--ct-space-3);
   }
   h1 {
     margin: 0;
