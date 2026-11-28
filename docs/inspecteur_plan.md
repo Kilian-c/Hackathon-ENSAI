@@ -18,7 +18,7 @@ Dans la régression, un clic sur un point du nuage (ou des résidus) **entoure l
 | Distance de Cook | Dᵢ | de combien la droite bougerait sans ce point |
 | Part dans la SCR | ε̂ᵢ² / Σ ε̂ⱼ² | la part de l'erreur totale due à ce point |
 
-Seuils signalés (couleur **et** texte) : levier élevé si hᵢᵢ > 2p/n, point influent si Dᵢ > 4/n (p = nombre de coefficients, 2 ici ; n = nombre de points, points posés compris).
+Seuils signalés (couleur **et** texte) : levier élevé si hᵢᵢ > 2p/n, point influent si Dᵢ > 4/n (p = nombre de coefficients, 2 ici ; n = nombre de points, points posés compris). **Dans le code, ne pas écrire p** : la somme des leviers vaut p, donc 2p/n = **2 × la moyenne des leviers reçus**.
 
 **Intérêt pédagogique** : avec l'ajout de points par clic, l'étudiant pose un point loin à droite, l'inspecte et lit « levier élevé, point influent » : il comprend pourquoi la pente a bougé (lien avec l'hypothèse « point levier »).
 
@@ -39,6 +39,14 @@ Seuils signalés (couleur **et** texte) : levier élevé si hᵢᵢ > 2p/n, poin
 
 ---
 
+**Revérifié avant de coder** (`main` après `b153530`) : aucun des fichiers visés n'a changé. Confirmé dans le code :
+- les points du nuage arrivent **dans l'ordre de l'échantillon**, sans sous-échantillonnage ; `fit` est dans le même ordre ;
+- les points posés sont **ajoutés à la fin** (`with_extra_points`) : le point posé `k` (sur `K`) est l'observation `n_total − K + k` ;
+- ils sont dessinés **deux fois** : comme observation (rond ou triangle) et comme étoile par-dessus ;
+- `ols_ci` : `lev = 1/n + (x − x̄)² / Sxx`, de somme 2 : la règle « 2 × moyenne des leviers » est exacte.
+
+---
+
 ## 3. Implémentation (aucun contrat modifié)
 
 ### Moteur (R1)
@@ -46,17 +54,17 @@ Seuils signalés (couleur **et** texte) : levier élevé si hᵢᵢ > 2p/n, poin
    - `slot: "inspect.leverage"` : `x` = abscisses de l'échantillon, `y` = leviers ;
    - `slot: "inspect.cooks_d"` : `x` = abscisses, `y` = distances de Cook.
    Même ordre et même longueur que `x` (points posés compris, déjà dans `example`). Environ 20 lignes.
-2. **`backend/engine/loader.py`** : si une vue déclare `inspect`, vérifier que la méthode principale déclare `example.leverage` et `example.cooks_d` dans `provides` ; sinon erreur en français avec le numéro de ligne. Environ 10 lignes.
+2. **Vérification demandée par le cahier** (méthode principale avec `example.leverage` et `example.cooks_d` quand une vue déclare `inspect`) : **le chargeur ne consulte pas aujourd'hui les clés `provides`** des méthodes. Deux voies : l'ajouter au chargeur (il faut alors y importer le registre des méthodes ; erreur en français avec le numéro de ligne, utile pour l'Import), ou, plus simple, un test de contenu sur les YAML officiels. Dans les deux cas, le runner n'émet une série `inspect.*` que si le tableau existe (pas d'erreur 500).
 
 ### Interface (R3, Kilian ; repris par R1 la nuit)
 3. **`frontend/src/lib/inspect.ts`** (nouveau, fonctions pures) :
    - `inspectionFor(view, i)` : fiche du point `i` à partir des séries de la vue (`x`, `y`, `fit`, `inspect.leverage`, `inspect.cooks_d`) ;
-   - résidu, part dans la SCR, seuils 2p/n et 4/n ;
+   - résidu, part dans la SCR, seuil de levier = 2 × moyenne des leviers reçus (jamais de `p = 2` en dur), seuil de Cook = 4/n ;
    - **générique** : n'affiche que ce que la vue fournit (sans `fit`, pas de résidu ; sans levier, pas de ligne levier). Aucun `if experiment.id`.
 4. **`frontend/src/lib/plot.ts`** :
    - ne jamais dessiner les séries dont le `slot` commence par `inspect.` ;
    - trace « anneau » autour du point sélectionné (identifiant stable `<vue>.inspect.selection`) ;
-   - indice de l'observation dans `customdata` des points de l'échantillon.
+   - indice de l'observation dans `customdata` des points de l'échantillon. **Attention : `clampPoints` répartit les points entre deux tracés** (dans le cadre, et triangles « hors cadre ») **et saute les valeurs manquantes** : la position dans un tracé n'est pas le numéro d'observation. `clampPoints` doit renvoyer l'indice d'origine de chaque point, posé en `customdata` sur **les deux** tracés (un triangle doit aussi pouvoir s'inspecter : ce sont souvent les points les plus intéressants). Ignorer les clics sur la droite et les segments.
 5. **`frontend/src/components/PlotlyChart.svelte`** : `plotly_click` sur un point de l'échantillon appelle `oninspect(i)` et **bloque l'ajout de point** pour ce clic (même mécanisme que `removedJustNow` pour le retrait). Clic dans le vide : ajout, comme aujourd'hui.
 6. **`frontend/src/components/lab/Inspector.svelte`** (nouveau) : panneau sous le graphique avec la fiche, les seuils (couleur et texte : « levier élevé », « influent »), « Fermer », et pour un point posé « Retirer ce point ». Vouvoiement, nombres à la française (`lib/format.ts`).
 7. **`frontend/src/components/lab/LabView.svelte`** : indice sélectionné ; transmis au graphique ; fiche fermée si l'indice dépasse le nombre de points, ou si `n` ou la graine changent ; mise à jour si une hypothèse change.
@@ -79,7 +87,7 @@ Seuils signalés (couleur **et** texte) : levier élevé si hᵢᵢ > 2p/n, poin
 ## 5. Tests
 
 - **Moteur** (`tests/test_runner.py`, `tests/test_engine.py`) : séries `inspect.*` présentes si et seulement si `inspect: true` ; même longueur que `x` ; points posés inclus ; erreur du chargeur si la méthode ne fournit pas le levier.
-- **Interface** (`lib/inspect.test.ts`, `lib/plot.test.ts`) : fiche d'un point, seuils, somme des parts dans la SCR égale à 1, fermeture hors limites, séries `inspect.*` jamais dessinées, anneau présent seulement avec une sélection.
+- **Interface** (`lib/inspect.test.ts`, `lib/plot.test.ts`) : fiche d'un point, seuils, somme des parts dans la SCR égale à 1, indice d'origine conservé pour les points hors cadre et après une valeur manquante, fermeture hors limites, séries `inspect.*` jamais dessinées, anneau présent seulement avec une sélection.
 - **Navigateur** : clic sur un point (fiche et anneau) ; clic dans le vide (ajout, pas d'inspecteur) ; point posé loin à droite (« levier élevé, influent ») ; fiche mise à jour en bougeant l'hétéroscédasticité ; fermée quand `n` change ; thèmes clair et sombre ; console sans erreur.
 
 ---
