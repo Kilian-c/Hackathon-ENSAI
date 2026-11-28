@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
   import DynamicEquation from '../DynamicEquation.svelte'
+  import MathText from '../MathText.svelte'
   import Tex from '../Tex.svelte'
   import { isHealthy } from '../../lib/lab'
   import type { Counterexample, EngineState, ExperimentSpec, RunResult } from '../../lib/types.gen'
@@ -35,7 +36,7 @@
   <section class="theorem">
     <p class="kicker">Le théorème</p>
     <h2>{spec.theorem.name}</h2>
-    <p class="statement">{spec.theorem.statement}</p>
+    <p class="statement"><MathText text={spec.theorem.statement} /></p>
     {#if result}
       <div class="equation">
         <DynamicEquation equation={spec.equation} {result} hypotheses={spec.hypotheses} {methodsOn} />
@@ -65,11 +66,11 @@
           <div class="sides">
             <div class="side ok">
               <p class="side-title"><span aria-hidden="true">✓</span> À quoi elle sert</p>
-              <p>{h.why}</p>
+              <p><MathText text={h.why} /></p>
             </div>
             <div class="side ko">
               <p class="side-title"><span aria-hidden="true">✕</span> Ce que l'on voit quand elle tombe</p>
-              <p>{h.when_broken}</p>
+              <p><MathText text={h.when_broken} /></p>
             </div>
           </div>
         </li>
@@ -86,7 +87,7 @@
           <li>
             <div>
               <strong>{c.label}</strong>
-              <p>{c.explain}</p>
+              <p><MathText text={c.explain} /></p>
             </div>
             <button type="button" class="try" onclick={() => onpreset(c)}>Essayer →</button>
           </li>
