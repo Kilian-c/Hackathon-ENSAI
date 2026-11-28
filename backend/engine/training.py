@@ -404,6 +404,22 @@ def _pool(experiments: list[ExperimentSpec]) -> list[_Slot]:
     return slots
 
 
+def _round_robin(pool: list[_Slot], rng: np.random.Generator) -> list[_Slot]:
+    """Ordre de tirage équilibré : les expériences sont mélangées, puis chacune donne une question à son
+    tour (ses questions étant elles-mêmes mélangées). Une série ne retombe sur une même expérience qu'une
+    fois toutes les autres servies : 10 questions sur 15 expériences = 10 expériences différentes."""
+    by_experiment: dict[str, list[_Slot]] = {}
+    for slot in pool:
+        by_experiment.setdefault(slot.spec.id, []).append(slot)
+    ids = sorted(by_experiment)
+    queues = [[by_experiment[i][j] for j in rng.permutation(len(by_experiment[i]))] for i in ids]
+    queues = [queues[k] for k in rng.permutation(len(queues))]
+    order: list[_Slot] = []
+    for rank in range(max(len(q) for q in queues)):
+        order += [q[rank] for q in queues if rank < len(q)]
+    return order
+
+
 def build_session(
     specs: Mapping[str, ExperimentSpec], digest: str, filter_: str, count: int, seed: int
 ) -> TrainingSessionResponse:
@@ -416,15 +432,14 @@ def build_session(
         raise RunError("Aucune question disponible pour ce filtre.")
     target = min(count, MAX_TRAINING_COUNT, len(pool))
     stream = f"training:{canonical_filter(specs, filter_)}:{digest}"
-    order = rng_for(seed, stream).permutation(len(pool))
+    order = _round_robin(pool, rng_for(seed, stream))
 
     questions: list[TrainingQuestion] = []
     dropped: list[DroppedQuestion] = []
     used: dict[tuple[str, str], set[str]] = {}
-    for i in order:
+    for slot in order:
         if len(questions) == target:
             break
-        slot = pool[i]
         if time.perf_counter() - t0 > MAX_SECONDS:
             dropped.append(
                 DroppedQuestion(
@@ -449,6 +464,9 @@ def build_session(
             dropped.append(
                 DroppedQuestion(experiment_id=slot.spec.id, question_id=slot.question.id, reason=str(exc))
             )
+
+    # Le tirage à tour de rôle range les questions par tour : on remélange la série.
+    questions = [questions[j] for j in rng_for(seed, f"{stream}:ordre").permutation(len(questions))]
 
     return TrainingSessionResponse(
         id=f"{filter_}~{seed}",

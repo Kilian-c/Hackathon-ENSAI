@@ -185,3 +185,71 @@ def test_unknown_or_empty_discipline_is_a_french_error_that_lists_the_choices() 
 def test_existing_filters_are_unchanged() -> None:
     assert len(_session("toutes", 1).questions) == 10
     assert {q.experiment_id for q in _session("regression-lineaire", 1).questions} == {"regression-lineaire"}
+
+
+# --- Tirage équilibré entre expériences (plan de docs/notes/r1.md, étape 2) -----------------------------
+
+
+def _first_slots(filter_: str, seed: int, count: int = 10):
+    """Les `count` premiers emplacements tirés, sans fabriquer les questions (rapide)."""
+    from backend.engine.rng import rng_for
+    from backend.engine.training import _pool, _round_robin, canonical_filter, select_experiments
+
+    specs = registry.official()
+    stream = f"training:{canonical_filter(specs, filter_)}:{registry.content_digest()}"
+    pool = _pool(select_experiments(specs, filter_))
+    return _round_robin(pool, rng_for(seed, stream))[: min(count, len(pool))]
+
+
+def test_round_robin_serves_every_experiment_once_before_repeating_one() -> None:
+    from collections import Counter
+    from math import ceil
+
+    specs = registry.official()
+    filters = ("toutes", "discipline:statistique", "discipline:algebre-lineaire", "discipline:apprentissage")
+    for filter_ in filters:
+        n_experiments = len([s for s in specs.values() if filter_ == "toutes" or _slug_matches(s, filter_)])
+        for seed in range(60):
+            counts = Counter(slot.spec.id for slot in _first_slots(filter_, seed))
+            assert max(counts.values()) <= ceil(10 / n_experiments), (filter_, seed, dict(counts))
+
+
+def _slug_matches(spec, filter_: str) -> bool:
+    from backend.engine.training import discipline_slug
+
+    return discipline_slug(spec.discipline) == filter_.removeprefix("discipline:")
+
+
+def test_all_fifteen_experiments_can_open_a_series_and_ten_are_all_different() -> None:
+    from collections import Counter
+
+    opening = Counter()
+    for seed in range(120):
+        slots = _first_slots("toutes", seed)
+        assert len({s.spec.id for s in slots}) == 10, seed  # 10 questions : 10 expériences différentes
+        opening[slots[0].spec.id] += 1
+    assert len(opening) >= 12  # la première question n'est pas toujours celle des mêmes expériences
+
+
+def test_every_experiment_of_a_discipline_is_represented_in_a_ten_question_series() -> None:
+    from backend.engine.training import discipline_slug
+
+    specs = registry.official()
+    expected = {s.id for s in specs.values() if discipline_slug(s.discipline) == "algebre-lineaire"}
+    for seed in range(40):
+        assert {s.spec.id for s in _first_slots("discipline:algebre-lineaire", seed)} == expected
+
+
+def test_a_single_experiment_uses_all_its_questions_in_a_shuffled_order() -> None:
+    orders = set()
+    for seed in range(30):
+        orders.add(tuple((s.question.id, s.index) for s in _first_slots("tests-multiples", seed, 99)))
+    assert len(orders) > 5  # l'ordre dépend de la graine
+    assert all(len(o) == len(set(o)) for o in orders)  # aucune question deux fois
+
+
+def test_a_real_series_is_balanced_and_in_a_shuffled_order() -> None:
+    session = _session("toutes", 4)
+    experiments = [q.experiment_id for q in session.questions]
+    assert len(session.questions) == 10 and len(set(experiments)) == 10
+    assert experiments != sorted(experiments)  # remélangée : pas rangée par expérience
