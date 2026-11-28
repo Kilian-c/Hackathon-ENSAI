@@ -271,47 +271,51 @@
     background: var(--ct-surface-2);
   }
 
-  /* Fenêtres basses (portable, mise à l'échelle Windows à 125 ou 150 %) : mêmes éléments,
-     espacements et tailles resserrés pour que l'accueil tienne sur un écran, boutons compris. */
-  @media (max-height: 62rem) {
-    .home {
-      padding-block: var(--ct-space-3);
-    }
-    .hero {
-      margin-bottom: var(--ct-space-4);
-    }
-    .eyebrow {
-      margin-bottom: var(--ct-space-2);
-    }
-    h1 {
-      font-size: clamp(2rem, 4vw, 2.75rem);
-    }
-    .tagline {
-      max-width: 44rem;
-      margin-top: var(--ct-space-2);
-      font-size: var(--ct-text-md);
-    }
-    .mode {
-      padding: var(--ct-space-4) var(--ct-space-6);
-    }
-    .mode-art {
-      height: 2.5rem;
-      margin-bottom: var(--ct-space-2);
-    }
-    .mode h2 {
-      margin-bottom: var(--ct-space-1);
-      font-size: var(--ct-text-lg);
-    }
-    .mode-text {
-      line-height: 1.45;
-    }
-    .mode-points {
-      margin: var(--ct-space-3) 0 var(--ct-space-4);
-      gap: 0;
-    }
-    .import-link {
-      margin-top: var(--ct-space-3);
-    }
+  /* Taille qui suit la hauteur de la fenêtre, sans retirer d'élément : version resserrée
+     jusqu'à 1000 px de haut, version complète à partir de 1150 px, et un passage continu entre les deux.
+     Chaque valeur vaut clamp(resserrée, resserrée + pente × (hauteur − 1000 px), complète). */
+  .screen {
+    --fit: (100vh - 1000px);
+  }
+  .home {
+    padding-block: clamp(12px, calc(12px + var(--fit) * 0.08), 24px);
+  }
+  .hero {
+    margin-bottom: clamp(16px, calc(16px + var(--fit) * 0.1067), 32px);
+  }
+  .eyebrow {
+    margin-bottom: clamp(8px, calc(8px + var(--fit) * 0.0267), 12px);
+  }
+  h1 {
+    font-size: clamp(2rem, min(5vw, calc(44px + var(--fit) * 0.0533)), 3.25rem);
+  }
+  .tagline {
+    max-width: 44rem;
+    margin-top: clamp(8px, calc(8px + var(--fit) * 0.0267), 12px);
+    font-size: clamp(16px, calc(16px + var(--fit) * 0.0107), 17.6px);
+  }
+  .mode {
+    padding: clamp(16px, calc(16px + var(--fit) * 0.0533), 24px)
+      clamp(24px, calc(24px + var(--fit) * 0.0533), 32px);
+  }
+  .mode-art {
+    height: clamp(40px, calc(40px + var(--fit) * 0.1067), 56px);
+    margin-bottom: clamp(8px, calc(8px + var(--fit) * 0.0267), 12px);
+  }
+  .mode h2 {
+    margin-bottom: clamp(4px, calc(4px + var(--fit) * 0.0267), 8px);
+    font-size: clamp(20px, calc(20px + var(--fit) * 0.0533), 28px);
+  }
+  .mode-text {
+    line-height: clamp(1.45em, calc(1.45em + var(--fit) * 0.0053), 1.5em);
+  }
+  .mode-points {
+    margin: clamp(12px, calc(12px + var(--fit) * 0.0267), 16px) 0
+      clamp(16px, calc(16px + var(--fit) * 0.0533), 24px);
+    gap: clamp(0px, calc(var(--fit) * 0.0267), 4px);
+  }
+  .import-link {
+    margin-top: clamp(12px, calc(12px + var(--fit) * 0.08), 24px);
   }
 
   @media (prefers-reduced-motion: reduce) {
