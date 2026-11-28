@@ -14,7 +14,7 @@ Quand une ligne est terminée et fusionnée sur `main`, rayez-la (`~~...~~`) : l
 | ~~`backend/methods/linalg/__init__.py`~~ | oui | ~~paquet de l'algèbre linéaire~~ **Fait** | R2 |
 | ~~`backend/methods/linalg/linsolve.py`~~ | oui | ~~`linsolve` (gauss, gauss_pivot, cholesky, jacobi, gauss_seidel, cg)~~ **Fait** + `experiments/systemes_lineaires.yaml` (Jacobi contre diagonale faible ; Gauss-Seidel en alternative, pivot de Gauss en correction) | R2 |
 | ~~`backend/methods/linalg/eigen.py`~~ | oui | ~~`eigen` (power, qr, numpy)~~ **Fait** + `experiments/valeurs_propres.yaml` (puissance contre valeur propre dominante noyée dans le spectre ; QR en alternative, calcul direct en correction) | R2 |
-| `backend/methods/linalg/orthonormalize.py` | oui | `orthonormalize` (cgs, mgs, householder) | R2 |
+| ~~`backend/methods/linalg/orthonormalize.py`~~ | oui | ~~`orthonormalize` (cgs, mgs, householder)~~ **Fait** + `experiments/orthonormalisation.yaml` (perte d'orthogonalité : epsilon fois cond² pour le classique, cond pour le modifié, epsilon pour Householder) | R2 |
 | ~~`backend/methods/linalg/spectrum.py`~~ | oui | ~~`spectrum` (spectre de matrices aléatoires)~~ **Fait** (Wigner : `reps` lmax, lmin, radius ; `curves` matrix, eigenvalues ; `summary` semicircle_ks) | R2 |
 | ~~`backend/methods/__init__.py`~~ | non | ~~découverte automatique (`pkgutil`)~~ **Fait** | R2 |
 | ~~`backend/engine/expr.py`~~ | non | ~~liste blanche : `sort`, `quantile`, `cumprod`~~ **Fait** | R3 |

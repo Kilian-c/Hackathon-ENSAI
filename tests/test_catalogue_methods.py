@@ -66,3 +66,20 @@ def test_new_view_slots_threshold_h1_segments_and_labels() -> None:
     seg = next(s for s in next(v for v in sq.views if v.id == "nuage").series if s.slot == "segments")
     assert seg.x is not None and seg.low is not None and seg.high is not None and seg.y is None
     assert len(seg.x) == len(seg.low) == len(seg.high) == 20
+
+
+def test_fast_tukey_quantile_matches_scipy_and_is_fast() -> None:
+    import time
+
+    from scipy import stats
+
+    from backend.methods.pairwise_tests import _tukey_quantile
+
+    _tukey_quantile.cache_clear()
+    for groups, dof in ((3, 57), (6, 114), (2, 8)):
+        t0 = time.perf_counter()
+        fast = _tukey_quantile(0.95, groups, dof)
+        elapsed = time.perf_counter() - t0
+        reference = float(stats.studentized_range.ppf(0.95, groups, dof))
+        assert abs(fast - reference) / reference < 1e-9
+        assert elapsed < 0.5, f"quantile de Tukey ({groups}, {dof}) : {elapsed:.2f} s"

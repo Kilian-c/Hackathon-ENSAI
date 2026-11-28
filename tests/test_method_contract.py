@@ -332,6 +332,17 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         15,
     ),
+    "orthonormalize": (
+        {
+            "a": np.random.default_rng(6).standard_normal((20, 9)),
+            "d": 3,
+            "decades": 2.0,
+            "kind": "cgs",
+            "rng": np.random.default_rng(0),
+        },
+        20,
+        None,
+    ),
     "eigen": (
         {
             "a": np.random.default_rng(4).standard_normal((20, 9)),
