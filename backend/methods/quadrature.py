@@ -140,7 +140,10 @@ def iterated_integral(
 
 @register_method(
     "iterated_integrals",
-    provides={"reps": ["dy_dx", "dx_dy", "gap", "abs_int"], "curves": ["t", "dy", "dx"]},
+    provides={
+        "reps": ["dy_dx", "dx_dy", "gap", "abs_int", "slice_int"],
+        "curves": ["t", "dy", "dx", "slice_y", "slice_f"],
+    },
     cost="repeat * n",
 )
 def iterated_integrals(
@@ -148,6 +151,7 @@ def iterated_integrals(
     x: np.ndarray,
     y: np.ndarray,
     f: np.ndarray,
+    x0: float = 0.5,
     rng: np.random.Generator,
 ) -> MethodResult:
     """Les deux intégrales itérées de f sur [lo, 1]², chacune sur une grille adaptée à son ordre.
@@ -162,6 +166,8 @@ def iterated_integrals(
     la moyenne par colonne approche G(y) = ∫ f(x, y) dx, puis `dx_dy` (d'abord en x). `gap` = `dy_dx - dx_dy`;
     `abs_int` = ∫∫|f| (moyenne de |f| sur les deux grilles, fois `(1 - lo)²`).
     `curves` (répétition 0) : `t` (101 points de [lo, 1]), `dy` = F et `dx` = G, interpolées sur `t`.
+    Tranche : la ligne de la première grille la plus proche de `x0` (écart d'une demi-cellule au plus) ;
+    `slice_y`, `slice_f` = y ↦ f(x0, y) (répétition 0), `slice_int` = son aire, soit F(x0).
     """
     x = np.atleast_2d(np.asarray(x, dtype=float))
     y = np.atleast_2d(np.asarray(y, dtype=float))
@@ -195,6 +201,9 @@ def iterated_integrals(
     dy_dx = inner_dy.mean(axis=1) * length
     dx_dy = inner_dx.mean(axis=1) * length
     abs_int = (np.abs(f_rows).mean(axis=(1, 2)) + np.abs(f_cols).mean(axis=(1, 2))) / 2 * length**2
+    row = int(np.argmin(np.abs(xs - float(x0))))
+    slice_int = f_rows[:, row, :].mean(axis=1) * length
+    slice_y = y[0, :half].reshape(a, -1)[row]
     t = np.linspace(lo, 1.0, 101)
     return MethodResult(
         reps={
@@ -202,6 +211,13 @@ def iterated_integrals(
             "dx_dy": dx_dy.astype(float),
             "gap": (dy_dx - dx_dy).astype(float),
             "abs_int": abs_int.astype(float),
+            "slice_int": slice_int.astype(float),
         },
-        curves={"t": t, "dy": np.interp(t, xs, inner_dy[0]), "dx": np.interp(t, ys, inner_dx[0])},
+        curves={
+            "t": t,
+            "dy": np.interp(t, xs, inner_dy[0]),
+            "dx": np.interp(t, ys, inner_dx[0]),
+            "slice_y": slice_y.copy(),
+            "slice_f": f_rows[0, row, :].copy(),
+        },
     )

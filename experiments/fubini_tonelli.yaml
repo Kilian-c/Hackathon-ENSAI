@@ -25,6 +25,8 @@ equation:
 params:
   eps: { type: number, label: "Troncature ε : on intègre sur [ε, 1]² (0 : le carré entier ; sous 0,03 la grille ne résout plus le coin)",
          min: 0, max: 0.5, step: 0.01, default: 0, sweep_values: [0, 0.03, 0.1, 0.3] }
+  x0: { type: number, label: "Position x₀ de la tranche (la ligne de calcul la plus proche est tracée)",
+        min: 0.04, max: 0.96, step: 0.04, default: 0.48, sweep_values: [0.04, 0.2, 0.4, 0.6, 0.8, 0.96] }
 
 hypotheses:
   integrabilite:
@@ -90,7 +92,7 @@ methods:
     role: method
     call: iterated_integrals
     label: "Intégrales itérées sur [0, 1]²"
-    args: { x: x, y: y, f: f }
+    args: { x: x, y: y, f: f, x0: p.x0 }
 
 measures:
   ecart:
@@ -110,6 +112,10 @@ measures:
     agg: "mean(reps.abs_int)"
     label: "Intégrale de |f| sur [ε, 1]²"
     decimals: 2
+  slice_int:
+    agg: "mean(reps.slice_int)"
+    label: "Aire de la tranche en x₀ (∫ f dy)"
+    decimals: 3
   dy_dx:
     agg: "mean(reps.dy_dx)"
     label: "Intégrale d'abord en y, puis en x"
@@ -125,6 +131,8 @@ challenges:
     when: "h.integrabilite == 'diverge' and s.ecart == 'broken'"
     unlock: "Sans intégrabilité, l'ordre d'intégration décide du résultat : $\\pi/4$ dans un sens, $-\\pi/4$ dans l'autre."
 
+auto_sweep: [p.x0]
+
 views:
   - id: integrales
     type: curves
@@ -135,6 +143,11 @@ views:
       fill_area: true
       labels: { h1: "∫ f dx, en fonction de y" }
     bind: { t: curves.t, series: [ { y: curves.dy, label: "∫ f dy, en fonction de x" } ], h1: curves.dx }
+  - id: tranche
+    type: curves
+    title: "Une tranche : y ↦ f(x₀, y), et son aire (la valeur de ∫ f dy en x₀)"
+    ui: { x_title: "y", y_title: "f(x₀, y)", fill_area: true }
+    bind: { t: curves.slice_y, series: [ { y: curves.slice_f, label: "f(x₀, y)" } ] }
   - id: famille
     type: sensitivity
     title: "Selon la fonction intégrée"
