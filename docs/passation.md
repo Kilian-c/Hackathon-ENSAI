@@ -1,11 +1,20 @@
 # Notes de passation (la plus récente en haut)
 
+## Départ définitif de R1 (28/11, pas une relève) : Fubini-Tonelli refait, **à lire par R2, R3, R4**
+- **Détail complet, pièges et idées non faites** : `docs/notes/r1.md`, section « Fin de session de R1 ». R1 ne reviendra pas sur le projet : tout ce qui concerne le moteur est à reprendre par R3 (qui peut aider sur le moteur, CLAUDE.md) ou R2.
+- **Fubini-Tonelli a changé** (la note « Catégorie Intégration » plus bas est **périmée** sur ce point : plus de paramètre `ordre`, plus de heatmap, plus de grilles 5 × 980 / 70 × 70). Maintenant : méthode `iterated_integrals`, vue de deux courbes (intégrales intérieures, aires remplies), curseur `p.eps` (troncature [ε, 1]²), mesure ∫∫|f|, 4 questions dont une prédiction. Les étapes « heatmap » et « tranche » ont été abandonnées sur décision de l'utilisateur.
+- **Fichiers de R2 modifiés par R1, à relire** : `backend/methods/quadrature.py`, `experiments/fubini_tonelli.yaml`, `tests/test_quadrature.py`, `tests/test_method_contract.py`. **Fichier de R4 modifié** : `components/home/LabGallery.svelte` (animation d'ouverture). Aucun contrat modifié.
+- **Rien n'est poussé** : `main` a des commits locaux en avance sur `origin/main` ; l'utilisateur pousse. Tests verts au 28/11 : `pytest`, `ruff`, `npm run check` (0 erreur), `npm test` (261).
+- **Non vérifié au navigateur** : l'affichage de Fubini-Tonelli (deux courbes remplies, tuile ∫∫|f|, curseur ε, prédiction) et l'animation du Laboratoire. À regarder avant la démo.
+- **Pistes restantes** (priorité décroissante) : (1) laisser choisir la mesure balayée dans la Sensibilité (R3, `LabView.svelte` ; `SweepRequest.measure` existe déjà), ce qui donnerait la courbe de ∫∫|f| selon ε ; (2) continuité et dérivation sous l'intégrale (deux YAML d'intégration) ; (3) étape 6 de l'Entraînement par thème et questions pour « Apprentissage ».
+- **Machine de R1** : `uv` absent (`.venv/bin/python ...`), `npm` seulement via `bash -lc`.
+
 ## Référence dans les histogrammes de répétitions (R3, pas une relève) : **à relire par R1**
 - **Moteur (`backend/engine/runner.py`, fichier de R1, modifié par R3)** : une vue `distribution` liée à `reps.*` reçoit désormais une série `reference` (la méthode principale à l'état sain, même graine). Avant, seules `example.*` et `curves.*` en avaient une : la case « Référence » restait sans effet sur ces histogrammes (Moyenne ou médiane, TCL, etc.). Aucun contrat modifié.
 - **Interface** : la case « Référence (état sain) » ne s'affiche que si la vue a une série `reference` (Laboratoire et validation d'une question). La valeur de Référence du panneau de droite (jauge, « Référence (état sain) : … ») est toujours affichée : c'est la cible quand `target: base`.
 
 ## Catégorie Intégration : 4 expériences livrées sur `r1/integration` (R1, pas une relève)
-- **Faites** : `convergence_dominee.yaml`, `convergence_monotone.yaml` (Beppo-Lévy), `lemme_fatou.yaml` (positivité : les fonctions `-n·1[0, 1/n]` rompent l'inégalité), `fubini_tonelli.yaml` (niveau 3 ; l'ordre d'intégration est un paramètre `ordre`, grille 5 × 980, 70 × 70 ou 980 × 5). Chacune a 3 questions et passe les tests 1, 3, 4, 10 et le test 6 sur 50 tirages. Pastille « Intégration » dans l'Entraînement.
+- **Faites** : `convergence_dominee.yaml`, `convergence_monotone.yaml` (Beppo-Lévy), `lemme_fatou.yaml` (positivité : les fonctions `-n·1[0, 1/n]` rompent l'inégalité), `fubini_tonelli.yaml` (niveau 3 ; **version d'origine, refaite le 28/11 : voir la note « Départ définitif de R1 » plus haut**). Chacune a 3 questions et passe les tests 1, 3, 4, 10 et le test 6 sur 50 tirages. Pastille « Intégration » dans l'Entraînement.
 - **Nouvelle méthode** `iterated_integral` (`backend/methods/quadrature.py`, fichier d'une méthode de plus, aucun contrat modifié) ; catalogue régénéré.
 - **Interface** : formules `$…$` rendues dans le QCM et dans la phrase des hypothèses non cassables ; aire sous la courbe (`ui.fill_area`) ; hypothèses affichées mais non cassables (`disabled_when`).
 - **Pas fait** : continuité d'une intégrale à paramètre (th. 4.4.1) ; `npm run check` et `npm test` non lancés dans cet environnement (`npm` introuvable) : **à lancer avant de fusionner** ; rendu navigateur non vérifié (heatmap de Fubini, formules).
