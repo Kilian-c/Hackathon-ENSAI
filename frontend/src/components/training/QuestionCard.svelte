@@ -4,6 +4,7 @@
   couleur seule). À recréer à chaque question ({#key qid}).
 -->
 <script lang="ts">
+  import MathText from '../MathText.svelte'
   import PlotlyChart from '../PlotlyChart.svelte'
   import { CONFIDENCE_LEVELS, confidenceLabel, type Answer, type ConfidenceLevel } from '../../lib/training'
   import type { TrainingQuestion } from '../../lib/types.gen'
@@ -35,7 +36,7 @@
 </script>
 
 <form class="card" onsubmit={submit}>
-  <h2 id="enonce">{question.prompt}</h2>
+  <h2 id="enonce"><MathText text={question.prompt} /></h2>
 
   {#if question.initial_view}
     <PlotlyChart view={question.initial_view} methodsOn={methodsShown} showReference={false} height={320} />
@@ -51,7 +52,7 @@
           class:wrong={!!answer && !c.correct && picked === c.id}
         >
           <input type="radio" name="choix" value={c.id} checked={picked === c.id} onchange={() => (selected = c.id)} />
-          <span class="label">{c.label}</span>
+          <span class="label"><MathText text={c.label} /></span>
           {#if answer && c.correct}
             <span class="mark">✓ Bonne réponse{picked === c.id ? ' (la vôtre)' : ''}</span>
           {:else if answer && picked === c.id}

@@ -5,6 +5,7 @@
   ouverte). À recréer à chaque question ({#key qid}).
 -->
 <script lang="ts">
+  import MathText from '../MathText.svelte'
   import PlotlyChart from '../PlotlyChart.svelte'
   import MeasurePanel from '../lab/MeasurePanel.svelte'
   import { methodWithRole, toggleMethod } from '../../lib/lab'
@@ -83,16 +84,16 @@
 <section class="reveal" aria-label="Correction de la question">
   <div class="feedback" class:right={answer.correct} role="status">
     <h3>{answer.correct ? '✓ Bonne réponse' : '✗ Ce n’est pas la bonne réponse'}</h3>
-    {#if picked}<p>{picked.explain}</p>{/if}
+    {#if picked}<p><MathText text={picked.explain} /></p>{/if}
     {#if !answer.correct}
-      <p><strong>La bonne réponse : {right.label}.</strong> {right.explain}</p>
+      <p><strong>La bonne réponse : <MathText text={right.label} />.</strong> <MathText text={right.explain} /></p>
     {/if}
   </div>
 
   {#if hypothesis}
     <div class="why">
       <h4>Quand l'hypothèse « {hypothesis.label} » est cassée</h4>
-      <p>{hypothesis.when_broken}</p>
+      <p><MathText text={hypothesis.when_broken} /></p>
     </div>
   {/if}
 
