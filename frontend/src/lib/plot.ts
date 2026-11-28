@@ -1032,12 +1032,12 @@ function heatmapFigure(view: ViewResult, opts: ChartOptions): Figure {
       x: Array.from({ length: ncol }, (_, j) => j + 1),
       y: rows.map((_, i) => i + 1),
       z,
-      zmin,
-      zmax,
-      colorscale,
-      showscale: k === mats.length - 1,
-      // Une seule barre de couleur (l'échelle est commune), sur la dernière carte.
-      ...(k === mats.length - 1 ? { colorbar: { tickfont: { color: cssVar('--ct-plot-axis') }, thickness: 12 } } : {}),
+      // Échelle de couleur commune à toutes les cartes : portée par la mise en page (`layout.coloraxis`).
+      // Une barre attachée à une trace prendrait pour identifiant celui de la série (« matrice.matrix.x »), et
+      // Plotly retrouve ses graduations par un sélecteur CSS où chaque point devient un séparateur de
+      // classes : il n'efface plus les anciennes et en ajoute un jeu à chaque mise à jour (graduations
+      // empilées sur la droite, cartes écrasées).
+      coloraxis: 'coloraxis',
       xgap: 1,
       ygap: 1,
       xaxis: `x${suffix}`,
@@ -1069,7 +1069,13 @@ function heatmapFigure(view: ViewResult, opts: ChartOptions): Figure {
   const caption = captionFor(view, 0)
   if (all.length > mats.length) caption.push(`${mats.length} matrices affichées sur ${all.length}`)
   if (large) caption.push('Valeurs au survol')
-  const layout = baseLayout(view, { ...axes, annotations, showlegend: false, hovermode: 'closest' })
+  const coloraxis = {
+    colorscale,
+    cmin: zmin,
+    cmax: zmax,
+    colorbar: { tickfont: { color: cssVar('--ct-plot-axis') }, thickness: 12 },
+  }
+  const layout = baseLayout(view, { ...axes, coloraxis, annotations, showlegend: false, hovermode: 'closest' })
   // Pas de légende (le nom de chaque matrice est écrit dessous) : sans bloc `legend`, Plotly.validate
   // ne bute plus sur une légende masquée.
   delete layout.legend

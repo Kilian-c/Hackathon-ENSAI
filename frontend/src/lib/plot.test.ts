@@ -336,11 +336,14 @@ describe('matrices (vue heatmap)', () => {
   })
   it('signes mêlés : échelle commune, divergente et centrée sur 0', () => {
     const fig = buildFigure(view([A, P]), { methodsOn: new Set(['gauss', 'pivot']), showReference: false })!
-    for (const t of fig.data) expect(t).toMatchObject({ zmin: -2, zmax: 2 })
-    expect((fig.data[0].colorscale as unknown[][])[1][0]).toBe(0.5)
-    expect(fig.data.map((t) => t.showscale)).toEqual([false, true])
-    // Une seule barre de couleur ; pas de bloc legend (Plotly.validate plantait dessus).
-    expect(fig.data.map((t) => t.colorbar === undefined)).toEqual([true, false])
+    expect(fig.layout.coloraxis).toMatchObject({ cmin: -2, cmax: 2 })
+    const axis = fig.layout.coloraxis as { colorscale: unknown[][]; cmin: number; colorbar: { thickness: number } }
+    expect(axis.colorscale[1][0]).toBe(0.5)
+    for (const t of fig.data) expect(t).toMatchObject({ coloraxis: 'coloraxis' }) // une seule échelle, portée par la mise en page
+    // Une seule barre de couleur, dans la mise en page (aucune trace n'en porte) ; pas de bloc legend
+    // (Plotly.validate plantait dessus).
+    expect(fig.data.map((t) => t.colorbar === undefined)).toEqual([true, true])
+    expect(fig.layout.coloraxis).toHaveProperty('colorbar')
     expect(fig.layout.legend).toBeUndefined()
   })
   it('cases carrées sans élargir les bornes : constrain domain sur les deux axes', () => {
@@ -350,16 +353,29 @@ describe('matrices (vue heatmap)', () => {
   it('valeurs écrites dans les cases (jamais la couleur seule), case vide pour null', () => {
     const fig = buildFigure(view([R], { decimals: 1 }), { methodsOn: new Set(['gauss']), showReference: true })!
     expect(fig.data[0].text).toEqual([['0,5', '0,0'], ['0,0', '']])
-    expect(fig.data[0].zmin).toBe(0)
+    expect((fig.layout.coloraxis as { cmin: number }).cmin).toBe(0)
   })
   it('la Référence suit son interrupteur et se place à droite', () => {
     const o = (ref: boolean) => ({ methodsOn: new Set(['gauss']), showReference: ref })
     expect(buildFigure(view([R, A]), o(true))!.data.map((t) => t.uid)).toEqual(['mat.matrix.gauss', 'mat.matrix.ref'])
     expect(buildFigure(view([R, A]), o(false))!.data.map((t) => t.uid)).toEqual(['mat.matrix.gauss'])
   })
+  it('aucune barre de couleur ne dépend de l’identifiant d’une série (un point y casse Plotly)', () => {
+    // Plotly nomme la barre d'une trace « cb<uid> » et la retrouve par un sélecteur CSS : avec un uid
+    // « mat.matrix.gauss », les points deviennent des séparateurs de classes, les anciennes graduations ne sont
+    // jamais effacées et s'empilent à chaque mise à jour. L'échelle doit donc vivre dans layout.coloraxis.
+    const fig = buildFigure(view([A, P, R]), { methodsOn: new Set(['gauss', 'pivot']), showReference: true })!
+    expect(fig.data.some((t) => String(t.uid).includes('.'))).toBe(true) // les uids gardent leurs points
+    for (const t of fig.data) {
+      expect(t.showscale).toBeUndefined()
+      expect(t.colorbar).toBeUndefined()
+      expect(t.coloraxis).toBe('coloraxis')
+    }
+    expect((fig.layout.coloraxis as { colorbar: unknown }).colorbar).toMatchObject({ thickness: 12 })
+  })
   it('bornes imposées par ui.zmin et ui.zmax', () => {
     const fig = buildFigure(view([A], { zmin: -5, zmax: 5 }), { methodsOn: new Set(['gauss']), showReference: false })!
-    expect(fig.data[0]).toMatchObject({ zmin: -5, zmax: 5 })
+    expect(fig.layout.coloraxis).toMatchObject({ cmin: -5, cmax: 5 })
   })
   it('grande matrice : valeurs au survol seulement ; au-delà de 3 cartes, le reste est compté', () => {
     const big = matrix('big', 'gauss', 'method', Array.from({ length: 20 }, () => Array(20).fill(1)))
