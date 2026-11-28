@@ -181,6 +181,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--list", action="store_true", help="liste les modèles")
     parser.add_argument("--check", type=Path, metavar="FICHIER", help="valide un fichier YAML et quitte")
     args = parser.parse_args(argv)
+    # Les messages peuvent citer des libellés du YAML (λ, √, exposants) : sur une console Windows en
+    # cp1252, un `print` les ferait planter. On force UTF-8, avec remplacement plutôt qu'erreur.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
 
     if args.list:
         for name, (source, what) in MODELS.items():
