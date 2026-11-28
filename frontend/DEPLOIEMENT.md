@@ -37,7 +37,7 @@ Le moteur sait servir l'interface lui-même : si `frontend/dist` existe, `uvicor
 3. Au démarrage, le moteur charge les expériences (environ 3 s) : le premier clic est ensuite instantané. Le journal dit « Interface servie sur / ».
 
 - `CRASHTEST_DIST=/autre/dossier` désigne un autre dossier construit (par exemple celui d'une copie de secours).
-- `dist` est ignoré par git : il ne se récupère pas avec un `git pull`. Une machine sans Node doit recevoir le dossier `frontend/dist` d'une autre façon (copie, ou branche de secours).
+- `dist` est ignoré par git : il ne se récupère pas avec un `git pull`. Pour une machine sans Node, il existe une **branche de secours** `secours-dist` (orpheline : un seul commit, `frontend/dist/` et un README, jamais fusionnable dans `main`). Elle se fabrique avec `uv run python scripts/build_secours.py` (construit sans `VITE_API_URL`, vérifie le résultat, ne touche ni votre branche ni votre arbre de travail, ne pousse jamais ; `--no-build` réutilise un `dist` existant). **À lancer une seule fois, sur la version finale validée.** Pour l'installer sur une autre machine : `git fetch origin secours-dist`, puis `git restore --source=origin/secours-dist --worktree -- frontend/dist` (pas `git checkout origin/secours-dist -- frontend/dist`, qui indexerait les fichiers).
 - Un `dist` doit correspondre à la version du moteur : reconstruisez-le après toute modification de l'API ou de l'interface.
 - Si le port 8000 est pris, changez `--port` : rien d'autre à régler.
 
