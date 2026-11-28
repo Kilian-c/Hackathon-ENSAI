@@ -332,6 +332,19 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         15,
     ),
+    "quadrature": (
+        {
+            "x": (np.arange(8) + 0.5)[None, :].repeat(20, axis=0) / 8,
+            "f": ((np.arange(8) + 0.5) / 8)[None, :].repeat(20, axis=0) ** 2,
+            "a": 0.0,
+            "b": 1.0,
+            "kind": "trapezes",
+            "truth": 1 / 3,
+            "rng": np.random.default_rng(0),
+        },
+        20,
+        8,
+    ),
     "orthonormalize": (
         {
             "a": np.random.default_rng(6).standard_normal((20, 9)),

@@ -559,6 +559,57 @@ export const CATALOG: Catalog = {
       "doc": "Teste l'égalité des moyennes pour chaque paire de groupes."
     },
     {
+      "name": "quadrature",
+      "args": [
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "f",
+          "default": null
+        },
+        {
+          "name": "a",
+          "default": null
+        },
+        {
+          "name": "b",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "default": "'rectangles'"
+        },
+        {
+          "name": "truth",
+          "default": "None"
+        },
+        {
+          "name": "samples",
+          "default": "200"
+        }
+      ],
+      "kinds": [
+        "rectangles",
+        "trapezes",
+        "simpson",
+        "monte_carlo"
+      ],
+      "provides": {
+        "reps": [
+          "est",
+          "error"
+        ],
+        "example": [
+          "x",
+          "f"
+        ]
+      },
+      "cost": "repeat * n",
+      "doc": "`est` : l'intégrale de f sur [a, b] ; `error` : `est - truth` (NaN sans `truth`)."
+    },
+    {
       "name": "regressor",
       "args": [
         {
