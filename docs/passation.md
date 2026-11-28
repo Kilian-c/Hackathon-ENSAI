@@ -5,6 +5,15 @@
 - **Nouvelle méthode** `iterated_integral` (`backend/methods/quadrature.py`, fichier d'une méthode de plus, aucun contrat modifié) ; catalogue régénéré.
 - **Interface** : formules `$…$` rendues dans le QCM et dans la phrase des hypothèses non cassables ; aire sous la courbe (`ui.fill_area`) ; hypothèses affichées mais non cassables (`disabled_when`).
 - **Pas fait** : continuité d'une intégrale à paramètre (th. 4.4.1) ; `npm run check` et `npm test` non lancés dans cet environnement (`npm` introuvable) : **à lancer avant de fusionner** ; rendu navigateur non vérifié (heatmap de Fubini, formules).
+- **Pièges rencontrés (à connaître pour écrire d'autres YAML d'intégration)** :
+  - Un `{x}` dans un énoncé de question est lu comme un paramètre procédural : écrire `\\sqrt x` et non `\\sqrt{x}` (seuls `{k}`-style déclarés dans `procedural_params` sont permis).
+  - Un booléen NumPy ne se nie pas avec `-` : écrire `-1.0 * (x < 0.5)`.
+  - Les prédictions jugent « stable » sous 2 % d'écart : aligner la largeur des bosses sur la grille (`floor(5000 / p.k + 0.5) * 0.0002`) pour que l'intégrale vale exactement 1, sinon le bruit de discrétisation change la bonne réponse.
+  - Fubini : une somme finie commute, donc l'ordre est simulé par la **forme de la grille** (A × B, `n = A·B`, x lent, y rapide), pas par deux sommes ; `n` doit être un multiple de A (4900 = 5 × 980 = 70 × 70).
+  - Heatmap : la méthode doit renvoyer `curves.matrix` (au plus 64 × 64 servis).
+  - Dans `texts` des mesures et les libellés Plotly : pas de `$…$` (Unicode seulement) ; ailleurs (énoncé, `why`, `when_broken`, `explain`, QCM, `disabled_text`) les `$…$` sont rendus.
+- **Méthode de travail utilisée** : simuler d'abord (`runner.run` sur chaque option et chaque rang) pour fixer `ok_within` / `broken_beyond`, puis `uv run python scripts/new_experiment.py --check <fichier>` (tests 1, 3, 4, 10), puis `CRASHTEST_DRAWS=50 uv run pytest -q` (test 6), puis `scripts/make_fixtures.py` et `scripts/gen_catalog.py --check`.
+- **Reste à faire pour la suite** : continuité d'une intégrale à paramètre (th. 4.4.1) et dérivation sous l'intégrale (4.4.2), à écrire avec `quadrature` et un paramètre `t` balayable ; Fubini-Lebesgue avec mesure de comptage non simulable (hypothèse `sigma_finie` laissée non cassable).
 - **Push** : la branche a été amendée après un premier push : `git push --force-with-lease origin r1/integration`.
 
 ## Visualisation 3D : à discuter en équipe avec R2 et R3, rien de commencé (R1, pas une relève)
