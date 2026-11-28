@@ -1,5 +1,10 @@
 # Notes de passation (la plus récente en haut)
 
+## « Réinitialiser les axes » restait sur le zoom : correctif complété (R4, branche `r4/bug-reinit-zoom`, pas une relève)
+- **Présent sur `main`** : ma correction précédente (`r4/bug-reinit-axes`) était incomplète. Zoom, puis n'importe quel nouveau dessin (case Référence, curseur, redimensionnement), puis réinitialisation : on revenait au zoom. Cause : Plotly réécrit le zoom dans le layout reçu, que je relisais ensuite comme bornes du moteur.
+- Corrigé : Plotly reçoit une copie (`layoutForPlotly`, `lib/plot.ts`) ; `figure.layout` garde les bornes du moteur. 2 tests. Vérifié au navigateur : zoom conservé après redessin ; bouton et double-clic reviennent au cadre du moteur ; quand les bornes du moteur changent (vraie pente), le graphique se recentre, même zoomé.
+- Fichiers de R3 (`lib/plot.ts`, `PlotlyChart.svelte`) : **R1 ou Kilian relit**. Indépendant de l'inspecteur : peut être fusionné seul.
+
 ## Départ définitif de R1 (28/11, pas une relève) : Fubini-Tonelli refait, **à lire par R2, R3, R4**
 - **Détail complet, pièges et idées non faites** : `docs/notes/r1.md`, section « Fin de session de R1 ». R1 ne reviendra pas sur le projet : tout ce qui concerne le moteur est à reprendre par R3 (qui peut aider sur le moteur, CLAUDE.md) ou R2.
 - **Fubini-Tonelli a changé** (la note « Catégorie Intégration » plus bas est **périmée** sur ce point : plus de paramètre `ordre`, plus de heatmap, plus de grilles 5 × 980 / 70 × 70). Maintenant : méthode `iterated_integrals`, vue de deux courbes (intégrales intérieures, aires remplies), curseur `p.eps` (troncature [ε, 1]²), mesure ∫∫|f|, 4 questions dont une prédiction. Les étapes « heatmap » et « tranche » ont été abandonnées sur décision de l'utilisateur.
@@ -8,6 +13,7 @@
 - **Non vérifié au navigateur** : l'affichage de Fubini-Tonelli (deux courbes remplies, tuile ∫∫|f|, curseur ε, prédiction) et l'animation du Laboratoire. À regarder avant la démo.
 - **Pistes restantes** (priorité décroissante) : (1) laisser choisir la mesure balayée dans la Sensibilité (R3, `LabView.svelte` ; `SweepRequest.measure` existe déjà), ce qui donnerait la courbe de ∫∫|f| selon ε ; (2) continuité et dérivation sous l'intégrale (deux YAML d'intégration) ; (3) étape 6 de l'Entraînement par thème et questions pour « Apprentissage ».
 - **Machine de R1** : `uv` absent (`.venv/bin/python ...`), `npm` seulement via `bash -lc`.
+
 
 ## Référence dans les histogrammes de répétitions (R3, pas une relève) : **à relire par R1**
 - **Moteur (`backend/engine/runner.py`, fichier de R1, modifié par R3)** : une vue `distribution` liée à `reps.*` reçoit désormais une série `reference` (la méthode principale à l'état sain, même graine). Avant, seules `example.*` et `curves.*` en avaient une : la case « Référence » restait sans effet sur ces histogrammes (Moyenne ou médiane, TCL, etc.). Aucun contrat modifié.
