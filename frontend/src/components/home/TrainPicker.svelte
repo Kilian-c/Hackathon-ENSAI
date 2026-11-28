@@ -8,10 +8,15 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { listExperiments } from '../../lib/labSource'
+  import type { ExperimentSummary } from '../../lib/types.gen'
   import {
+    MAX_CHOSEN_EXPERIMENTS,
     describeSelection,
     disciplineChoices,
+    experimentFilter,
+    groupByDiscipline,
     toggleDiscipline,
+    toggleExperiment,
     trainHref,
     trainingFilter,
     type DisciplineChoice,
@@ -23,9 +28,14 @@
 
   let choices = $state.raw<DisciplineChoice[]>([])
   let selected = $state.raw<string[]>([])
+  let items = $state.raw<ExperimentSummary[]>([])
+  let chosen = $state.raw<string[]>([]) // théorèmes cochés un à un (prioritaires sur les disciplines)
+  let open = $state(false)
 
   const available = $derived(choices.map((c) => c.slug))
-  const filter = $derived(trainingFilter(selected, available))
+  const groups = $derived(groupByDiscipline(items))
+  const filter = $derived(experimentFilter(chosen) ?? trainingFilter(selected, available))
+  const full = $derived(chosen.length >= MAX_CHOSEN_EXPERIMENTS)
 
   $effect(() => {
     href = trainHref(filter)
@@ -50,21 +60,29 @@
 
   onMount(async () => {
     try {
-      choices = disciplineChoices((await listExperiments()).items)
+      items = (await listExperiments()).items
+      choices = disciplineChoices(items)
     } catch {
+      items = []
       choices = [] // moteur injoignable : seul « Commencer une série » (Tout) reste, l'écran de série dira l'erreur
     }
     selected = restore().filter((slug) => choices.some((c) => c.slug === slug))
   })
 
   function toggle(slug: string): void {
+    chosen = []
     selected = toggleDiscipline(selected, slug, available)
     remember()
   }
 
   function everything(): void {
+    chosen = []
     selected = []
     remember()
+  }
+
+  function pick(id: string): void {
+    chosen = toggleExperiment(chosen, id)
   }
 </script>
 
@@ -72,14 +90,46 @@
   <div class="picker">
     <p class="label" id="picker-label">Quelles questions ? <span class="muted">Un ou plusieurs thèmes.</span></p>
     <div class="chips" role="group" aria-labelledby="picker-label">
-      <button type="button" class="chip" aria-pressed={selected.length === 0} onclick={everything}>Tout</button>
+      <button type="button" class="chip" aria-pressed={chosen.length === 0 && selected.length === 0} onclick={everything}>Tout</button>
       {#each choices as c (c.slug)}
-        <button type="button" class="chip" aria-pressed={selected.includes(c.slug)} onclick={() => toggle(c.slug)}>
+        <button type="button" class="chip" aria-pressed={chosen.length === 0 && selected.includes(c.slug)} onclick={() => toggle(c.slug)}>
           {c.label}
         </button>
       {/each}
     </div>
-    <p class="hint" aria-live="polite">{describeSelection(choices, selected)}</p>
+    <p class="hint" aria-live="polite">
+      {#if chosen.length > 0}
+        {chosen.length} {chosen.length > 1 ? 'théorèmes choisis' : 'théorème choisi'} sur {MAX_CHOSEN_EXPERIMENTS} au plus.
+      {:else}
+        {describeSelection(choices, selected)}
+      {/if}
+    </p>
+    <button type="button" class="link" aria-expanded={open} onclick={() => (open = !open)}>
+      {open ? 'Masquer la liste des théorèmes' : 'Choisir des théorèmes…'}
+    </button>
+    {#if open}
+      <div class="theorems">
+        {#each groups as g (g.slug)}
+          <fieldset>
+            <legend>{g.label}</legend>
+            {#each g.items as e (e.id)}
+              <label class="check">
+                <input
+                  type="checkbox"
+                  checked={chosen.includes(e.id)}
+                  disabled={full && !chosen.includes(e.id)}
+                  onchange={() => pick(e.id)}
+                />
+                {e.title}
+              </label>
+            {/each}
+          </fieldset>
+        {/each}
+        {#if chosen.length > 0}
+          <button type="button" class="link" onclick={() => (chosen = [])}>Tout décocher</button>
+        {/if}
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -126,6 +176,43 @@
   .chip:focus-visible {
     outline: 2px solid var(--ct-focus);
     outline-offset: 2px;
+  }
+  .link {
+    margin-top: var(--ct-space-2);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ct-role-method);
+    font: inherit;
+    font-size: var(--ct-text-sm);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .theorems {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--ct-space-3);
+    margin-top: var(--ct-space-2);
+    max-height: 16rem;
+    overflow-y: auto;
+  }
+  fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  legend {
+    padding: 0;
+    font-size: var(--ct-text-sm);
+    font-weight: 600;
+    color: var(--ct-text);
+  }
+  .check {
+    display: flex;
+    gap: var(--ct-space-2);
+    align-items: baseline;
+    font-size: var(--ct-text-sm);
+    color: var(--ct-muted);
   }
   .hint {
     margin: var(--ct-space-2) 0 0;

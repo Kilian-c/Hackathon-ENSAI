@@ -2,7 +2,7 @@
  * trainChoice.ts : choix des thèmes d'une série d'Entraînement (plan de docs/notes/r1.md, étape 3).
  *
  * Les disciplines viennent des YAML (`GET /api/experiments`) : aucune liste écrite à la main. Le filtre envoyé
- * au moteur est `toutes` ou `discipline:<id>[,<id>...]`, où l'identifiant est le nom de la discipline sans
+ * au moteur est `toutes`, `exp:<id>[,<id>...]` (théorèmes choisis) ou `discipline:<id>[,<id>...]`, où l'identifiant est le nom de la discipline sans
  * accent ni espace (« algèbre linéaire » devient « algebre-lineaire »), comme `discipline_slug` du moteur
  * (backend/engine/training.py) : les deux doivent rester d'accord.
  */
@@ -85,6 +85,44 @@ export function selectedFromFilter(filter: string): string[] {
 export function toggleDiscipline(selected: readonly string[], slug: string, available: readonly string[]): string[] {
   const next = selected.includes(slug) ? selected.filter((s) => s !== slug) : [...selected, slug]
   return next.length === new Set(available).size ? [] : next
+}
+
+/** Nombre de théorèmes au plus dans un filtre `exp:` (même plafond que le contrat du moteur). */
+export const MAX_CHOSEN_EXPERIMENTS = 15
+
+/** Filtre `exp:<id>,<id>...` pour des théorèmes choisis un à un ; `null` si aucun n'est choisi. */
+export function experimentFilter(ids: readonly string[]): string | null {
+  const chosen = [...new Set(ids)].sort().slice(0, MAX_CHOSEN_EXPERIMENTS)
+  return chosen.length === 0 ? null : `exp:${chosen.join(',')}`
+}
+
+/** Théorèmes d'un filtre `exp:a,b` (triés, sans doublon) ; [] pour tout autre filtre. */
+export function experimentsFromFilter(filter: string): string[] {
+  if (!filter.startsWith('exp:')) return []
+  const ids = filter.slice('exp:'.length).split(',').map((part) => part.trim()).filter(Boolean)
+  return [...new Set(ids)].sort()
+}
+
+/** Coche ou décoche un théorème ; au plafond, une case de plus n'est pas ajoutée. */
+export function toggleExperiment(selected: readonly string[], id: string): string[] {
+  if (selected.includes(id)) return selected.filter((s) => s !== id)
+  return selected.length >= MAX_CHOSEN_EXPERIMENTS ? [...selected] : [...selected, id]
+}
+
+/** Les expériences regroupées par discipline (ordre des libellés), chacune triée par titre. */
+export function groupByDiscipline<T extends { discipline: string; title: string }>(
+  items: readonly T[],
+): { slug: string; label: string; items: T[] }[] {
+  const groups = new Map<string, { slug: string; label: string; items: T[] }>()
+  for (const item of items) {
+    const slug = disciplineSlug(item.discipline)
+    const group = groups.get(slug) ?? { slug, label: disciplineLabel(item.discipline), items: [] }
+    group.items.push(item)
+    groups.set(slug, group)
+  }
+  return [...groups.values()]
+    .map((g) => ({ ...g, items: [...g.items].sort((a, b) => a.title.localeCompare(b.title, 'fr')) }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'fr'))
 }
 
 /** Lien de la série pour un filtre : ?train=<filtre>&v=1 (la graine est tirée par le moteur). */

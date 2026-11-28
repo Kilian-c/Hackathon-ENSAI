@@ -11,7 +11,7 @@
  * Chargement paresseux : rien de ceci n'entre dans le paquet principal.
  */
 
-import { disciplineSlug, selectedFromFilter } from '../lib/trainChoice'
+import { disciplineSlug, experimentsFromFilter, selectedFromFilter } from '../lib/trainChoice'
 import { headlineVerdict } from '../lib/lab'
 import { brokenHypotheses } from '../lib/state'
 import type {
@@ -59,9 +59,10 @@ export async function fixtureSession(filter: string): Promise<TrainingSessionRes
   const session = (await import('../fixtures/training_session.json')).default as unknown as TrainingSessionResponse
   if (filter === 'toutes') return session
   const wanted = selectedFromFilter(filter)
+  const chosen = experimentsFromFilter(filter)
   const kept = new Set(
     (await allSpecs())
-      .filter(({ spec }) => spec.id === filter || wanted.includes(disciplineSlug(spec.discipline)))
+      .filter(({ spec }) => spec.id === filter || chosen.includes(spec.id) || wanted.includes(disciplineSlug(spec.discipline)))
       .map(({ spec }) => spec.id),
   )
   return {
