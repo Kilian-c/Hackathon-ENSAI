@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { parsePreference, resolveTheme, THEME_CHOICES } from './theme.svelte'
 
 describe('thème', () => {
@@ -19,5 +19,18 @@ describe('thème', () => {
 
   it('propose les trois choix, en français', () => {
     expect(THEME_CHOICES.map((c) => c.label)).toEqual(['Auto', 'Clair', 'Sombre'])
+  })
+})
+
+describe('thème : un seul état par page', () => {
+  it('deux chargements du module partagent le même état (serveur de développement)', async () => {
+    const first = await import('./theme.svelte')
+    vi.resetModules() // le module est évalué une seconde fois, comme avec une copie « ?t=… »
+    const second = await import('./theme.svelte')
+    expect(second.setTheme).not.toBe(first.setTheme) // bien deux copies
+    first.setTheme('light')
+    expect(second.theme.resolved).toBe('light')
+    second.setTheme('dark')
+    expect(first.theme.resolved).toBe('dark')
   })
 })

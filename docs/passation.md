@@ -1,5 +1,10 @@
 # Notes de passation (la plus récente en haut)
 
+## Thème clair : les graphiques restaient sombres (R4, branche `r4/bug-theme-graphe`, pas une relève)
+- Signalé par le test utilisateur. **Serveur de développement seulement** (la version construite a été vérifiée : correcte). Après certaines mises à jour à chaud (changement de branche), Vite charge deux copies de `lib/theme.svelte.ts` : le bouton changeait l'une, `cssVar` lisait l'autre ; page claire, graphiques sombres (ou l'inverse).
+- Corrigé : un seul état de thème par page (`globalThis`), partagé par les copies. Test qui échoue sans le correctif. Vérifié au navigateur avec les deux copies chargées (nuage, intervalles, Domaine de validité, dans les deux sens).
+- Fichiers de R3 (`lib/theme.svelte.ts`, écrit par R4) : Kilian relit.
+
 ## Inspecteur d'observation (R4, branche `r4/inspecteur`, pas une relève)
 - Fiche F.6 : sur le nuage et les résidus de la régression, un clic sur un point l'entoure et ouvre sa fiche (y, prédiction, résidu, part dans la SCR, levier, distance de Cook, seuils « levier élevé » et « influent »). Clic sur une étoile : fiche du point ajouté, avec « Retirer ce point » (choix de l'équipe). Clic dans le vide : ajout, comme avant. `main` (`40dd649`) est intégré à la branche.
 - **R1, à relire** : `runner.py` (séries `inspect.*` pour les vues `inspect: true`, abscisses sur la première seulement ; `without_inspection`), `training.py` (l'Entraînement ne reçoit pas ces données), `tests/test_inspect.py`. **R2** : `inspect: true` sur la vue `residus` de la régression. **R3** : `lib/inspect.ts`, `lib/plot.ts`, `PlotlyChart.svelte`, `LabView.svelte`, `Inspector.svelte`. Aucun contrat modifié. Le chargeur ne vérifie pas que la méthode fournit le levier : c'est un test sur les YAML officiels (un YAML importé sans levier n'a simplement pas d'inspecteur).
@@ -7,6 +12,7 @@
 - Vérifié avec de vrais clics (thème sombre) : point, triangle hors cadre, étoile, retrait, ajout, limite de 20, Échap, résidus et sélection conservée d'un onglet à l'autre, bouton de zoom, bord après zoom. Par script : fermeture (n, nouveau tirage), mise à jour (hypothèse), contrastes clair et sombre (au moins 4,6), expérience sans inspecteur et Entraînement inchangés. Console sans erreur. Le rendu clair et la fiche à droite n'ont pas été revus en capture d'écran (le navigateur ne répondait plus aux captures). Pas vérifié sur petit écran.
 - Limites : une fiche ouverte masque environ un quart des points du côté opposé (✕ ou Échap) ; le côté est choisi d'après les bornes du moteur, pas d'après le zoom.
 - **R1, hors inspecteur** : ajouter un point au clic déplace légèrement les bornes de la vue (x de [-2,56 ; 3,26] à [-2,55 ; 3,25]), ce qui annule le zoom de l'utilisateur ; `CLAUDE.md` (section 10) demande des bornes stables tant que `params` et `seed` ne changent pas.
+
 
 ## « Réinitialiser les axes » restait sur le zoom : correctif complété (R4, branche `r4/bug-reinit-zoom`, pas une relève)
 - **Présent sur `main`** : ma correction précédente (`r4/bug-reinit-axes`) était incomplète. Zoom, puis n'importe quel nouveau dessin (case Référence, curseur, redimensionnement), puis réinitialisation : on revenait au zoom. Cause : Plotly réécrit le zoom dans le layout reçu, que je relisais ensuite comme bornes du moteur.
