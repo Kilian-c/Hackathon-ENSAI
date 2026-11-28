@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isBareLabLink,
   applyPreset,
   brokenHypotheses,
   canonicalState,
@@ -177,6 +178,17 @@ describe('étape et hypothèse dans le lien (pont de l’Entraînement)', () => 
     const resolved = resolveLabLink(spec, link)
     expect(resolved.ui.stage).toBe('comprendre')
     expect(resolved.ui.focus).toBe('hetero')
+  })
+
+  it('lien nu : ouverture sur Comprendre ; lien avec un état : sur Expérimenter', () => {
+    const bare = parseLink('?exp=regression-lineaire&v=1&seed=42')
+    const withState = parseLink('?exp=regression-lineaire&v=1&h.hetero=0.85&seed=42')
+    const explicit = parseLink('?exp=regression-lineaire&v=1&seed=42&stage=experimenter')
+    if (bare.kind !== 'lab' || withState.kind !== 'lab' || explicit.kind !== 'lab') throw new Error('lien attendu')
+    expect(isBareLabLink(bare)).toBe(true)
+    expect(isBareLabLink(withState)).toBe(false)
+    expect(isBareLabLink(explicit)).toBe(false)
+    expect(resolveLabLink(spec, explicit).ui.stage).toBe('experimenter')
   })
 
   it('ignore une étape ou une hypothèse inconnue', () => {
