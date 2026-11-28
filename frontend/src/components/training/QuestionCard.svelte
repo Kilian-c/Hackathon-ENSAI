@@ -12,10 +12,12 @@
   interface Props {
     question: TrainingQuestion
     answer: Answer | null
+    /** Titre du théorème de la question, quand il est connu. */
+    theorem?: string
     onanswer: (choiceId: string, level: ConfidenceLevel) => void
   }
 
-  let { question, answer, onanswer }: Props = $props()
+  let { question, answer, onanswer, theorem }: Props = $props()
 
   let selected = $state<string | null>(null)
   let level = $state<ConfidenceLevel | null>(null)
@@ -36,6 +38,7 @@
 </script>
 
 <form class="card" onsubmit={submit}>
+  {#if theorem}<p class="theorem">Théorème : {theorem}</p>{/if}
   <h2 id="enonce"><MathText text={question.prompt} /></h2>
 
   {#if question.initial_view}
@@ -87,6 +90,12 @@
 </form>
 
 <style>
+  .theorem {
+    margin: 0;
+    font-size: var(--ct-text-sm);
+    font-weight: 600;
+    color: var(--ct-role-method);
+  }
   .card {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
