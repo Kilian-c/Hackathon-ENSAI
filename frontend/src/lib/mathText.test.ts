@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { exponentTex, splitPowers } from './mathText'
+import { exponentTex, splitPowers, splitRich } from './mathText'
 
 describe('puissances de dix dans les textes de mesure', () => {
   it('rend 10^exposant en formule, avec le signe moins typographique et la virgule décimale', () => {
@@ -42,5 +42,42 @@ describe('puissances de dix dans les textes de mesure', () => {
   it('exponentTex', () => {
     expect(exponentTex('−13,8')).toBe('-13{,}8')
     expect(exponentTex('4')).toBe('4')
+  })
+})
+
+const kinds = (text: string) => splitRich(text).map((p) => (p.kind === 'text' ? p.value : `[${p.display ? 'D:' : ''}${p.tex}]`))
+
+describe('formules entre dollars dans les textes de contenu', () => {
+  it('en ligne, avec le texte autour inchangé', () => {
+    expect(kinds('Si $f_n \\to f$ presque partout, alors $\\int f_n$ converge.')).toEqual([
+      'Si ', '[f_n \\to f]', ' presque partout, alors ', '[\\int f_n]', ' converge.',
+    ])
+  })
+  it('centrée avec $$…$$', () => {
+    expect(kinds('Énoncé : $$\\lim_n \\int f_n = \\int f$$ pour tout n.')).toEqual([
+      'Énoncé : ', '[D:\\lim_n \\int f_n = \\int f]', ' pour tout n.',
+    ])
+  })
+  it('un dollar échappé ou un prix n’est pas une formule', () => {
+    expect(kinds('Coûte 5 \\$ et 6 \\$ en tout.')).toEqual(['Coûte 5 $ et 6 $ en tout.'])
+    expect(kinds('De 5 $ à 6 $ seulement.')).toEqual(['De 5 $ à 6 $ seulement.'])
+    expect(kinds('Un seul $ dans ce texte.')).toEqual(['Un seul $ dans ce texte.'])
+    expect(kinds('Prix : $5 et $6.')).toEqual(['Prix : $5 et $6.'])
+  })
+  it('les puissances de dix hors formule sont rendues aussi', () => {
+    const parts = splitRich('erreur de 10^−4 pour $x^2$')
+    expect(parts.filter((p) => p.kind === 'tex').map((p) => (p as { tex: string }).tex)).toEqual(['10^{-4}', 'x^2'])
+  })
+  it('plusieurs lignes : une formule en ligne ne s’étend pas sur un saut de ligne', () => {
+    expect(kinds('a $b\nc$ d')).toEqual(['a $b\nc$ d'])
+  })
+  it('un texte sans dollar reste tel quel, une chaîne vide ne donne rien', () => {
+    expect(kinds('Aucune formule ici.')).toEqual(['Aucune formule ici.'])
+    expect(splitRich('')).toEqual([])
+  })
+  it('le texte hostile reste une chaîne LaTeX confiée à KaTeX en mode sûr, jamais du HTML', () => {
+    const parts = splitRich('$\\href{javascript:alert(1)}{clic}$ <img src=x onerror=alert(1)>')
+    expect(parts[0]).toMatchObject({ kind: 'tex' })
+    expect(parts[1]).toMatchObject({ kind: 'text', value: ' <img src=x onerror=alert(1)>' }) // texte : Svelte l'échappe
   })
 })

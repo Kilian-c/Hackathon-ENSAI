@@ -1,0 +1,191 @@
+# yaml-language-server: $schema=./schema.json
+schema_version: 1
+id: "fubini-tonelli"
+title: "Fubini-Tonelli : intervertir deux intégrales"
+discipline: "intégration"
+level: "3"                      # 1 Découverte, 2 Intermédiaire, 3 Avancé
+concepts: ["intégrale de Lebesgue", "théorème de Fubini", "théorème de Tonelli", "intégrale itérée", "mesure produit"]
+
+theorem:
+  name: "Théorèmes de Fubini-Tonelli et de Fubini-Lebesgue"
+  statement: |
+    Soit $f$ mesurable sur $X \times Y$, les mesures $\mu$ et $\nu$ étant $\sigma$-finies. Si $f \ge 0$ (Tonelli) ou si
+    $f$ est intégrable pour $\mu \otimes \nu$ (Fubini), alors
+    $$\int_{X \times Y} f \, d(\mu \otimes \nu) = \int_X \left( \int_Y f \, d\nu \right) d\mu = \int_Y \left( \int_X f \, d\mu \right) d\nu.$$
+    Sans l'une de ces hypothèses, les deux intégrales itérées peuvent exister et différer. Ici $X = Y = [0, 1]$ :
+    l'ordre d'intégration est choisi dans l'expérience, il n'a pas d'effet quand le théorème s'applique.
+
+equation:
+  tex: '\int_X \left( \int_Y f \, d\nu \right) d\mu = {{membre}}'
+  terms:
+    membre:
+      ok: '\int_{X \times Y} f \, d(\mu \otimes \nu)'
+
+params:
+  ordre: { type: number, label: "Ordre d'intégration (1 : d'abord en y, −1 : d'abord en x, 0 : simultané)",
+           min: -1, max: 1, step: 1, default: 1, sweep_values: [-1, 0, 1] }
+
+hypotheses:
+  integrabilite:
+    type: choice
+    healthy_value: "integrable"
+    label: "Intégrabilité sur le produit"
+    category: "intégrabilité"
+    options:
+      integrable: { label: "y(1 + sin 3x) : intégrable sur le carré",
+                    expr: "y * (1 + sin(3 * x))" }
+      diverge:    { label: "(x² − y²) / (x² + y²)² : non intégrable en (0, 0)",
+                    expr: "(x ** 2 - y ** 2) / (x ** 2 + y ** 2) ** 2" }
+    statement_tex: '\int_{X \times Y} |f| \, d(\mu \otimes \nu) < +\infty'
+    why: "L'intégrabilité sur le produit garantit que la masse de $|f|$ est finie : on peut alors découper l'intégrale double en tranches dans n'importe quel ordre, sans que des contributions infinies de signes opposés se compensent différemment selon l'ordre."
+    when_broken: "Sans intégrabilité, les deux intégrales itérées existent mais ne sont plus égales : pour $(x^2 - y^2)/(x^2 + y^2)^2$ sur le carré unité, on trouve $\\pi/4$ en intégrant d'abord en $y$ et $-\\pi/4$ en intégrant d'abord en $x$."
+    affects: [membre]
+  sigma_finie:
+    type: boolean
+    healthy_value: true
+    label: "Mesures σ-finies"
+    category: "mesure"
+    ok_label: "σ-finies"
+    broken_label: "Non σ-finies"
+    robust_expected: true
+    disabled_when: "True"
+    disabled_text: "Toujours vraie ici : la mesure de Lebesgue sur $[0, 1]$ est finie, donc $\\sigma$-finie. Le contre-exemple classique utilise la mesure de comptage, qui ne l'est pas sur $[0, 1]$, et ne se simule pas sur une grille."
+    statement_tex: '\mu, \nu \ \sigma\text{-finies}'
+    why: "La $\\sigma$-finitude permet de construire la mesure produit de façon unique et de découper l'espace en morceaux de mesure finie."
+    when_broken: "Avec la mesure de Lebesgue et la mesure de comptage sur $[0, 1]$, la diagonale donne des intégrales itérées égales à $0$ et à $1$."
+    affects: []
+  mesurabilite:
+    type: boolean
+    healthy_value: true
+    label: "Fonction mesurable"
+    category: "mesurabilité"
+    ok_label: "Mesurable"
+    broken_label: "Non mesurable"
+    robust_expected: true
+    disabled_when: "True"
+    disabled_text: "Toujours vraie ici : une fonction non mesurable ne se construit pas numériquement ($f$ doit être mesurable pour la tribu produit)."
+    statement_tex: 'f \ \text{mesurable pour} \ \mathcal{X} \otimes \mathcal{Y}'
+    why: "Sans mesurabilité pour la tribu produit, l'intégrale double n'est pas définie, et les fonctions « coupes » ne sont pas mesurables."
+    when_broken: "L'énoncé tombe avant tout calcul : même la mesurabilité des intégrales intérieures n'est plus garantie."
+    affects: []
+
+counterexamples:
+  - id: "ordre-dy-dx"
+    label: "Intégrer d'abord en y"
+    explain: "Pour $f(x, y) = (x^2 - y^2)/(x^2 + y^2)^2$, l'intégrale intérieure en $y$ vaut $1/(1 + x^2)$, puis l'intégrale en $x$ vaut $\\pi/4$ : l'intégrale itérée ne donne pas la valeur attendue."
+    state: { params: { ordre: 1 }, hypotheses: { integrabilite: "diverge" } }
+  - id: "ordre-dx-dy"
+    label: "Intégrer d'abord en x"
+    explain: "En échangeant les rôles de $x$ et de $y$, la fonction change de signe : l'intégrale itérée vaut $-\\pi/4$. Les deux ordres donnent des valeurs opposées."
+    state: { params: { ordre: -1 }, hypotheses: { integrabilite: "diverge" } }
+
+generator:
+  type: random
+  n: 4900                         # 5 x 980, 70 x 70 ou 980 x 5 cellules selon l'ordre
+  repeat: 1                       # calcul déterministe : une seule « répétition »
+  variables:
+    a: { expr: "0 * idx + 5 * (p.ordre > 0.5) + 980 * (p.ordre < -0.5) + 70 * (p.ordre == 0)" }
+    x: { expr: "((idx // (4900 / a)) + 0.5) / a" }
+    y: { expr: "((idx % (4900 / a)) + 0.5) / (4900 / a)" }
+    f: { expr: "@h.integrabilite" }
+
+methods:
+  - id: integrale
+    role: method
+    call: iterated_integral
+    label: "Intégrale itérée sur [0, 1]²"
+    args: { x: x, y: y, f: f, truth: "where(h.integrabilite == 'integrable', 0.83167, 0.0)" }
+
+measures:
+  ecart:
+    agg: "mean(reps.error)"
+    label: "Intégrale itérée moins intégrale double"
+    decimals: 3
+    primary: true
+    target: 0
+    direction: both
+    ok_within: 0.1
+    broken_beyond: 0.3
+    texts:
+      ok: "L'intégrale itérée est à {value} de l'intégrale double."
+      warning: "L'intégrale itérée s'écarte de l'intégrale double de {value}."
+      broken: "L'intégrale itérée s'écarte de l'intégrale double de {value} : l'ordre d'intégration compte."
+  integrale:
+    agg: "mean(reps.est)"
+    label: "Intégrale itérée"
+    decimals: 3
+
+challenges:
+  - id: "deux-valeurs"
+    goal: "Faites échouer l'échange des intégrales en rendant la fonction non intégrable."
+    when: "h.integrabilite == 'diverge' and p.ordre != 0 and s.ecart == 'broken'"
+    unlock: "Sans intégrabilité, l'ordre d'intégration décide du résultat : $\\pi/4$ dans un sens, $-\\pi/4$ dans l'autre."
+  - id: "grille-carree"
+    goal: "Retrouvez une intégrale itérée correcte avec la fonction non intégrable, en intégrant « simultanément »."
+    when: "h.integrabilite == 'diverge' and p.ordre == 0 and s.ecart == 'ok'"
+    unlock: "Une grille carrée intègre les deux variables en même temps : l'antisymétrie compense, et le problème reste caché. Ce n'est pas une preuve d'intégrabilité."
+
+auto_sweep: [p.ordre]
+
+views:
+  - id: grille
+    type: heatmap
+    title: "La fonction sur la grille d'intégration (x en ligne, y en colonne)"
+    bind: { matrix: curves.matrix }
+    ui: { decimals: 1 }
+  - id: ordre
+    type: sensitivity
+    title: "Selon l'ordre d'intégration"
+    sweep: { axes: [p.ordre] }
+  - id: famille
+    type: sensitivity
+    title: "Selon la fonction intégrée"
+    sweep: { axes: [h.integrabilite] }
+
+questions:
+  - id: "ft-q1-echange"
+    type: misconception
+    prompt: "Les deux intégrales itérées de $f(x, y) = (x^2 - y^2)/(x^2 + y^2)^2$ sur $[0, 1]^2$ existent. Sont-elles forcément égales ?"
+    hypothesis: "integrabilite"
+    choices:
+      - id: "a"
+        label: "Oui : on peut toujours échanger l'ordre de deux intégrales."
+        correct: false
+        reveal_state: { params: { ordre: 1 }, hypotheses: { integrabilite: "diverge" } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "ordre"
+        explain: "Non : l'échange demande Tonelli (fonction positive) ou Fubini (fonction intégrable sur le produit). Ici la fonction change de signe et n'est pas intégrable : les deux intégrales itérées valent $\\pi/4$ et $-\\pi/4$."
+      - id: "b"
+        label: "Non : il faut que la fonction soit positive ou intégrable sur le produit."
+        correct: true
+        reveal_state: { params: { ordre: 1 }, hypotheses: { integrabilite: "diverge" } }
+        verify: "s.ecart == 'broken'"
+        focus_view: "ordre"
+        explain: "Exact : sans positivité ni intégrabilité, l'ordre d'intégration peut changer le résultat."
+
+  - id: "ft-q2-grille-carree"
+    type: misconception
+    prompt: "On intègre la même fonction sur une grille carrée, qui traite $x$ et $y$ en même temps, et l'on trouve une valeur proche de $0$. Cela prouve-t-il que Fubini s'applique ?"
+    hypothesis: "integrabilite"
+    choices:
+      - id: "a"
+        label: "Oui : un calcul numérique sans écart valide l'échange."
+        correct: false
+        reveal_state: { params: { ordre: 0 }, hypotheses: { integrabilite: "diverge" } }
+        verify: "s.ecart == 'ok'"
+        focus_view: "ordre"
+        explain: "Non : la fonction est antisymétrique, donc les contributions se compensent sur une grille symétrique. L'intégrabilité n'est pas vérifiée pour autant, et les intégrales itérées valent toujours $\\pm\\pi/4$."
+      - id: "b"
+        label: "Non : seule l'intégrabilité de $|f|$ garantit l'échange."
+        correct: true
+        reveal_state: { params: { ordre: 0 }, hypotheses: { integrabilite: "diverge" } }
+        verify: "s.ecart == 'ok'"
+        focus_view: "ordre"
+        explain: "Exact : la valeur près de $0$ vient d'une compensation par symétrie, pas du théorème de Fubini."
+
+  - id: "ft-q3-prediction"
+    type: prediction
+    prompt: "Avec $f(x, y) = y(1 + \\sin 3x)$, intégrable sur le carré, que devient l'intégrale itérée quand on passe de l'ordre $1$ à l'ordre $-1$ ?"
+    state: { params: { ordre: 1 }, hypotheses: { integrabilite: "integrable" } }
+    sweep: { target: p.ordre, from: "1", to: "-1" }
+    measure: integrale

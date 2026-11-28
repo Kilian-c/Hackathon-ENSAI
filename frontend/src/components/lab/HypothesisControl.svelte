@@ -7,6 +7,7 @@
   Le composant ne garde aucun état : il reçoit la valeur et signale le changement (onchange).
 -->
 <script lang="ts">
+  import MathText from '../MathText.svelte'
   import { formatControl } from '../../lib/format'
   import { hypothesisStatus, isHealthy } from '../../lib/lab'
   import type { Hypothesis } from '../../lib/types.gen'
@@ -76,7 +77,7 @@
     </select>
   {/if}
   {#if disabledText}
-    <p class="disabled-text">{disabledText}</p>
+    <p class="disabled-text"><MathText text={disabledText} /></p>
   {/if}
 </div>
 

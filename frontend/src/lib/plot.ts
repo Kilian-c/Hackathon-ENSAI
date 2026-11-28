@@ -87,6 +87,7 @@ export const VIEW_UI_KEYS: Readonly<Record<string, string>> = {
   unit_circle: 'true ou un rayon : cercle centré en 0 (plan complexe)',
   marker_size: 'taille des points',
   point_labels: 'liste de noms, un par point (emplacement points)',
+  fill_area: 'true : remplit l’aire entre la courbe et l’axe horizontal (une intégrale)',
   zmin: 'heatmap : borne basse de l’échelle de couleur',
   zmax: 'heatmap : borne haute de l’échelle de couleur',
   decimals: 'heatmap : décimales écrites dans les cases (2 par défaut)',
@@ -469,7 +470,13 @@ function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
   for (const s of visible) {
     if (LINE_SLOTS.has(s.slot) || view.type === 'curves') {
       // Une courbe dans le temps arrive déjà dans l'ordre ; une droite ajustée doit être triée.
-      data.push(lineTrace(s, view.type !== 'curves', { x: uiFlag(view, 'log_x'), y: uiFlag(view, 'log_y') }))
+      const line = lineTrace(s, view.type !== 'curves', { x: uiFlag(view, 'log_x'), y: uiFlag(view, 'log_y') })
+      // `ui.fill_area` : l'aire entre la courbe et l'axe (l'intégrale). La Référence reste en trait seul.
+      if (uiFlag(view, 'fill_area') && s.role !== 'reference') {
+        const color = String((line as { line?: { color?: string } }).line?.color ?? cssVar('--ct-plot-data'))
+        Object.assign(line, { fill: 'tozeroy', fillcolor: withAlpha(color, 0.22) })
+      }
+      data.push(line)
     } else {
       const m = markerTraces(s, view)
       data.push(...m.traces)

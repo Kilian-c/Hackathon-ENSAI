@@ -292,6 +292,44 @@ export const CATALOG: Catalog = {
       "doc": "Intègre `system` avec le pas `dt` (arrondi pour tomber pile sur t_end)."
     },
     {
+      "name": "iterated_integral",
+      "args": [
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "y",
+          "default": null
+        },
+        {
+          "name": "f",
+          "default": null
+        },
+        {
+          "name": "truth",
+          "default": "None"
+        }
+      ],
+      "kinds": [
+        "rectangles",
+        "trapezes",
+        "simpson",
+        "monte_carlo"
+      ],
+      "provides": {
+        "reps": [
+          "est",
+          "error"
+        ],
+        "curves": [
+          "matrix"
+        ]
+      },
+      "cost": "repeat * n",
+      "doc": "Intégrale double de f sur [0, 1]², sommée sur une grille rectangulaire A × B de milieux de cellules."
+    },
+    {
       "name": "linsolve",
       "args": [
         {
@@ -557,6 +595,57 @@ export const CATALOG: Catalog = {
       },
       "cost": "repeat * n",
       "doc": "Teste l'égalité des moyennes pour chaque paire de groupes."
+    },
+    {
+      "name": "quadrature",
+      "args": [
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "f",
+          "default": null
+        },
+        {
+          "name": "a",
+          "default": null
+        },
+        {
+          "name": "b",
+          "default": null
+        },
+        {
+          "name": "kind",
+          "default": "'rectangles'"
+        },
+        {
+          "name": "truth",
+          "default": "None"
+        },
+        {
+          "name": "samples",
+          "default": "200"
+        }
+      ],
+      "kinds": [
+        "rectangles",
+        "trapezes",
+        "simpson",
+        "monte_carlo"
+      ],
+      "provides": {
+        "reps": [
+          "est",
+          "error"
+        ],
+        "example": [
+          "x",
+          "f"
+        ]
+      },
+      "cost": "repeat * n",
+      "doc": "`est` : l'intégrale de f sur [a, b] ; `error` : `est - truth` (NaN sans `truth`)."
     },
     {
       "name": "regressor",
