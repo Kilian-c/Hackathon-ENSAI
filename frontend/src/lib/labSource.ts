@@ -8,6 +8,7 @@
 
 import { api, ApiError, type CallOptions } from './executor'
 import { importKey } from './share'
+import { SERIES_SIZE } from './training'
 import type {
   EngineState,
   ExperimentSpec,
@@ -58,7 +59,7 @@ export async function openSession(
   seed: number | null,
 ): Promise<{ session: TrainingSessionResponse; kind: LabSource['kind'] }> {
   if (!forcedFixtures()) {
-    return { session: await api.trainingSession({ filter, count: 10, seed }), kind: 'api' }
+    return { session: await api.trainingSession({ filter, count: SERIES_SIZE, seed }), kind: 'api' }
   }
   return { session: await (await fixtures()).fixtureSession(filter), kind: 'fixtures' }
 }

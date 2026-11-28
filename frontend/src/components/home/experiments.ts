@@ -1,16 +1,8 @@
 // Mise en forme commune à l'accueil et à la galerie du Laboratoire.
 import { LINK_VERSION } from '../../lib/state'
 
-// Libellés affichés des disciplines (les identifiants des YAML n'ont pas d'accent).
-const DISCIPLINE_LABELS: Record<string, string> = {
-  statistique: 'Statistique',
-  probabilites: 'Probabilités',
-  apprentissage: 'Apprentissage',
-}
-
-export function disciplineLabel(d: string): string {
-  return DISCIPLINE_LABELS[d] ?? d.charAt(0).toUpperCase() + d.slice(1)
-}
+// Libellés des disciplines : lib/trainChoice.ts (partagés avec le choix des thèmes de l'Entraînement).
+export { disciplineLabel } from '../../lib/trainChoice'
 
 /** « Thème : sous-titre » en deux morceaux ; titre entier s'il n'y a pas de deux-points. */
 export function splitTitle(t: string): { head: string; sub: string | null } {

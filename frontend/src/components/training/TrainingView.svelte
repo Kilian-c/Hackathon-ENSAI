@@ -22,6 +22,7 @@
     makeAnswer,
     saveAnswers,
     seriesTitle,
+    shortSeriesNotice,
     storedAnswers,
     type Answer,
     type ConfidenceLevel,
@@ -49,6 +50,8 @@
   const question = $derived(session?.questions[index] ?? null)
   const answer = $derived(question ? (answers.find((a) => a.qid === question.qid) ?? null) : null)
   const score = $derived(answers.filter((a) => a.correct).length)
+  // Série plus courte que demandée : pas assez de questions pour ce choix (aucun contrat en cause).
+  const notice = $derived(session && kind === 'api' ? shortSeriesNotice(total, session.filter) : null)
 
   async function load(seed: number | null): Promise<void> {
     loading = true
@@ -129,6 +132,9 @@
     {#if kind === 'fixtures'}
       <p class="banner">Série de démonstration : ces questions ne viennent pas du moteur.</p>
     {/if}
+    {#if notice}
+      <p class="banner" role="status">{notice}</p>
+    {/if}
 
     {#if total === 0}
       <p class="muted">Aucune question disponible pour ce choix.</p>
@@ -171,6 +177,7 @@
           {:else}
             <button type="button" class="primary" onclick={restart}>Recommencer la série</button>
           {/if}
+          <a class="summary-link" href="?">Choisir d'autres thèmes</a>
           <a class="summary-link" href="?bilan">Voir mon bilan →</a>
         </p>
         <p class="summary-hint">

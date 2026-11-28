@@ -7,6 +7,7 @@
  * Le score de Brier et la calibration ne sont pas calculés ici (lib/calibration.ts, R4).
  */
 
+import { disciplineLabel, joinLabels, selectedFromFilter } from './trainChoice'
 import type { TrainingChoice, TrainingQuestion, TrainingSessionResponse } from './types.gen'
 
 export type ConfidenceLevel = keyof TrainingQuestion['confidence']
@@ -153,6 +154,21 @@ export function seriesTitle(size: number): string {
 
 export function filterLabel(filter: string): string {
   if (filter === 'toutes') return 'Toutes les expériences'
-  if (filter.startsWith('discipline:')) return `Discipline : ${filter.slice('discipline:'.length)}`
+  if (filter.startsWith('discipline:')) return joinLabels(selectedFromFilter(filter).map(disciplineLabel))
   return 'Une seule expérience'
+}
+
+/** Taille d'une série demandée au moteur (il peut en rendre moins s'il n'y a pas assez de questions). */
+export const SERIES_SIZE = 10
+
+/**
+ * Message quand la série est plus courte que demandée, faute de questions pour ce choix ; null sinon.
+ * Aucun contrat n'est en cause : l'interface compare les questions reçues à celles demandées.
+ */
+export function shortSeriesNotice(received: number, filter: string): string | null {
+  if (received <= 0 || received >= SERIES_SIZE) return null
+  const label = filterLabel(filter)
+  const questions = received > 1 ? 'questions' : 'question'
+  const advice = filter === 'toutes' ? '' : ' Ajoutez une autre discipline pour une série complète.'
+  return `Il n'existe que ${received} ${questions} pour « ${label} » : cette série est plus courte que les ${SERIES_SIZE} habituelles.${advice}`
 }

@@ -2,6 +2,10 @@
   // Accueil : les deux modes (Entraînement, Laboratoire), tenant sur un écran.
   // La liste des expériences est sur une page à part (?labo, LabGallery.svelte).
   import { LAB_GALLERY_HREF, TRAIN_ALL_HREF } from './experiments'
+  import TrainPicker from './TrainPicker.svelte'
+
+  // Lien de la série : « Tout » tant que le choix des thèmes n'a pas changé (TrainPicker le met à jour).
+  let trainHref = $state(TRAIN_ALL_HREF)
 </script>
 
 <div class="screen">
@@ -37,8 +41,9 @@
           <li>Trois crans de confiance, score de Brier</li>
           <li>Bilan de calibration</li>
         </ul>
+        <TrainPicker bind:href={trainHref} />
         <div class="mode-actions">
-          <a class="btn btn-primary" href={TRAIN_ALL_HREF}>Commencer une série</a>
+          <a class="btn btn-primary" href={trainHref}>Commencer une série</a>
           <a class="btn btn-ghost" href="?bilan">Voir mon bilan</a>
         </div>
       </article>
