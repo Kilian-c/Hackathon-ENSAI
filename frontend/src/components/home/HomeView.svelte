@@ -9,6 +9,22 @@
 </script>
 
 <div class="screen">
+  <div class="glyphs" aria-hidden="true">
+    <span class="glyph" style="--x: 4%; --y: 12%; --s: 3.2rem; --r: -8deg; --d: -0.0s">∑</span>
+    <span class="glyph" style="--x: 11%; --y: 34%; --s: 4rem; --r: 6deg; --d: -1.3s">∫</span>
+    <span class="glyph" style="--x: 3%; --y: 58%; --s: 2.4rem; --r: -4deg; --d: -2.6s">√n</span>
+    <span class="glyph" style="--x: 10%; --y: 80%; --s: 2.6rem; --r: 10deg; --d: -3.9s">σ²</span>
+    <span class="glyph" style="--x: 15%; --y: 8%; --s: 2rem; --r: 4deg; --d: -5.2s">π</span>
+    <span class="glyph" style="--x: 6%; --y: 90%; --s: 2.2rem; --r: 0deg; --d: -6.5s">x̄</span>
+    <span class="glyph" style="--x: 14%; --y: 62%; --s: 2.2rem; --r: -6deg; --d: -7.8s">∞</span>
+    <span class="glyph" style="--x: 90%; --y: 10%; --s: 3rem; --r: 8deg; --d: -0.1s">∂</span>
+    <span class="glyph" style="--x: 83%; --y: 30%; --s: 2.6rem; --r: -6deg; --d: -1.4s">μ</span>
+    <span class="glyph" style="--x: 92%; --y: 48%; --s: 2.8rem; --r: 4deg; --d: -2.7s">β̂</span>
+    <span class="glyph" style="--x: 84%; --y: 68%; --s: 2.6rem; --r: 0deg; --d: -4.0s">≈</span>
+    <span class="glyph" style="--x: 86%; --y: 86%; --s: 1.8rem; --r: -5deg; --d: -5.3s">𝒩(0,1)</span>
+    <span class="glyph" style="--x: 94%; --y: 76%; --s: 2.2rem; --r: 10deg; --d: -6.6s">λ</span>
+    <span class="glyph" style="--x: 80%; --y: 6%; --s: 1.8rem; --r: -3deg; --d: -7.9s">eˣ</span>
+  </div>
   <main class="home">
     <header class="hero">
       <p class="eyebrow">Réviser par la simulation</p>
@@ -83,18 +99,49 @@
 
 <style>
   /* Le halo couvre toute la largeur, collé en haut de la fenêtre : pas de bande sombre au-dessus. */
+  /* Le halo du fond est global (app.css, sur body) : il couvre aussi les autres pages. */
   .screen {
+    position: relative;
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
-    background: radial-gradient(
-        ellipse 70% 45% at 50% 0%,
-        color-mix(in srgb, var(--ct-role-method) 13%, transparent),
-        transparent 100%
-      ),
-      var(--ct-bg);
+    overflow: hidden;
+  }
+
+  /* --- Symboles mathématiques du fond, sur les côtés, purement décoratifs --- */
+  .glyphs {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    user-select: none;
+  }
+  .glyph {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    font-family: 'Cambria Math', 'STIX Two Math', 'Latin Modern Math', Georgia, serif;
+    font-size: var(--s);
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--ct-muted);
+    opacity: 0.18;
+    transform: rotate(var(--r));
+    animation: ct-float 9s ease-in-out infinite alternate;
+    animation-delay: var(--d);
+  }
+  @keyframes ct-float {
+    to {
+      translate: 0 -10px;
+    }
+  }
+  /* Écran étroit : les cartes prennent toute la largeur, les symboles passeraient dessous. */
+  @media (max-width: 1100px) {
+    .glyphs {
+      display: none;
+    }
   }
   .home {
+    position: relative;
     width: 100%;
     max-width: 68rem;
     margin: auto;
@@ -385,7 +432,8 @@
     .mode .fill-a,
     .mode .fill-b,
     .line-fit,
-    .dot {
+    .dot,
+    .glyph {
       animation: none;
     }
     .mode {
