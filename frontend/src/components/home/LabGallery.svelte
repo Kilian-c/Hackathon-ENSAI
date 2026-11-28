@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ThemeButton from '../ThemeButton.svelte'
   // Galerie du Laboratoire (?labo) : toutes les expériences, avec recherche et filtres par discipline et
   // par niveau. Tout vient de GET /api/experiments : rien de propre à une expérience.
   import { listExperiments } from '../../lib/labSource'
@@ -65,7 +66,10 @@
 </script>
 
 <main class="page">
-  <a class="back" href="?">← Accueil</a>
+  <div class="bar">
+    <a class="back" href="?">← Accueil</a>
+    <ThemeButton />
+  </div>
 
   <header class="head">
     <p class="kicker">Mode libre</p>
@@ -182,6 +186,12 @@
   }
   .muted {
     color: var(--ct-muted);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ct-space-3);
   }
   .back {
     color: var(--ct-muted);

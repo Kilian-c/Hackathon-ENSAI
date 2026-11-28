@@ -5,6 +5,7 @@
   Tout vient de l'historique local (lib/training.ts) ; les calculs sont dans lib/calibration.ts.
 -->
 <script lang="ts">
+  import ThemeButton from '../ThemeButton.svelte'
   import { onMount, tick } from 'svelte'
   import PlotlyChart from '../PlotlyChart.svelte'
   import {
@@ -112,6 +113,7 @@
     </div>
     <div class="actions">
       <a class="button primary" href="?train=toutes&v={LINK_VERSION}">S'entraîner</a>
+      <ThemeButton />
     </div>
   </header>
 
