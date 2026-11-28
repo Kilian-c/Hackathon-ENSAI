@@ -21,7 +21,7 @@ equation:
       corrected: '\sqrt{n}\,\dfrac{\bar{X}_n - \mu}{\sigma\,\sqrt{(1 + \rho) / (1 - \rho)}}'
 
 params:
-  n: { type: number, label: "Taille d'échantillon n", min: 5, max: 500, step: 5, default: 50,
+  n: { type: number, label: "Taille de chaque échantillon n", min: 5, max: 500, step: 5, default: 50,
        sweep_values: [5, 10, 30, 100, 500] }
 
 hypotheses:
@@ -126,7 +126,7 @@ auto_sweep: [p.n]
 views:
   - id: moyennes
     type: distribution
-    title: "500 moyennes normalisées"
+    title: "500 moyennes normalisées (une par échantillon de n observations)"
     bind: { stat: reps.z }
     ui: { x_range: [-5, 5] }
   - id: trajectoires

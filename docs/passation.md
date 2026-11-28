@@ -1,5 +1,10 @@
 # Notes de passation (la plus récente en haut)
 
+## TCL : libellés clarifiés, graine de la démo passée de 10 à 250 (R4, pas une relève)
+- Test utilisateur : sur le TCL, changer n ne changeait pas « 500 » sur le graphique. Pas un bug : 500 = nombre d'échantillons (`repeat`), n = taille de chacun. Libellés clarifiés dans `theoreme_central_limite.yaml` (fichier de R2, prévenu) : « Taille de chaque échantillon n » et « 500 moyennes normalisées (une par échantillon de n observations) ».
+- Conséquence : l'empreinte des YAML change, donc les séries d'Entraînement. `docs/pitch_script.md` passe à la graine 250 (même première question, mêmes choix dans le même ordre, série de 4 questions ; vérifié par script). **À rejouer à l'écran avant le pitch.**
+- Rappel : toute retouche d'un YAML avant 17 h change de nouveau la série de la démo.
+
 ## Thème clair : les graphiques restaient sombres (R4, branche `r4/bug-theme-graphe`, pas une relève)
 - Signalé par le test utilisateur. **Serveur de développement seulement** (la version construite a été vérifiée : correcte). Après certaines mises à jour à chaud (changement de branche), Vite charge deux copies de `lib/theme.svelte.ts` : le bouton changeait l'une, `cssVar` lisait l'autre ; page claire, graphiques sombres (ou l'inverse).
 - Corrigé : un seul état de thème par page (`globalThis`), partagé par les copies. Test qui échoue sans le correctif. Vérifié au navigateur avec les deux copies chargées (nuage, intervalles, Domaine de validité, dans les deux sens).
