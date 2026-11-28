@@ -271,6 +271,41 @@
     background: var(--ct-surface-2);
   }
 
+  /* Fenêtres basses (portable, mise à l'échelle Windows à 125 ou 150 %) : on resserre la hauteur
+     pour que l'accueil tienne encore sur un écran, boutons compris. */
+  @media (max-height: 62rem) {
+    .home {
+      padding-block: var(--ct-space-4);
+    }
+    .hero {
+      margin-bottom: var(--ct-space-4);
+    }
+    .eyebrow,
+    .mode-art {
+      display: none;
+    }
+    h1 {
+      font-size: clamp(2rem, 4vw, 2.75rem);
+    }
+    .tagline {
+      margin-top: var(--ct-space-2);
+      font-size: var(--ct-text-md);
+    }
+    .mode {
+      padding: var(--ct-space-4) var(--ct-space-6);
+    }
+    .mode h2 {
+      font-size: var(--ct-text-lg);
+    }
+    .mode-points {
+      margin: var(--ct-space-3) 0 var(--ct-space-4);
+      gap: 0;
+    }
+    .import-link {
+      margin-top: var(--ct-space-4);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .mode {
       transition: none;
