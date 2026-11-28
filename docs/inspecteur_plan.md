@@ -1,7 +1,8 @@
 # Inspecteur d'observation (P2) : plan d'implémentation
 
 Écrit par R4 (avec l'assistant), le 28/11 vers 4 h 30. Référence : cahier, fiche F.6 (« Inspecteur d'observation ») et fiche F.4 (partage du clic avec l'ajout de points).
-**Statut :** non commencé. À faire sur une branche `r4/inspecteur`, un commit par propriétaire, fusion seulement après essai au navigateur et relecture de R1. C'est du P2 : seulement si le P1 est vert, et bien avant le gel de H25 ; sinon après le pitch.
+**Statut :** implémenté sur `r4/inspecteur` (état, écarts et vérifications dans `docs/passation.md`). Écarts avec le plan : fiche posée à l'opposé du point et non sous le graphique ; clic lu par la recherche du Laboratoire et non par Plotly ; vérification du levier par un test, pas par le chargeur. Plan d'origine ci-dessous.
+**Statut initial :** non commencé. À faire sur une branche `r4/inspecteur`, un commit par propriétaire, fusion seulement après essai au navigateur et relecture de R1. C'est du P2 : seulement si le P1 est vert, et bien avant le gel de H25 ; sinon après le pitch.
 
 ---
 

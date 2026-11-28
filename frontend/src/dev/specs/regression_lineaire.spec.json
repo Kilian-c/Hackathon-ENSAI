@@ -429,7 +429,7 @@
    "sweep": null,
    "axes": null,
    "layers": null,
-   "inspect": false,
+   "inspect": true,
    "allow_point_injection": false,
    "mode": null,
    "ui": {
