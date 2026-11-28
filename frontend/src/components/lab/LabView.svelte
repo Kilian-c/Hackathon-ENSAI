@@ -49,6 +49,7 @@
   import {
     applyPreset,
     brokenHypotheses,
+    isBareLabLink,
     labLink,
     MAX_EXTRA_POINTS,
     nextDraw,
@@ -132,7 +133,9 @@
         engine = resolved.engine
         ui = resolved.ui
         if (resolved.ui.tab === CHALLENGES_TAB) stage = 'defis'
-        if (resolved.ui.stage === 'comprendre' || resolved.ui.stage === 'defis') stage = resolved.ui.stage
+        if (isBareLabLink(link)) stage = 'comprendre'
+        const asked = resolved.ui.stage
+        if (asked === 'comprendre' || asked === 'experimenter' || asked === 'defis') stage = asked
         // Hypothèse demandée par le lien (pont de l'Entraînement), sinon la première cassée.
         openHyp = resolved.ui.focus ?? brokenHypotheses(opened.spec, resolved.engine)[0] ?? null
       },
@@ -191,8 +194,8 @@
 
   /** État d'affichage du lien : l'étape ouverte, et l'hypothèse lue dans Comprendre. */
   function uiForLink(): UiState {
-    const onStage = stage === 'experimenter' ? null : stage
-    return { ...ui, stage: onStage, focus: stage === 'comprendre' ? openHyp : null }
+    // Étape toujours écrite : un lien nu s'ouvre sur Comprendre, il faut donc dire Expérimenter.
+    return { ...ui, stage, focus: stage === 'comprendre' ? openHyp : null }
   }
 
   // --- Lien de partage : recopié dans l'URL (sans nouvelle entrée d'historique) ---
