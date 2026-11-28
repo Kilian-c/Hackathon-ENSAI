@@ -407,7 +407,9 @@ def _arr(value: Any) -> np.ndarray | None:
 INSPECT_KEYS = ("y", "y_hat", "resid", "leverage", "cooks_d")
 
 
-def _inspect_series(view_id: str, method: str, comp: Computed, x_path: str, rs: ResolvedState) -> list[Series]:
+def _inspect_series(
+    view_id: str, method: str, comp: Computed, x_path: str, rs: ResolvedState
+) -> list[Series]:
     """Une série `inspect.<clé>` par grandeur fournie, dans l'ordre de l'échantillon (points posés à la
     fin). L'interface ne les dessine pas : elle y lit la fiche de l'observation cliquée."""
     x = _arr(_path(comp, method, x_path, rs))
