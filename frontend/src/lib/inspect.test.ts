@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  cardSide,
   inspectableCount,
   inspectionFor,
   injectedIndex,
@@ -24,8 +25,12 @@ const leverage = [0.3, 0.2, 0.2, 0.2, 1.1]
 const cooks = [0.1, 0.05, 0, 0.2, 4]
 
 function view(extra: Series[] = []): ViewResult {
+  // Comme le moteur : les abscisses ne sont portées que par la première série.
   const inspect = (key: string, values: number[]) =>
-    series({ id: `nuage.inspect.${key}`, slot: `inspect.${key}`, method: 'ols', role: 'method', x, y: values })
+    series({
+      id: `nuage.inspect.${key}`, slot: `inspect.${key}`, method: 'ols', role: 'method',
+      x: key === 'y' ? x : null, y: values,
+    })
   return {
     id: 'nuage', type: 'scatter', title: 'Nuage', mode: null, ui: null,
     axes: { x: [-1, 5], y: [-1, 4] }, shown: 5, total: 5, clipped: 0,
@@ -112,13 +117,13 @@ describe('inspecteur : la sélection', () => {
     const added = state({ extra_points: [{ x: 10, y: -2 }] })
     const bigger = view()
     bigger.series = bigger.series.map((s) =>
-      s.slot.startsWith('inspect.') ? { ...s, x: [...x, 11], y: [...s.y!, 0] } : s)
+      s.slot.startsWith('inspect.') ? { ...s, x: s.x ? [...x, 11] : null, y: [...s.y!, 0] } : s)
     expect(selectionHolds(generated, bigger, added)).toBe(true)
     const mine = selectionFor(view(), posed, 3)!
     // Le premier point posé est retiré : le second prend son rang, la fiche ne doit pas « glisser ».
     const smaller = view()
     smaller.series = smaller.series.map((s) =>
-      s.slot.startsWith('inspect.') ? { ...s, x: x.slice(0, 4), y: s.y!.slice(0, 4) } : s)
+      s.slot.startsWith('inspect.') ? { ...s, x: s.x ? x.slice(0, 4) : null, y: s.y!.slice(0, 4) } : s)
     expect(selectionHolds(mine, smaller, state({ extra_points: [{ x: 10, y: -2 }] }))).toBe(false)
   })
 })
@@ -180,10 +185,32 @@ describe('inspecteur : le point visé par un clic', () => {
     expect(nearestTarget(targets(), identity, [500, -106], 8)).toEqual({ index: 4 })
   })
 
+  it('ignore un point que le zoom a sorti du cadre, mais garde ceux du bord', () => {
+    // Le triangle est projeté en (500 ; −100) : au-dessus d'un cadre qui commence à 0.
+    expect(nearestTarget(targets(), identity, [500, -98], 8, [600, 400])).toBeNull()
+    expect(nearestTarget(targets(), identity, [500, -98], 8)).toEqual({ index: 4 })
+    // L'étoile (300 ; 300), posée exactement sur le bord d'un cadre de 300 px, reste cliquable.
+    expect(nearestTarget(targets(), identity, [303, 303], 8, [300, 300])).toEqual({ injected: 0 })
+  })
+
   it('préfère l’étoile quand elle recouvre une observation, et ignore un clic dans le vide', () => {
     expect(nearestTarget(targets(), identity, [301, 301], 8)).toEqual({ injected: 0 })
     expect(nearestTarget(targets(), identity, [150, 320], 8)).toBeNull()
     expect(nearestTarget(targets(), identity, [100, 160], 8)).toBeNull() // à 10 px : trop loin
     expect(nearestTarget(targets(), identity, [100, 156], 8)).toEqual({ index: 1 })
+  })
+})
+
+describe('inspecteur : le placement de la fiche', () => {
+  it('la pose à l’opposé du point choisi (milieu des bornes de la vue : 2)', () => {
+    expect(cardSide(view(), 0)).toBe('right')
+    expect(cardSide(view(), 4)).toBe('left')
+    expect(cardSide(view(), 10)).toBe('left')
+  })
+
+  it('sans bornes, prend le milieu des observations ; sans abscisse, reste à gauche', () => {
+    const free = { ...view(), axes: { x: null, y: null } }
+    expect(cardSide(free, 4)).toBe('right') // observations de 0 à 10 : milieu 5
+    expect(cardSide(view(), null)).toBe('left')
   })
 })

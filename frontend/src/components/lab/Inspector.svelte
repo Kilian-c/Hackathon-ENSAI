@@ -10,11 +10,13 @@
     inspection: Inspection
     /** L'observation est un point posé au clic : la fiche permet de le retirer. */
     posed: boolean
+    /** Côté du graphique (lib/inspect.ts, cardSide) : à l'opposé du point choisi. */
+    side?: 'left' | 'right'
     onclose: () => void
     onremove: () => void
   }
 
-  let { inspection, posed, onclose, onremove }: Props = $props()
+  let { inspection, posed, side = 'left', onclose, onremove }: Props = $props()
 
   const num = (v: number | null) => (v === null ? '—' : frNumber(v, 3))
   const percent = (v: number) => `${frNumber(v * 100, 1)} %`
@@ -26,7 +28,7 @@
 
 <svelte:window {onkeydown} />
 
-<aside class="inspector" aria-label="Fiche de l'observation">
+<aside class="inspector" class:right={side === 'right'} aria-label="Fiche de l'observation">
   <header>
     <h3>{posed ? 'Votre point ajouté' : `Observation ${inspection.index + 1} sur ${inspection.total}`}</h3>
     <button type="button" class="close" onclick={onclose} aria-label="Fermer la fiche">✕</button>
@@ -77,13 +79,14 @@
 </aside>
 
 <style>
-  /* Coin haut gauche du nuage : le moins chargé quand la pente est positive. La fiche se ferme au besoin. */
+  /* Posée sur le graphique, du côté opposé au point choisi, et sur moins de la moitié du cadre. */
   .inspector {
     position: absolute;
     top: var(--ct-space-2);
     left: 4.5rem;
     z-index: 5;
-    width: min(19rem, calc(100% - 5rem));
+    width: min(19rem, calc(50% - 3.5rem));
+    min-width: 13rem;
     max-height: calc(100% - var(--ct-space-4));
     overflow-y: auto;
     box-sizing: border-box;
@@ -93,6 +96,10 @@
     border-radius: var(--ct-radius-lg);
     box-shadow: var(--ct-shadow);
     font-size: var(--ct-text-sm);
+  }
+  .inspector.right {
+    left: auto;
+    right: var(--ct-space-3);
   }
   header {
     display: flex;
@@ -169,6 +176,7 @@
     .inspector {
       position: static;
       width: auto;
+      min-width: 0;
       margin-top: var(--ct-space-2);
     }
   }

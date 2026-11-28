@@ -22,14 +22,14 @@ function seriesOf(view: ViewResult, key: string): Series | undefined {
   return view.series.find((s) => s.slot === INSPECT_PREFIX + key)
 }
 
-/** Nombre d'observations inspectables de la vue (0 : la vue ne s'inspecte pas). */
-export function inspectableCount(view: ViewResult): number {
-  return view.series.find(isInspectSeries)?.x?.length ?? 0
+/** Abscisses des observations : portées par une seule des séries `inspect.*`. */
+export function inspectX(view: ViewResult): readonly Num[] | null {
+  return view.series.find((s) => isInspectSeries(s) && s.x != null)?.x ?? null
 }
 
-/** Abscisses des observations, communes à toutes les séries `inspect.*`. */
-export function inspectX(view: ViewResult): readonly Num[] | null {
-  return view.series.find(isInspectSeries)?.x ?? null
+/** Nombre d'observations inspectables de la vue (0 : la vue ne s'inspecte pas). */
+export function inspectableCount(view: ViewResult): number {
+  return inspectX(view)?.length ?? 0
 }
 
 /**
@@ -103,6 +103,19 @@ export function inspectionFor(view: ViewResult, index: number): Inspection | nul
   }
 }
 
+// --- Placement de la fiche ---------------------------------------------------------------------------
+
+/**
+ * Côté du graphique où poser la fiche : à l'opposé du point choisi, pour ne pas le cacher (ni son anneau).
+ * Le milieu est celui des bornes de la vue ; à défaut, celui des observations.
+ */
+export function cardSide(view: ViewResult, x: number | null): 'left' | 'right' {
+  const xs = (inspectX(view) ?? []).filter(finite)
+  const range = view.axes?.x ?? (xs.length > 0 ? [Math.min(...xs), Math.max(...xs)] : null)
+  if (x === null || !range) return 'left'
+  return x < (range[0] + range[1]) / 2 ? 'right' : 'left'
+}
+
 // --- Clic : quel point est visé ? --------------------------------------------------------------------
 
 /** Cible d'un clic : une observation de l'échantillon, ou un point posé (rang dans extra_points). */
@@ -114,25 +127,35 @@ export interface Candidate {
   target: PointTarget
 }
 
+/** Marge (px) pour un point posé sur le bord du cadre, aux arrondis près. */
+const EDGE_TOLERANCE = 1
+
 /**
  * Le point le plus proche du clic, à `radius` pixels au plus ; à égalité, le dernier de la liste (dessiné
  * par-dessus). Les triangles « hors cadre » sont posés sur le bord : leur moitié qui dépasse du cadre ne
- * déclenche aucun clic Plotly, d'où cette recherche.
+ * déclenche aucun clic Plotly, d'où cette recherche. `size` (largeur et hauteur du cadre) écarte les
+ * points que le zoom a sortis de l'écran : ils ne sont pas cliquables.
  */
 export function nearestTarget(
   candidates: readonly Candidate[],
   project: (x: number, y: number) => readonly [number, number],
   at: readonly [number, number],
   radius: number,
+  size?: readonly [number, number],
 ): PointTarget | null {
   let best: PointTarget | null = null
   let bestDistance = radius
   for (const c of candidates) {
     const [px, py] = project(c.x, c.y)
+    if (size && !(within(px, size[0]) && within(py, size[1]))) continue
     const distance = Math.hypot(px - at[0], py - at[1])
     if (distance <= bestDistance) [best, bestDistance] = [c.target, distance]
   }
   return best
+}
+
+function within(position: number, length: number): boolean {
+  return position >= -EDGE_TOLERANCE && position <= length + EDGE_TOLERANCE
 }
 
 // --- Sélection : quel point est ouvert, et tient-il encore après un nouveau calcul ? ----------------------

@@ -38,7 +38,7 @@ from backend.contracts import (
 )
 from backend.engine.expr import Env, ExprError, evaluate
 from backend.engine.rng import rng_for
-from backend.engine.runner import RunError, check_condition, run
+from backend.engine.runner import RunError, check_condition, run, without_inspection
 from backend.engine.schema import (
     DiagnosticAuto,
     ExperimentSpec,
@@ -323,7 +323,7 @@ def _diagnostic(
         experiment_id=spec.id,
         type="diagnostic_auto",
         prompt=_fill_text(q.prompt, drawn),
-        initial_view=view,
+        initial_view=without_inspection(view),  # pas d'inspecteur dans l'Entraînement
         hypothesis=hidden.hypothesis,
         k=k,
         confidence=_confidence(k),

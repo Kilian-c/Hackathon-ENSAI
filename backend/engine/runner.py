@@ -405,13 +405,15 @@ def _arr(value: Any) -> np.ndarray | None:
 
 # Inspecteur d'observation (cahier, fiche F.6) : grandeurs par observation, lues sur la méthode principale.
 INSPECT_KEYS = ("y", "y_hat", "resid", "leverage", "cooks_d")
+INSPECT_PREFIX = "inspect."
 
 
 def _inspect_series(
     view_id: str, method: str, comp: Computed, x_path: str, rs: ResolvedState
 ) -> list[Series]:
     """Une série `inspect.<clé>` par grandeur fournie, dans l'ordre de l'échantillon (points posés à la
-    fin). L'interface ne les dessine pas : elle y lit la fiche de l'observation cliquée."""
+    fin). L'interface ne les dessine pas : elle y lit la fiche de l'observation cliquée. Les abscisses,
+    communes, ne sont portées que par la première (répétées, elles alourdissaient chaque réponse)."""
     x = _arr(_path(comp, method, x_path, rs))
     out: list[Series] = []
     for key in INSPECT_KEYS:
@@ -420,16 +422,22 @@ def _inspect_series(
             continue
         out.append(
             Series(
-                id=f"{view_id}.inspect.{key}",
-                slot=f"inspect.{key}",
+                id=f"{view_id}.{INSPECT_PREFIX}{key}",
+                slot=f"{INSPECT_PREFIX}{key}",
                 method=method,
                 role="method",
                 label=f"Inspecteur : {key}",
-                x=_floats(x),
+                x=None if out else _floats(x),
                 y=_floats(values),
             )
         )
     return out
+
+
+def without_inspection(view: ViewResult) -> ViewResult:
+    """La vue sans les données de l'inspecteur (l'Entraînement n'en a pas)."""
+    kept = [s for s in view.series if not s.slot.startswith(INSPECT_PREFIX)]
+    return view.model_copy(update={"series": kept})
 
 
 def _build_view(

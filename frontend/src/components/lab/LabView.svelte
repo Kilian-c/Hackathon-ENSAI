@@ -19,6 +19,7 @@
   import PlotlyChart from '../PlotlyChart.svelte'
   import Inspector from './Inspector.svelte'
   import {
+    cardSide,
     inspectableCount,
     inspectionFor,
     injectedIndex,
@@ -665,6 +666,7 @@
                     <Inspector
                       {inspection}
                       posed={selection.injected !== null}
+                      side={activeView ? cardSide(activeView, inspection.x) : 'left'}
                       onclose={() => (selection = null)}
                       onremove={removeInspected}
                     />

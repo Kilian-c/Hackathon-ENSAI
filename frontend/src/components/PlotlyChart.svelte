@@ -151,7 +151,9 @@
     // Inspecteur : un point à portée, même sur le bord du cadre où Plotly ne signale pas le clic.
     if (oninspect && figure) {
       const targets = pointTargets(figure.data as Record<string, unknown>[])
-      const hit = nearestTarget(targets, (x, y) => [xa.d2p(x), ya.d2p(y)], [px, py], INSPECT_HOVER_DISTANCE)
+      const hit = nearestTarget(
+        targets, (x, y) => [xa.d2p(x), ya.d2p(y)], [px, py], INSPECT_HOVER_DISTANCE, [xa._length, ya._length],
+      )
       if (hit) {
         oninspect(hit)
         return
