@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 import time
+import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -334,13 +335,51 @@ def _diagnostic(
 # --- La série ----------------------------------------------------------------------------------------------
 
 
+def discipline_slug(name: str) -> str:
+    """Identifiant court d'une discipline : sans accent ni espace (« algebre-lineaire »).
+
+    Le contrat de filtre refuse les espaces ; l'identifiant court permet de filtrer toutes les disciplines et
+    reste lisible dans une URL. L'ancien nom exact donne le même identifiant : les anciens liens marchent.
+    """
+    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii").lower()
+    return re.sub(r"[^a-z0-9]+", "-", ascii_name).strip("-")
+
+
+def available_disciplines(specs: Mapping[str, ExperimentSpec]) -> dict[str, str]:
+    """Identifiant court -> nom de la discipline, pour les expériences officielles."""
+    return {discipline_slug(s.discipline): s.discipline for s in sorted(specs.values(), key=lambda s: s.id)}
+
+
+def _wanted_disciplines(specs: Mapping[str, ExperimentSpec], filter_: str) -> list[str]:
+    """Identifiants courts de `discipline:<a>[,<b>...]`, triés, sans doublon. `RunError` si inconnu."""
+    known = available_disciplines(specs)
+    parts = filter_.removeprefix("discipline:").split(",")
+    wanted = {discipline_slug(part) for part in parts if part.strip()}
+    if not wanted:
+        raise RunError("Indiquez au moins une discipline (par exemple « discipline:statistique »).")
+    unknown = sorted(w for w in wanted if w not in known)
+    if unknown:
+        raise RunError(
+            f"Discipline inconnue : « {unknown[0]} ». Disciplines disponibles : {', '.join(sorted(known))}."
+        )
+    return sorted(wanted)
+
+
+def canonical_filter(specs: Mapping[str, ExperimentSpec], filter_: str) -> str:
+    """Forme unique d'un filtre : l'ordre et l'orthographe des disciplines (accents, majuscules) ne
+    changent pas la série, qui dépend de la graine, de cette forme et du contenu des YAML."""
+    if filter_.startswith("discipline:"):
+        return "discipline:" + ",".join(_wanted_disciplines(specs, filter_))
+    return filter_
+
+
 def select_experiments(specs: Mapping[str, ExperimentSpec], filter_: str) -> list[ExperimentSpec]:
-    """`toutes`, un identifiant d'expérience, ou `discipline:<nom>`."""
+    """`toutes`, un identifiant d'expérience, ou `discipline:<id>[,<id>...]` (une ou plusieurs)."""
     if filter_ == "toutes":
         chosen = list(specs.values())
     elif filter_.startswith("discipline:"):
-        name = filter_.removeprefix("discipline:")
-        chosen = [s for s in specs.values() if s.discipline == name]
+        wanted = set(_wanted_disciplines(specs, filter_))
+        chosen = [s for s in specs.values() if discipline_slug(s.discipline) in wanted]
     else:
         chosen = [specs[filter_]] if filter_ in specs else []
     return sorted(chosen, key=lambda s: s.id)
@@ -376,7 +415,7 @@ def build_session(
     if not pool:
         raise RunError("Aucune question disponible pour ce filtre.")
     target = min(count, MAX_TRAINING_COUNT, len(pool))
-    stream = f"training:{filter_}:{digest}"
+    stream = f"training:{canonical_filter(specs, filter_)}:{digest}"
     order = rng_for(seed, stream).permutation(len(pool))
 
     questions: list[TrainingQuestion] = []
@@ -421,4 +460,10 @@ def build_session(
     )
 
 
-__all__ = ["build_session", "select_experiments"]
+__all__ = [
+    "available_disciplines",
+    "build_session",
+    "canonical_filter",
+    "discipline_slug",
+    "select_experiments",
+]

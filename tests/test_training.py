@@ -93,3 +93,95 @@ def test_no_decimal_number_is_directly_followed_by_a_comma_or_semicolon() -> Non
         for q in build_session(specs, digest, "toutes", 10, seed).questions:
             for text in [q.prompt, *(c.label for c in q.choices), *(c.explain for c in q.choices)]:
                 assert not risky.search(text), f"{q.qid} : « {text} »"
+
+
+# --- Entraînement par discipline (plan de docs/notes/r1.md, étape 1) -----------------------------------
+
+
+def _experiments_of(session: TrainingSessionResponse) -> set[str]:
+    return {q.experiment_id for q in session.questions}
+
+
+def _choices(session: TrainingSessionResponse) -> list[str]:
+    return [c.id for q in session.questions for c in q.choices]
+
+
+def test_discipline_slug_removes_accents_and_spaces() -> None:
+    from backend.engine.training import discipline_slug
+
+    assert discipline_slug("algèbre linéaire") == "algebre-lineaire"
+    assert discipline_slug("probabilités") == "probabilites"
+    assert discipline_slug("Algèbre  Linéaire") == "algebre-lineaire"  # majuscules et espaces multiples
+    assert discipline_slug("statistique") == "statistique"
+
+
+def test_every_discipline_gives_a_series_made_only_of_its_own_experiments() -> None:
+    from backend.engine.training import available_disciplines
+
+    specs = registry.official()
+    disciplines = available_disciplines(specs)
+    assert {"statistique", "probabilites", "algebre-lineaire", "apprentissage"} <= set(disciplines)
+    for slug, name in disciplines.items():
+        session = _session(f"discipline:{slug}", 2)
+        assert session.questions, slug
+        assert all(specs[e].discipline == name for e in _experiments_of(session)), slug
+
+
+def test_linear_algebra_is_filterable_through_the_api() -> None:
+    """Avant : « discipline:algèbre linéaire » était refusé (422) à cause de l'espace."""
+    from fastapi.testclient import TestClient
+
+    from backend.main import create_app
+
+    client = TestClient(create_app(None))
+    response = client.post("/api/training/session", json={"filter": "discipline:algebre-lineaire", "seed": 5})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["filter"] == "discipline:algebre-lineaire" and len(body["questions"]) == 10
+
+
+def test_several_disciplines_give_the_union_of_their_experiments() -> None:
+    specs = registry.official()
+    one = {e for e in specs if specs[e].discipline == "apprentissage"}
+    two = {e for e in specs if specs[e].discipline in ("apprentissage", "probabilités")}
+    both = _session("discipline:apprentissage,probabilites", 3)
+    assert _experiments_of(both) <= two and len(_experiments_of(both)) > len(one)
+    assert len(both.questions) == 10  # plus de questions disponibles que dans une seule discipline
+
+
+def test_spelling_and_order_of_disciplines_do_not_change_the_series() -> None:
+    reference = _session("discipline:algebre-lineaire,statistique", 7)
+    for variant in (
+        "discipline:statistique,algebre-lineaire",
+        "discipline:Statistique,Algèbre Linéaire",  # ancien nom exact, comme dans un ancien lien
+        "discipline:statistique,statistique,algebre-lineaire",
+    ):
+        again = _session(variant, 7)
+        assert [q.qid for q in again.questions] == [q.qid for q in reference.questions], variant
+        assert _choices(again) == _choices(reference), variant
+
+
+def test_same_discipline_and_seed_give_the_same_series_and_other_seeds_differ() -> None:
+    a = [q.qid for q in _session("discipline:statistique", 11).questions]
+    assert a == [q.qid for q in _session("discipline:statistique", 11).questions]
+    assert a != [q.qid for q in _session("discipline:statistique", 12).questions]
+
+
+def test_unknown_or_empty_discipline_is_a_french_error_that_lists_the_choices() -> None:
+    import pytest
+
+    from backend.engine.runner import RunError
+
+    with pytest.raises(RunError, match="Discipline inconnue.*algebre-lineaire"):
+        _session("discipline:chimie", 1)
+    with pytest.raises(RunError, match="Discipline inconnue"):
+        _session("discipline:statistique,chimie", 1)
+    with pytest.raises(RunError, match="au moins une discipline"):
+        _session("discipline:", 1)
+    with pytest.raises(RunError, match="Discipline inconnue"):
+        _session("discipline:chimie,", 1)  # une virgule finale ne masque pas l'erreur
+
+
+def test_existing_filters_are_unchanged() -> None:
+    assert len(_session("toutes", 1).questions) == 10
+    assert {q.experiment_id for q in _session("regression-lineaire", 1).questions} == {"regression-lineaire"}
