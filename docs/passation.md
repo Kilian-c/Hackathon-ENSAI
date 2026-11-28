@@ -1,5 +1,12 @@
 # Notes de passation (la plus récente en haut)
 
+## Thème clair / sombre / auto (R4, branche `r4/theme`, pas une relève)
+- Bouton « Auto · Clair · Sombre » en bas de chaque page (dans le flux, jamais par-dessus un contrôle). « Auto » suit le système, même s'il change pendant la visite. Choix gardé dans le navigateur (`crash-test.theme`).
+- Palette claire = celle de l'impression (cahier, annexe E), posée sur `:root[data-theme='light']` dans `tokens.css` : **modifier les deux blocs ensemble**. `cssVar` (`lib/roles.ts`) garde ses couleurs par thème : graphiques Plotly et équation se redessinent au changement (vérifié). `index.html` pose le thème avant l'affichage (pas de flash sombre).
+- Fichiers de R3 (**R1 ou Kilian relit**) : `tokens.css`, `roles.ts`, `main.ts`, `index.html`, `App.svelte` ; nouveaux : `lib/theme.svelte.ts` (+ test), `components/ThemeToggle.svelte`.
+- Vérifié en clair : accueil, galerie, Laboratoire (intervalles, Domaine de validité, jauges, équation), Bilan. Pas vu en clair : Entraînement et Import. **Pour le pitch : fixer le thème avant de filmer.**
+- **R1, sans lien avec le thème** : `tests/test_build_secours.py::test_branch_is_orphan_with_only_the_dist_and_a_readme` échoue sous Windows, aussi sur `main` : `git show` relu en cp1252, « PAS à fusionner » devient « PAS Ã  fusionner ». Piste : `encoding="utf-8"` dans l'appel `subprocess` du test.
+
 ## Vérifications à l'œil restantes (R4, 2 h, pas une relève)
 - **OK** : balayage automatique.
 - **Signalé, non reproduit** : « Ouvrir dans le Laboratoire » depuis une correction d'Entraînement ouvrirait toujours Expérimenter. Le lien contient `stage=comprendre&hyp=<id>` dès que la question a une hypothèse, et le Laboratoire l'honore (vérifié). Les questions `prediction` et certains `diagnostic_auto` n'ont pas d'hypothèse : Expérimenter est alors normal. Détail et suite dans `docs/notes/r4.md`.
