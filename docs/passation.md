@@ -1,5 +1,10 @@
 # Notes de passation (la plus récente en haut)
 
+## Thème clair : les graphiques restaient sombres (R4, branche `r4/bug-theme-graphe`, pas une relève)
+- Signalé par le test utilisateur. **Serveur de développement seulement** (la version construite a été vérifiée : correcte). Après certaines mises à jour à chaud (changement de branche), Vite charge deux copies de `lib/theme.svelte.ts` : le bouton changeait l'une, `cssVar` lisait l'autre ; page claire, graphiques sombres (ou l'inverse).
+- Corrigé : un seul état de thème par page (`globalThis`), partagé par les copies. Test qui échoue sans le correctif. Vérifié au navigateur avec les deux copies chargées (nuage, intervalles, Domaine de validité, dans les deux sens).
+- Fichiers de R3 (`lib/theme.svelte.ts`, écrit par R4) : Kilian relit.
+
 ## « Réinitialiser les axes » restait sur le zoom : correctif complété (R4, branche `r4/bug-reinit-zoom`, pas une relève)
 - **Présent sur `main`** : ma correction précédente (`r4/bug-reinit-axes`) était incomplète. Zoom, puis n'importe quel nouveau dessin (case Référence, curseur, redimensionnement), puis réinitialisation : on revenait au zoom. Cause : Plotly réécrit le zoom dans le layout reçu, que je relisais ensuite comme bornes du moteur.
 - Corrigé : Plotly reçoit une copie (`layoutForPlotly`, `lib/plot.ts`) ; `figure.layout` garde les bornes du moteur. 2 tests. Vérifié au navigateur : zoom conservé après redessin ; bouton et double-clic reviennent au cadre du moteur ; quand les bornes du moteur changent (vraie pente), le graphique se recentre, même zoomé.

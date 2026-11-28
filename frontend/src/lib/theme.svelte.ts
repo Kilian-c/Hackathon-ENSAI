@@ -47,10 +47,23 @@ function lightQuery(): MediaQueryList | null {
   }
 }
 
-export const theme = $state<{ preference: ThemePreference; resolved: ResolvedTheme }>({
-  preference: 'auto',
-  resolved: 'dark',
-})
+interface ThemeState {
+  preference: ThemePreference
+  resolved: ResolvedTheme
+}
+
+function createState(): ThemeState {
+  const state = $state<ThemeState>({ preference: 'auto', resolved: 'dark' })
+  return state
+}
+
+// Un seul état par page, même si ce module est chargé deux fois : le serveur de développement le fait après
+// certaines mises à jour à chaud (changement de branche). Le bouton changeait alors une copie, et les
+// graphiques, qui lisaient l'autre, gardaient leurs anciennes couleurs.
+const page = globalThis as typeof globalThis & { __crashTestTheme?: { state: ThemeState; started: boolean } }
+const shared = (page.__crashTestTheme ??= { state: createState(), started: false })
+
+export const theme = shared.state
 
 function apply(): void {
   theme.resolved = resolveTheme(theme.preference, lightQuery()?.matches ?? false)
@@ -68,12 +81,10 @@ export function setTheme(pref: ThemePreference): void {
   apply()
 }
 
-let started = false
-
 /** À appeler une fois au démarrage (main.ts). */
 export function initTheme(): void {
-  if (started) return
-  started = true
+  if (shared.started) return
+  shared.started = true
   theme.preference = readPreference()
   apply()
   lightQuery()?.addEventListener('change', () => {
