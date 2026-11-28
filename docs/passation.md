@@ -1,5 +1,16 @@
 # Notes de passation (la plus récente en haut)
 
+## Problèmes potentiels relevés après la fusion de `r4/bug-reinit-axes` (R4, pas une relève)
+État vérifié sur `main` : pytest, ruff, `npm run check` (0 erreur), `npm test` (199) et build verts ; les 15 expériences répondent (état sain Fiable, sans avertissement), série de 10 questions sans abandon ; réinitialisation des axes vérifiée sur les 10 vues de la régression et des matrices de Wigner. Aucun de ces points n'est bloquant.
+1. **Correction des axes** (R3, R1 relit) : s'appuie sur des champs internes de Plotly (`_rangeInitial0/1`, `_autorangeInitial`). Les tests unitaires ne détecteraient pas un changement de Plotly : après une montée de version, revérifier le bouton au navigateur.
+2. **100 intervalles** (R1) : le cadre est calculé sur la Référence ; avec l'hétéroscédasticité, des intervalles plus larges sont coupés aux bords (bornes et parfois croix des ratés peu lisibles). À suivre aux tests utilisateurs.
+3. **Démo** (R3 + R2) : `r2/lab-lisible` est fusionnée, donc l'étape Expérimenter a changé : refaire le déroulé, les captures et la vidéo sur ce nouvel écran. Balayage `validite` de la régression : 2,9 s en local (limite 15 s), à précharger ou à surveiller sur une machine lente.
+4. **Fixtures** (R3) : la spec de repli de la régression n'a pas la vue `decomposition` (sans effet tant que le moteur répond ; visible seulement avec `?source=fixtures`).
+5. **Import** (R1, R3) : `/api/validate` ne vérifie pas `expect: same_summary` (test 4) ; les imports sont gardés en mémoire du moteur (64 au plus), l'interface revalide après un redémarrage. Le tableau des seuils suggérés est réactivé par R1 après correction du calcul (tests verts ; non revérifié au navigateur par R4).
+6. **Passation** : les lignes plus bas « `r2/lab-lisible` non fusionnée » et « tableau des seuils masqué » sont dépassées.
+7. **Relectures en attente de Kilian** : la liste plus bas reste valable ; ne pas se fier au « relue par R1 » du commit `28cf0be`.
+8. **Mise en ligne** : en pause (pas de `Dockerfile`) ; si elle reprend, régler `VITE_API_URL` et les deux `VITE_SUPABASE_*` dans Cloudflare.
+
 ## Test utilisateur : « Réinitialiser les axes » vidait les 100 intervalles (R4, branche `r4/bug-reinit-axes`, pas une relève)
 - Après un changement de paramètre (vraie pente 1,5 puis −2), le bouton de réinitialisation et le double-clic revenaient aux bornes du **premier** dessin : graphique vide. Cause : Plotly mémorise les bornes initiales une seule fois. Concernait tous les graphiques dont les bornes changent.
 - Corrigé : `syncInitialRanges` (`lib/plot.ts`, appelé par `PlotlyChart.svelte`, fichiers de R3 : **R1 ou Kilian relit**) réaligne ces bornes après chaque dessin sur celles du moteur. S'appuie sur un champ interne de Plotly (`_rangeInitial0/1`, Plotly 4) : à revoir si Plotly change de version. 2 tests, vérifié au navigateur (bouton, double-clic après zoom).
