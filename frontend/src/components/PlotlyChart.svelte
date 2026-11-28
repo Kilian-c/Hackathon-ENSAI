@@ -19,7 +19,7 @@
   import Plotly from 'plotly.js-dist-min'
   import { onMount } from 'svelte'
   import MeasuresTable from './MeasuresTable.svelte'
-  import { buildFigure, DOMAIN_SUFFIX, INJECTED_SUFFIX, type ChartOptions } from '../lib/plot'
+  import { buildFigure, DOMAIN_SUFFIX, INJECTED_SUFFIX, type ChartOptions, syncInitialRanges } from '../lib/plot'
   import { PLOTLY_FR } from '../lib/plotlyLocale'
   import type { DisplayRole } from '../lib/roles'
   import type { RunResult } from '../lib/types.gen'
@@ -87,7 +87,13 @@
 
   $effect(() => {
     if (!el || !figure) return
-    Plotly.react(el, figure.data as Plotly.Data[], { ...figure.layout, height } as Partial<Plotly.Layout>, config)
+    const div = el
+    const layout = { ...figure.layout, height }
+    // Les bornes initiales de Plotly sont celles du dernier dessin, pour que la réinitialisation recadre juste.
+    const sync = () => syncInitialRanges((div as unknown as { _fullLayout?: unknown })._fullLayout, layout)
+    const drawn: unknown = Plotly.react(div, figure.data as Plotly.Data[], layout as Partial<Plotly.Layout>, config)
+    sync()
+    if (drawn instanceof Promise) void drawn.then(sync)
   })
 
   // --- Ajout de points par clic ---
