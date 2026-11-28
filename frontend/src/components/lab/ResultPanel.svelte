@@ -23,14 +23,13 @@
     engine: EngineState
     result: RunResult
     methodsOn: readonly string[]
-    showReference: boolean
     ontoggle: (methodId: string) => void
     onheal: () => void
     /** Ouvrir l'explication complète d'une hypothèse (étape Comprendre). */
     onexplain: (hypothesisId: string) => void
   }
 
-  let { spec, engine, result, methodsOn, showReference, ontoggle, onheal, onexplain }: Props = $props()
+  let { spec, engine, result, methodsOn, ontoggle, onheal, onexplain }: Props = $props()
 
   /** Marqueur de chaque rôle (annexe E) : la couleur n'est jamais le seul indice. */
   const GLYPH: Partial<Record<DisplayRole, string>> = {
@@ -84,7 +83,6 @@
                   <MeasureGauge
                     gauge={g}
                     {color}
-                    {showReference}
                     labels={k === 0}
                     description="{method.label} : {formatMeasure(m.values[method.id], m)}{verdict ? `, ${verdictLabel(verdict)}` : ''}"
                   />
@@ -100,7 +98,7 @@
           {#if principalTarget !== null && m.target !== 'base'}
             <span><span class="tick" aria-hidden="true"></span> Cible : {formatMeasure(principalTarget, m)}</span>
           {/if}
-          {#if showReference && principal && m.baseline[principal.id] != null}
+          {#if principal && m.baseline[principal.id] != null}
             <span><span class="ring" aria-hidden="true"></span> Référence (état sain) : {formatMeasure(m.baseline[principal.id], m)}{m.target === 'base' ? ', la cible' : ''}</span>
           {/if}
         </p>

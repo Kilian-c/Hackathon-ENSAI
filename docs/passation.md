@@ -1,5 +1,9 @@
 # Notes de passation (la plus récente en haut)
 
+## Référence dans les histogrammes de répétitions (R3, pas une relève) : **à relire par R1**
+- **Moteur (`backend/engine/runner.py`, fichier de R1, modifié par R3)** : une vue `distribution` liée à `reps.*` reçoit désormais une série `reference` (la méthode principale à l'état sain, même graine). Avant, seules `example.*` et `curves.*` en avaient une : la case « Référence » restait sans effet sur ces histogrammes (Moyenne ou médiane, TCL, etc.). Aucun contrat modifié.
+- **Interface** : la case « Référence (état sain) » ne s'affiche que si la vue a une série `reference` (Laboratoire et validation d'une question). La valeur de Référence du panneau de droite (jauge, « Référence (état sain) : … ») est toujours affichée : c'est la cible quand `target: base`.
+
 ## Catégorie Intégration : 4 expériences livrées sur `r1/integration` (R1, pas une relève)
 - **Faites** : `convergence_dominee.yaml`, `convergence_monotone.yaml` (Beppo-Lévy), `lemme_fatou.yaml` (positivité : les fonctions `-n·1[0, 1/n]` rompent l'inégalité), `fubini_tonelli.yaml` (niveau 3 ; l'ordre d'intégration est un paramètre `ordre`, grille 5 × 980, 70 × 70 ou 980 × 5). Chacune a 3 questions et passe les tests 1, 3, 4, 10 et le test 6 sur 50 tirages. Pastille « Intégration » dans l'Entraînement.
 - **Nouvelle méthode** `iterated_integral` (`backend/methods/quadrature.py`, fichier d'une méthode de plus, aucun contrat modifié) ; catalogue régénéré.

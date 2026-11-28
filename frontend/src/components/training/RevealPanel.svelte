@@ -118,16 +118,18 @@
           <span aria-hidden="true">◆</span> Correction : {correction.label}
         </button>
       {/if}
-      <label>
-        <input type="checkbox" bind:checked={showReference} />
-        Référence (état sain)
-      </label>
+      {#if view?.series.some((s) => s.role === 'reference')}
+        <label>
+          <input type="checkbox" bind:checked={showReference} />
+          Référence (état sain)
+        </label>
+      {/if}
     </div>
     <div class="grid">
       {#if view}
         <PlotlyChart {view} {result} methodsOn={new Set(ui.methodsOn)} {showReference} height={380} />
       {/if}
-      <MeasurePanel {result} methodsOn={ui.methodsOn} {showReference} />
+      <MeasurePanel {result} methodsOn={ui.methodsOn} />
     </div>
     <p>
       <a class="lab-link" href={labUrl} target="_blank" rel="noopener">Ouvrir dans le Laboratoire ↗</a>

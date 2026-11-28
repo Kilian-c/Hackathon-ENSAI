@@ -13,10 +13,9 @@
   interface Props {
     result: RunResult
     methodsOn: readonly string[]
-    showReference: boolean
   }
 
-  let { result, methodsOn, showReference }: Props = $props()
+  let { result, methodsOn }: Props = $props()
 
   const roles = $derived(displayRoles(result.methods))
   const shown = $derived(result.methods.filter((m) => methodsOn.includes(m.id)))
@@ -48,10 +47,8 @@
           </li>
         {/each}
       </ul>
-      {#if showReference}
-        {#if principal && m.baseline[principal.id] != null}
-          <p class="ref">Référence (état sain) : {formatMeasure(m.baseline[principal.id], m)}</p>
-        {/if}
+      {#if principal && m.baseline[principal.id] != null}
+        <p class="ref">Référence (état sain) : {formatMeasure(m.baseline[principal.id], m)}</p>
       {/if}
     </article>
   {/each}
