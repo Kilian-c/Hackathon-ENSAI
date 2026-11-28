@@ -10,7 +10,7 @@ theorem:
   name: "Convergence de la méthode de la puissance"
   statement: |
     Soit A une matrice symétrique dont la valeur propre de plus grand module, λ₁, est isolée :
-    |λ₁| > |λ₂| >= ... La méthode de la puissance, qui remplace v par A v / ||A v||, converge
+    |λ₁| > |λ₂| ≥ … La méthode de la puissance, qui remplace v par A v / ||A v||, converge
     alors vers un vecteur propre associé à λ₁, à la vitesse |λ₂ / λ₁| par itération, et
     le quotient de Rayleigh converge vers λ₁ à la vitesse |λ₂ / λ₁|². Quand deux valeurs
     propres ont presque le même module, la convergence est très lente ; quand elles sont opposées, le

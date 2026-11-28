@@ -8,8 +8,8 @@ concepts: ["théorème central limite", "indépendance", "variance finie", "loi 
 theorem:
   name: "Théorème central limite"
   statement: |
-    Soit X1, ..., Xn des variables indépendantes, de même loi, d'espérance mu et de variance
-    sigma^2 finie. La moyenne centrée et normalisée, racine de n fois (moyenne - mu) / sigma,
+    Soit X₁, …, Xₙ des variables indépendantes, de même loi, d'espérance μ et de variance
+    σ² finie. La moyenne centrée et normalisée, √n × (moyenne − μ) / σ,
     converge en loi vers la normale N(0, 1). Pour n grand, elle tombe donc entre -1,96 et 1,96
     environ 95 fois sur 100, quelle que soit la loi de départ.
 
@@ -37,7 +37,7 @@ hypotheses:
       student_2:   { label: "Student à 2 ddl (variance infinie)", law: student_2 }
       cauchy:      { label: "Cauchy (sans espérance)", law: cauchy }
     statement_tex: '\mathrm{Var}(X_i) = \sigma^2 < \infty'
-    why: "La normalisation divise par sigma : le théorème suppose que ce nombre existe."
+    why: "La normalisation divise par σ : le théorème suppose que ce nombre existe."
     when_broken: "Sans variance finie, quelques valeurs énormes dominent la somme : la moyenne normalisée ne ressemble plus à une normale N(0, 1), et un grand n n'y change rien."
     affects: [stat]
   rho:
@@ -65,7 +65,7 @@ counterexamples:
     state: { params: { n: 500 }, hypotheses: { loi: "cauchy" } }
   - id: "dependance-forte"
     label: "Forte dépendance"
-    explain: "La variance est finie, mais les observations se répètent : diviser par sigma ne suffit plus."
+    explain: "La variance est finie, mais les observations se répètent : diviser par σ ne suffit plus."
     state: { hypotheses: { rho: 0.7 } }
 
 generator:
@@ -80,13 +80,13 @@ methods:
   - id: moyenne
     role: method
     call: clt_mean
-    label: "Moyenne normalisée par sigma (TCL)"
+    label: "Moyenne normalisée par σ (TCL)"
     args: { x: x, sigma: 1.0, rho: h.rho, kind: "independance" }
   - id: variance_limite
     role: correction
     call: clt_mean
     label: "Variance corrigée de la dépendance"
-    explain: "Pour un processus AR(1), on remplace sigma^2 par sigma^2 (1 + rho) / (1 - rho) : la moyenne normalisée redevient gaussienne."
+    explain: "Pour un processus AR(1), on remplace σ² par σ² (1 + ρ) / (1 − ρ) : la moyenne normalisée redevient gaussienne."
     repairs: [rho]
     args: { x: x, sigma: 1.0, rho: h.rho, kind: "dependance" }
 
@@ -199,7 +199,7 @@ questions:
 
   - id: "tcl-q3-dependance"
     type: misconception
-    prompt: "Les observations sont fortement dépendantes (AR(1), rho = 0,8), de variance 1. Avec n = {n}, peut-on appliquer le théorème tel quel ?"
+    prompt: "Les observations sont fortement dépendantes (AR(1), ρ = 0,8), de variance 1. Avec n = {n}, peut-on appliquer le théorème tel quel ?"
     hypothesis: "rho"
     procedural_params:
       n: { min: 100, max: 400, step: 50 }
@@ -210,9 +210,9 @@ questions:
         reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.8 } }
         verify: "s.inside == 'broken' and s.inside.variance_limite != 'broken'"
         focus_view: "moyennes"
-        explain: "L'histogramme est trois fois trop large : la variance de la moyenne n'est plus sigma^2 / n."
+        explain: "L'histogramme est trois fois trop large : la variance de la moyenne n'est plus σ² / n."
       - id: "b"
-        label: "Non : la variance de la moyenne n'est plus sigma^2 / n."
+        label: "Non : la variance de la moyenne n'est plus σ² / n."
         correct: true
         reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.8 } }
         verify: "s.inside == 'broken' and s.inside.variance_limite != 'broken'"

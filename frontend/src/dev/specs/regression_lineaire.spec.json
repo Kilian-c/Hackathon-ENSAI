@@ -91,7 +91,7 @@
    ],
    "step": null,
    "ok_label": "Erreurs indépendantes",
-   "broken_label": "Erreurs et x autocorrélés (AR(1), rho = 0,7)",
+   "broken_label": "Erreurs et x autocorrélés (AR(1), ρ = 0,7)",
    "options": null,
    "robust_expected": false,
    "disabled_when": null,
@@ -383,7 +383,7 @@
   },
   {
    "id": "big-n-limit",
-   "goal": "Vérifiez qu'augmenter n au-delà de 500 ne répare pas les IC classiques quand hetero >= 0,7.",
+   "goal": "Vérifiez qu'augmenter n au-delà de 500 ne répare pas les IC classiques quand l'homoscédasticité est relâchée à 0,7 ou plus (h ≥ 0,7).",
    "when": "p.n >= 500 and h.hetero >= 0.7 and s.coverage == 'broken'",
    "unlock": "L'erreur de variance des MCO sous hétéroscédasticité ne disparaît pas quand n grandit.",
    "hint": null

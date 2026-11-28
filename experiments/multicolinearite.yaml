@@ -9,8 +9,8 @@ theorem:
   name: "Variance des estimateurs des MCO et VIF"
   statement: |
     Si la matrice X est de rang plein, l'estimateur des MCO est sans biais et sa variance vaut
-    sigma^2 (X'X)^-1. Avec deux variables corrélées (corrélation rho), la variance de chaque
-    coefficient est multipliée par le VIF, égal à 1 / (1 - rho^2). Le cours fixe le seuil d'alerte à 5.
+    σ² (X'X)⁻¹. Avec deux variables corrélées (corrélation ρ), la variance de chaque
+    coefficient est multipliée par le VIF, égal à 1 / (1 − ρ²). Le cours fixe le seuil d'alerte à 5.
 
 equation:
   tex: '\mathrm{Var}(\hat{\beta}_1) = {{var}}'
@@ -210,7 +210,7 @@ questions:
         reveal_state: { params: { n: "{n}" }, hypotheses: { rho: 0.95 } }
         verify: "s.bias.reduit == 'broken' and s.power.reduit == 'ok'"
         focus_view: "ic"
-        explain: "Exact : il estime à peu près beta1 + rho x beta2."
+        explain: "Exact : il estime à peu près β₁ + ρ × β₂."
 
   - id: "mc-q4-prediction-rho"
     type: prediction

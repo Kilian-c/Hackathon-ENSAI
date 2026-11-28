@@ -50,7 +50,7 @@ hypotheses:
     label: "Indépendance des observations"
     category: "independance"
     ok_label: "Erreurs indépendantes"
-    broken_label: "Erreurs et x autocorrélés (AR(1), rho = 0,7)"
+    broken_label: "Erreurs et x autocorrélés (AR(1), ρ = 0,7)"
     statement_tex: '\mathrm{Cov}(\varepsilon_i, \varepsilon_j) = 0 \ \text{pour } i \neq j'
     why: "La formule de variance suppose que chaque erreur n'apporte aucune information sur ses voisines."
     when_broken: "Si x et les erreurs sont tous deux autocorrélés, les intervalles classiques tombent vers 75 %, et la correction de la variance non constante ne suffit pas."
@@ -183,7 +183,7 @@ challenges:
     hint: "Essayez un petit n et plusieurs tirages : à n = 30 et h = 0,7, environ un échantillon sur cinq trompe le test."
     unlock: "Vous illustrez l'angle mort d'un test peu puissant : ne pas rejeter H0 ne prouve pas que l'hypothèse tient."
   - id: "big-n-limit"
-    goal: "Vérifiez qu'augmenter n au-delà de 500 ne répare pas les IC classiques quand hetero >= 0,7."
+    goal: "Vérifiez qu'augmenter n au-delà de 500 ne répare pas les IC classiques quand l'homoscédasticité est relâchée à 0,7 ou plus (h ≥ 0,7)."
     when: "p.n >= 500 and h.hetero >= 0.7 and s.coverage == 'broken'"
     unlock: "L'erreur de variance des MCO sous hétéroscédasticité ne disparaît pas quand n grandit."
 
