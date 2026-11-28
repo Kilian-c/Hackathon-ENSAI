@@ -46,7 +46,7 @@ Méthodes existantes : `statistic` (sum, mean, max, min, median), `classifier` (
 
 ## Marche à suivre (valable pour chaque expérience)
 
-1. Partez d'un YAML proche (`seuil_roc.yaml` pour un classifieur, `somme_des.yaml` pour une statistique, `carres_residus.yaml` pour une régression).
+1. **Créez le brouillon avec le script** : `uv run python scripts/new_experiment.py <modèle> <id> --title "..." --discipline "..." --level 2` (modèles : `statistique`, `regression`, `classifieur`, `algebre` ; `--list` les décrit). Le brouillon est une copie fonctionnelle d'une expérience de référence (`seuil_roc.yaml` pour un classifieur, `moyenne_mediane.yaml` pour une statistique, `carres_residus.yaml` pour une régression, `systemes_lineaires.yaml` pour l'algèbre), rangée dans `experiments/brouillons/` (que le moteur ne lit pas : un brouillon à moitié modifié ne casse jamais le démarrage). Validez-le à chaque modification : `uv run python scripts/new_experiment.py --check <fichier>` (erreurs avec numéro de ligne, tests 1, 3, 4, 10, seuils proposés). Quand il est prêt, déplacez-le dans `experiments/` (`--official` l'y écrit directement).
 2. **Simulez avant d'écrire les seuils** (`ok_within`, `broken_beyond`) : lancez `run()` sur plusieurs états, avec `EngineState(...)`, graine 42. Une marge de moins de 0,03 sur un état de la démonstration est à noter dans la passation.
 3. Aucun chiffre en dur dans les textes de mesures (`{value}`) ni dans les `explain` de contre-exemples ou de choix.
 4. Au moins 3 questions par expérience (`verify` doit passer sur 90 % de 50 tirages : `CRASHTEST_DRAWS=50 uv run pytest tests/test_experiments.py -k "test_6 and <id>"`).

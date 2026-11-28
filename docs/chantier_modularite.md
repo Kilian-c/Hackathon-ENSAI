@@ -20,7 +20,7 @@ Quand une ligne est terminée et fusionnée sur `main`, rayez-la (`~~...~~`) : l
 | ~~`backend/engine/expr.py`~~ | non | ~~liste blanche : `sort`, `quantile`, `cumprod`~~ **Fait** | R3 |
 | ~~`backend/engine/validate.py`~~ | non | ~~seuils proposés~~ **Fait** : un avertissement par mesure, `path` = `measures.<id>`, message « Seuils proposés : ok_within = x ; broken_beyond = y (fichier : ...). » (s'affiche déjà dans l'Import) | R3 |
 | ~~`backend/engine/runner.py`~~ | non | ~~`_build_view` : vue `heatmap`~~ **Fait** : série `slot: matrix` par méthode + Référence (`.ref`), `bind: { matrix: curves.<clé> }`, 64 × 64 au plus (coin supérieur gauche) | R3 |
-| `scripts/new_experiment.py` | oui | crée un YAML à partir d'un modèle (statistique, régression, classifieur, algèbre) ; mettre en tête `# yaml-language-server: $schema=./schema.json` | R2 |
+| ~~`scripts/new_experiment.py`~~ | oui | ~~crée un YAML à partir d'un modèle~~ **Fait** : 4 modèles (`statistique`, `regression`, `classifieur`, `algebre`) = copies fonctionnelles des expériences de référence, brouillon rangé dans `experiments/brouillons/`, `--check` pour valider, `tests/test_new_experiment.py` | R2 |
 | ~~`experiments/matrices_wigner.yaml`~~ | oui | ~~expérience pilote de l'algèbre~~ **Fait** : universalité de Wigner (normale, uniforme, exponentielle : demi-cercle ; Student à 2 ddl, Cauchy : rompu), 40 graines sans verdict ambigu, test 6 à 50 tirages vert | R2 |
 | ~~`tests/test_formula.py`~~ | oui | ~~tests des méthodes `formula_*`~~ **Fait** | |
 | `tests/test_linalg.py` | oui | tests de `linalg/` (comparaison à `np.linalg`, vectorisation, temps de calcul) | |
