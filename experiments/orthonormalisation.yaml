@@ -11,9 +11,9 @@ theorem:
   statement: |
     Toute matrice inversible A s'écrit A = Q R, avec Q orthogonale et R triangulaire. En arithmétique
     exacte, Gram-Schmidt classique et Gram-Schmidt modifié donnent la même factorisation. En arithmétique
-    flottante, la perte d'orthogonalité ||Q^T Q - I|| vaut environ epsilon fois cond(A)^2 pour Gram-Schmidt
-    classique, epsilon fois cond(A) pour Gram-Schmidt modifié, et seulement epsilon pour les réflexions de
-    Householder, où epsilon = 1,1e-16 : seule cette dernière méthode ne dépend pas du conditionnement.
+    flottante, la perte d'orthogonalité ||Q'Q - I|| vaut environ ε fois cond(A)² pour Gram-Schmidt
+    classique, ε fois cond(A) pour Gram-Schmidt modifié, et seulement ε pour les réflexions de
+    Householder, où ε = 1,1 × 10⁻¹⁶ : seule cette dernière méthode ne dépend pas du conditionnement.
 
 equation:
   tex: '\|Q^\top Q - I\| \;\approx\; {{perte}}'
@@ -44,11 +44,11 @@ hypotheses:
 counterexamples:
   - id: "colonnes-presque-dependantes"
     label: "Colonnes presque dépendantes"
-    explain: "Le conditionnement atteint 10^12 : Gram-Schmidt classique produit une matrice Q dont les colonnes ne sont plus du tout orthogonales."
+    explain: "Le conditionnement atteint 10¹² : Gram-Schmidt classique produit une matrice Q dont les colonnes ne sont plus du tout orthogonales."
     state: { hypotheses: { conditionnement: 1.0 } }
   - id: "conditionnement-eleve"
     label: "Conditionnement élevé"
-    explain: "Autour de 10^7, la perte d'orthogonalité de Gram-Schmidt classique est déjà totale, alors que la version modifiée reste précise."
+    explain: "Autour de 10⁷, la perte d'orthogonalité de Gram-Schmidt classique est déjà totale, alors que la version modifiée reste précise."
     state: { hypotheses: { conditionnement: 0.55 } }
 
 generator:
@@ -68,7 +68,7 @@ methods:
     role: alternative
     call: orthonormalize
     label: "Gram-Schmidt modifié"
-    explain: "La version modifiée corrige chaque projection avec le vecteur déjà mis à jour : l'erreur croît comme epsilon fois cond(A) au lieu de cond(A)^2. C'est bien mieux, mais Q perd encore son orthogonalité quand les colonnes sont presque dépendantes."
+    explain: "La version modifiée corrige chaque projection avec le vecteur déjà mis à jour : l'erreur croît comme ε fois cond(A) au lieu de cond(A)². C'est bien mieux, mais Q perd encore son orthogonalité quand les colonnes sont presque dépendantes."
     args: { a: a, d: p.d, decades: "1 + 11 * h.conditionnement", kind: "mgs" }
   - id: householder
     role: correction
@@ -89,9 +89,9 @@ measures:
     ok_within: 2
     broken_beyond: 4.5
     texts:
-      ok: "Q est orthonormée : ||QᵀQ - I|| de l'ordre de 10^{value}."
-      warning: "Q perd de son orthogonalité : ||QᵀQ - I|| de l'ordre de 10^{value}."
-      broken: "Q n'est plus orthogonale : ||QᵀQ - I|| de l'ordre de 10^{value} (0 : colonnes sans aucune orthogonalité)."
+      ok: "Q est orthonormée : ||Q'Q - I|| de l'ordre de 10 puissance {value}."
+      warning: "Q perd de son orthogonalité : ||Q'Q - I|| de l'ordre de 10 puissance {value}."
+      broken: "Q n'est plus orthogonale : ||Q'Q - I|| de l'ordre de 10 puissance {value} (0 : colonnes sans aucune orthogonalité)."
   reconstruction:
     agg: "median(reps.log_resid)"
     label: "Erreur sur A = Q R (puissance de 10)"
@@ -101,18 +101,18 @@ challenges:
   - id: "mgs-tient"
     goal: "Rendez Gram-Schmidt classique Rompu alors que la version modifiée reste Fiable."
     when: "s.orthogonalite == 'broken' and s.orthogonalite.mgs == 'ok'"
-    unlock: "Un conditionnement de l'ordre de 10^7 suffit : l'erreur du classique croît comme cond(A)^2, celle du modifié comme cond(A)."
+    unlock: "Un conditionnement de l'ordre de 10⁷ suffit : l'erreur du classique croît comme cond(A)², celle du modifié comme cond(A)."
   - id: "classique-fiable"
     goal: "Obtenez un verdict Fiable pour Gram-Schmidt classique avec des colonnes déjà un peu dépendantes."
     when: "h.conditionnement >= 0.15 and s.orthogonalite == 'ok'"
-    unlock: "L'erreur croît avec cond(A)^2 mais part de très bas : jusqu'à un conditionnement de 10^3 environ, la méthode reste précise."
+    unlock: "L'erreur croît avec cond(A)² mais part de très bas : jusqu'à un conditionnement de 10³ environ, la méthode reste précise."
 
 auto_sweep: [h.conditionnement]
 
 views:
   - id: gram
     type: heatmap
-    title: "QᵀQ du premier tirage (l'identité si Q est orthonormée)"
+    title: "Q'Q du premier tirage (l'identité si Q est orthonormée)"
     bind: { matrix: curves.matrix }
     ui: { decimals: 1 }
   - id: pertes
@@ -141,14 +141,14 @@ questions:
         reveal_state: { hypotheses: { conditionnement: 1.0 } }
         verify: "s.orthogonalite == 'broken' and s.orthogonalite.householder == 'ok'"
         focus_view: "gram"
-        explain: "La construction garantit l'orthogonalité en arithmétique exacte seulement. En flottant, la soustraction de deux colonnes presque égales est dominée par les arrondis : QᵀQ s'écarte de l'identité."
+        explain: "La construction garantit l'orthogonalité en arithmétique exacte seulement. En flottant, la soustraction de deux colonnes presque égales est dominée par les arrondis : Q'Q s'écarte de l'identité."
       - id: "b"
         label: "Non : l'orthogonalité se perd, et les réflexions de Householder s'en passent."
         correct: true
         reveal_state: { hypotheses: { conditionnement: 1.0 } }
         verify: "s.orthogonalite == 'broken' and s.orthogonalite.householder == 'ok'"
         focus_view: "gram"
-        explain: "Exact : la perte vaut environ epsilon fois cond(A)^2. Householder, fondé sur des matrices orthogonales, n'y est pas sensible."
+        explain: "Exact : la perte vaut environ ε fois cond(A)². Householder, fondé sur des matrices orthogonales, n'y est pas sensible."
 
   - id: "orth-q2-modifie"
     type: misconception
@@ -161,7 +161,7 @@ questions:
         reveal_state: { hypotheses: { conditionnement: 1.0 } }
         verify: "s.orthogonalite.mgs != 'ok' and s.orthogonalite.householder == 'ok'"
         focus_view: "gram"
-        explain: "Il passe de epsilon fois cond(A)^2 à epsilon fois cond(A) : c'est mieux, mais pour un conditionnement de 10^12 la perte d'orthogonalité reste importante."
+        explain: "Il passe de ε fois cond(A)² à ε fois cond(A) : c'est mieux, mais pour un conditionnement de 10¹² la perte d'orthogonalité reste importante."
       - id: "b"
         label: "Non : il est meilleur que le classique, mais pas aussi précis que Householder."
         correct: true
