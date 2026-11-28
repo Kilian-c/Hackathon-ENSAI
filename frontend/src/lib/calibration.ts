@@ -6,7 +6,7 @@
  * cran, décomposition de Murphy, courbe de calibration et profil de démonstration.
  */
 
-import { CONFIDENCE_LEVELS, type Answer, type ConfidenceLevel, type History } from './training'
+import { CONFIDENCE_LEVELS, HISTORY_KEY, type Answer, type ConfidenceLevel, type History, type Store } from './training'
 import type { ViewResult } from './views'
 
 /** Nombre de réponses à partir duquel la courbe (et le diagnostic) ont un sens. */
@@ -33,6 +33,21 @@ export function allAnswers(history: History): Answer[] {
         a.p <= 1,
     )
     .sort((a, b) => String(a.at).localeCompare(String(b.at)))
+}
+
+/**
+ * Efface l'historique de l'Entraînement (réponses du Bilan et reprise des séries en cours), et lui seul :
+ * le brouillon de l'Import est gardé. false si le navigateur refuse l'écriture (rien n'est alors effacé).
+ */
+export function clearHistory(store: Store | null): boolean {
+  if (!store) return false
+  const empty: History = { version: 1, series: {} }
+  try {
+    store.setItem(HISTORY_KEY, JSON.stringify(empty))
+    return true
+  } catch {
+    return false
+  }
 }
 
 const mean = (xs: readonly number[]): number => xs.reduce((s, x) => s + x, 0) / xs.length
