@@ -356,6 +356,20 @@ _SAMPLE_CALLS: dict[str, tuple[dict, int | None, int | None]] = {
         20,
         12,
     ),
+    "iterated_integrals": (
+        {
+            "x": np.tile(
+                np.concatenate([(np.arange(12) // 4 + 0.5) / 3, (np.arange(12) // 3 + 0.5) / 4]), (20, 1)
+            ),
+            "y": np.tile(
+                np.concatenate([(np.arange(12) % 4 + 0.5) / 4, (np.arange(12) % 3 + 0.5) / 3]), (20, 1)
+            ),
+            "f": np.ones((20, 24)),
+            "rng": np.random.default_rng(0),
+        },
+        20,
+        24,
+    ),
     "orthonormalize": (
         {
             "a": np.random.default_rng(6).standard_normal((20, 9)),

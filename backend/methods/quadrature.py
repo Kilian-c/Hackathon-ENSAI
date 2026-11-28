@@ -136,3 +136,72 @@ def iterated_integral(
         reps={"est": est.astype(float), "error": error.astype(float)},
         curves={"matrix": grid.copy()},
     )
+
+
+@register_method(
+    "iterated_integrals",
+    provides={"reps": ["dy_dx", "dx_dy", "gap", "abs_int"], "curves": ["t", "dy", "dx"]},
+    cost="repeat * n",
+)
+def iterated_integrals(
+    *,
+    x: np.ndarray,
+    y: np.ndarray,
+    f: np.ndarray,
+    rng: np.random.Generator,
+) -> MethodResult:
+    """Les deux intégrales itérées de f sur [lo, 1]², chacune sur une grille adaptée à son ordre.
+
+    Le carré [lo, 1]² se lit sur la grille : `lo` est le bord gauche de la première cellule de x (0 si la
+    grille couvre [0, 1], ε si le générateur tronque en [ε, 1]). Les valeurs sont de vraies intégrales :
+    moyenne de f multipliée par la longueur de l'intervalle, `1 - lo`, pour chaque variable.
+
+    Les `n` points se coupent en deux moitiés. La première est une grille A × B (x lent, A petit, B grand) :
+    la moyenne de f par ligne approche l'intégrale intérieure F(x) = ∫ f(x, y) dy avec précision, puis la
+    moyenne des F donne `dy_dx` (d'abord en y). La seconde est la grille transposée (A' grand, B' petit) :
+    la moyenne par colonne approche G(y) = ∫ f(x, y) dx, puis `dx_dy` (d'abord en x). `gap` = `dy_dx - dx_dy`;
+    `abs_int` = ∫∫|f| (moyenne de |f| sur les deux grilles, fois `(1 - lo)²`).
+    `curves` (répétition 0) : `t` (101 points de [lo, 1]), `dy` = F et `dx` = G, interpolées sur `t`.
+    """
+    x = np.atleast_2d(np.asarray(x, dtype=float))
+    y = np.atleast_2d(np.asarray(y, dtype=float))
+    f = np.atleast_2d(np.asarray(f, dtype=float))
+    if x.shape != f.shape and x.shape[1] == f.shape[1]:
+        x = np.broadcast_to(x, f.shape)
+    if y.shape != f.shape and y.shape[1] == f.shape[1]:
+        y = np.broadcast_to(y, f.shape)
+    if x.shape != f.shape or y.shape != f.shape or f.ndim != 2:
+        raise ValueError(
+            f"iterated_integrals : x, y et f doivent avoir la même forme (repeat, n), "
+            f"reçu {x.shape}, {y.shape} et {f.shape}."
+        )
+    reps, n = f.shape
+    half = n // 2
+    if n % 2 or half < 2:
+        raise ValueError("iterated_integrals : n doit être pair (deux grilles de n / 2 points).")
+    a = len(np.unique(x[0, :half]))
+    a2 = len(np.unique(x[0, half:]))
+    if a < 1 or half % a != 0 or half % a2 != 0:
+        raise ValueError("iterated_integrals : chaque moitié doit former une grille rectangulaire.")
+    b2 = half // a2
+    f_rows = f[:, :half].reshape(reps, a, half // a)
+    f_cols = f[:, half:].reshape(reps, a2, b2)
+    xs = x[0, :half].reshape(a, -1)[:, 0]
+    ys = y[0, half:].reshape(a2, b2)[0]
+    lo = float(xs[0] - (xs[1] - xs[0]) / 2) if a > 1 else 0.0  # bord gauche du domaine (0 ou ε)
+    length = 1.0 - lo
+    inner_dy = f_rows.mean(axis=2) * length  # (reps, a) : F(x_i) = ∫ f(x_i, y) dy
+    inner_dx = f_cols.mean(axis=1) * length  # (reps, b2) : G(y_j) = ∫ f(x, y_j) dx
+    dy_dx = inner_dy.mean(axis=1) * length
+    dx_dy = inner_dx.mean(axis=1) * length
+    abs_int = (np.abs(f_rows).mean(axis=(1, 2)) + np.abs(f_cols).mean(axis=(1, 2))) / 2 * length**2
+    t = np.linspace(lo, 1.0, 101)
+    return MethodResult(
+        reps={
+            "dy_dx": dy_dx.astype(float),
+            "dx_dy": dx_dy.astype(float),
+            "gap": (dy_dx - dx_dy).astype(float),
+            "abs_int": abs_int.astype(float),
+        },
+        curves={"t": t, "dy": np.interp(t, xs, inner_dy[0]), "dx": np.interp(t, ys, inner_dx[0])},
+    )

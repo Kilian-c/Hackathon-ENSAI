@@ -330,6 +330,44 @@ export const CATALOG: Catalog = {
       "doc": "Intégrale double de f sur [0, 1]², sommée sur une grille rectangulaire A × B de milieux de cellules."
     },
     {
+      "name": "iterated_integrals",
+      "args": [
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "y",
+          "default": null
+        },
+        {
+          "name": "f",
+          "default": null
+        }
+      ],
+      "kinds": [
+        "rectangles",
+        "trapezes",
+        "simpson",
+        "monte_carlo"
+      ],
+      "provides": {
+        "reps": [
+          "dy_dx",
+          "dx_dy",
+          "gap",
+          "abs_int"
+        ],
+        "curves": [
+          "t",
+          "dy",
+          "dx"
+        ]
+      },
+      "cost": "repeat * n",
+      "doc": "Les deux intégrales itérées de f sur [lo, 1]², chacune sur une grille adaptée à son ordre."
+    },
+    {
       "name": "linsolve",
       "args": [
         {
