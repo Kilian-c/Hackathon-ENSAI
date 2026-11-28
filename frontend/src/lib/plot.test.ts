@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { pendulumFixture, regressionFixture, regressionMethods, regressionSweep } from '../dev/fakeViews'
-import { buildFigure, clampPoints, gridPosition, isVisible, withAlpha, type ChartOptions, syncInitialRanges } from './plot'
+import {
+  buildFigure, clampPoints, gridPosition, isVisible, segmentsTrace, shortTickLabels, withAlpha, type ChartOptions, syncInitialRanges,
+} from './plot'
 import { displayRoles } from './roles'
 import type { RunResult, SweepResult } from './types.gen'
 import type { Series, ViewResult } from './views'
@@ -499,5 +501,49 @@ describe('réinitialiser les axes', () => {
     syncInitialRanges(full, { xaxis: { autorange: true } })
     expect(full.xaxis).toEqual({ _rangeInitial0: 3 })
     expect(() => syncInitialRanges(undefined, { xaxis: { range: [0, 1] } })).not.toThrow()
+  })
+})
+
+
+describe('étiquettes courtes des axes de carte (Domaine de validité)', () => {
+  it('retire la précision entre parenthèses, le nom reste lisible', () => {
+    expect(shortTickLabels(['Normale', 'Exponentielle (asymétrique)', 'Student à 2 ddl (variance infinie)', 'Cauchy (sans espérance)']))
+      .toEqual(['Normale', 'Exponentielle', 'Student à 2 ddl', 'Cauchy'])
+  })
+  it('laisse les nombres et les étiquettes sans parenthèse tels quels', () => {
+    expect(shortTickLabels(['5', '10', '0,5'])).toEqual(['5', '10', '0,5'])
+    expect(shortTickLabels(['Oui', 'Non'])).toEqual(['Oui', 'Non'])
+  })
+  it('garde les étiquettes complètes si le raccourci rendrait deux étiquettes identiques', () => {
+    const labels = ['Loi (a)', 'Loi (b)']
+    expect(shortTickLabels(labels)).toEqual(labels)
+  })
+  it('ne vide jamais une étiquette qui n’est qu’une parenthèse', () => {
+    expect(shortTickLabels(['(saine)', 'autre'])).toEqual(['(saine)', 'autre'])
+  })
+})
+
+describe('segments : plusieurs sortes dans une même vue (décomposition SCT, SCE, SCR)', () => {
+  const segment = (id: string, label: string, layer: string): Series =>
+    ({
+      id, slot: 'segments', method: 'ols', role: 'method', label, layer,
+      x: [1, 2], low: [0, 0], high: [1, 2], y: null, hit: null, value: null, paths: null,
+    }) as unknown as Series
+  const style = (t: ReturnType<typeof segmentsTrace>) => JSON.stringify((t as { line: unknown }).line)
+
+  it('trois séries de segments ont trois styles différents (couleur et tireté), nom conservé pour la légende', () => {
+    const three = [segment('d.segments-0.ols', 'y - moyenne', 'sct'), segment('d.segments-1.ols', 'prédiction - moyenne', 'sce'), segment('d.segments-2.ols', 'résidu', 'scr')]
+    const traces = three.map((s, rank) => segmentsTrace(s, rank, three.length))
+    expect(new Set(traces.map(style)).size).toBe(3)
+    expect(new Set(traces.map((t) => (t as { line: { dash: string } }).line.dash)).size).toBe(3) // pas la couleur seule
+    expect(traces.map((t) => (t as { name: string }).name)).toEqual(['y - moyenne', 'prédiction - moyenne', 'résidu'])
+  })
+  it('une seule sorte de segments garde le trait habituel (couleur du rôle, pointillé fin)', () => {
+    const only = segmentsTrace(segment('c.segments-0.ols', 'résidu', 'scr'))
+    expect((only as { line: { dash: string; width: number } }).line).toMatchObject({ dash: 'dot', width: 1 })
+    expect(style(segmentsTrace(segment('c.segments-0.ols', 'résidu', 'scr'), 0, 1))).toBe(style(only))
+  })
+  it('au-delà de trois, les styles reviennent au début sans planter', () => {
+    expect(segmentsTrace(segment('x', 'e', 'l'), 3, 4)).not.toBeNull()
   })
 })

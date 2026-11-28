@@ -271,11 +271,18 @@ function lineTrace(s: Series, sortByX: boolean, log: { x: boolean; y: boolean } 
   }
 }
 
+/** Styles des segments quand une vue en porte plusieurs, par rang : gris pointillé, cyan tireté, rouge plein. */
+const SEGMENT_STYLES: (() => { color: string; width: number; dash: string })[] = [
+  () => ({ color: withAlpha(cssVar('--ct-plot-axis'), 0.95), width: 1.2, dash: 'dot' }),
+  () => ({ color: withAlpha(roleColor('alternative_2'), 0.9), width: 1.5, dash: 'dash' }),
+  () => ({ color: withAlpha(roleColor('rupture'), 0.9), width: 1.5, dash: 'solid' }),
+]
+
 /**
  * Segments (résidus d'une droite, écarts) : un trait vertical par point, de (x, low) à (x, high),
  * réunis dans une seule trace (séparés par null) pour garder un identifiant stable.
  */
-export function segmentsTrace(s: Series): Trace | null {
+export function segmentsTrace(s: Series, rank = 0, count = 1): Trace | null {
   const x = nums(s, 'x')
   const low = nums(s, 'low')
   const high = nums(s, 'high')
@@ -291,7 +298,12 @@ export function segmentsTrace(s: Series): Trace | null {
   }
   if (xs.length === 0) return null
   const role = seriesRole(s)
-  const color = role ? markerColor(role) : cssVar('--ct-plot-data')
+  // Un seul type de segments : le trait du rôle de la méthode. Plusieurs (par exemple SCT, SCE et SCR) :
+  // un style par rang (couleur ET tireté, jamais la couleur seule), pour qu'on les distingue, légende comprise.
+  const line =
+    count > 1
+      ? SEGMENT_STYLES[rank % SEGMENT_STYLES.length]()
+      : { color: withAlpha(role ? markerColor(role) : cssVar('--ct-plot-data'), 0.7), width: 1, dash: 'dot' }
   return {
     type: 'scatter',
     uid: s.id,
@@ -299,7 +311,7 @@ export function segmentsTrace(s: Series): Trace | null {
     mode: 'lines',
     x: xs,
     y: ys,
-    line: { color: withAlpha(color, 0.7), width: 1, dash: 'dot' },
+    line,
     hoverinfo: 'skip',
     legendgroup: s.id,
     connectgaps: false,
@@ -444,11 +456,11 @@ function xyFigure(view: ViewResult, opts: ChartOptions): Figure {
   const data: Trace[] = []
   let clipped = 0
   // Segments d'abord : sous les points et la droite.
-  for (const s of view.series) {
-    if (s.slot !== 'segments' || !isVisible(s, opts)) continue
-    const t = segmentsTrace(s)
+  const segmentSeries = view.series.filter((s) => s.slot === 'segments' && isVisible(s, opts))
+  segmentSeries.forEach((s, rank) => {
+    const t = segmentsTrace(s, rank, segmentSeries.length)
     if (t) data.push(t)
-  }
+  })
   const visible = view.series.filter(
     (s) => isVisible(s, opts) && s.x != null && s.y != null,
   )
@@ -880,6 +892,16 @@ export function gridPosition(values: readonly (number | boolean | string)[], v: 
   return null
 }
 
+/**
+ * Étiquettes d'un axe de carte : sans la précision entre parenthèses (« Student à 2 ddl (variance infinie) »
+ * devient « Student à 2 ddl »), pour qu'elles tiennent sous les cases. Le nom complet reste dans l'infobulle.
+ * Si deux étiquettes deviennent identiques, on garde les étiquettes complètes.
+ */
+export function shortTickLabels(labels: readonly string[]): string[] {
+  const short = labels.map((l) => l.replace(/\s*\([^()]*\)\s*$/, '').trim() || l)
+  return new Set(short).size === labels.length ? short : [...labels]
+}
+
 /** Grille 2D d'un balayage à deux axes, indexée [axe 2][axe 1] ; [] sinon. */
 function grid2<T>(g: T[] | T[][] | undefined): T[][] {
   return g && g.length > 0 && Array.isArray(g[0]) ? (g as T[][]) : []
@@ -955,7 +977,8 @@ function validityFigure(view: ViewResult, opts: ChartOptions): Figure {
     ...axisLayout([-0.5, ax.values.length - 0.5], title),
     tickmode: 'array',
     tickvals: ax.values.map((_, i) => i),
-    ticktext: ax.labels,
+    ticktext: shortTickLabels(ax.labels),
+    automargin: true, // la marge s'adapte aux étiquettes : plus de chevauchement avec le titre de l'axe
     showgrid: false,
     zeroline: false,
   })
