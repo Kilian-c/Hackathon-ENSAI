@@ -1,5 +1,10 @@
 # Notes de passation (la plus récente en haut)
 
+## « Réinitialiser les axes » restait sur le zoom : correctif complété (R4, branche `r4/bug-reinit-zoom`, pas une relève)
+- **Présent sur `main`** : ma correction précédente (`r4/bug-reinit-axes`) était incomplète. Zoom, puis n'importe quel nouveau dessin (case Référence, curseur, redimensionnement), puis réinitialisation : on revenait au zoom. Cause : Plotly réécrit le zoom dans le layout reçu, que je relisais ensuite comme bornes du moteur.
+- Corrigé : Plotly reçoit une copie (`layoutForPlotly`, `lib/plot.ts`) ; `figure.layout` garde les bornes du moteur. 2 tests. Vérifié au navigateur : zoom conservé après redessin ; bouton et double-clic reviennent au cadre du moteur ; quand les bornes du moteur changent (vraie pente), le graphique se recentre, même zoomé.
+- Fichiers de R3 (`lib/plot.ts`, `PlotlyChart.svelte`) : **R1 ou Kilian relit**. Indépendant de l'inspecteur : peut être fusionné seul.
+
 ## Référence dans les histogrammes de répétitions (R3, pas une relève) : **à relire par R1**
 - **Moteur (`backend/engine/runner.py`, fichier de R1, modifié par R3)** : une vue `distribution` liée à `reps.*` reçoit désormais une série `reference` (la méthode principale à l'état sain, même graine). Avant, seules `example.*` et `curves.*` en avaient une : la case « Référence » restait sans effet sur ces histogrammes (Moyenne ou médiane, TCL, etc.). Aucun contrat modifié.
 - **Interface** : la case « Référence (état sain) » ne s'affiche que si la vue a une série `reference` (Laboratoire et validation d'une question). La valeur de Référence du panneau de droite (jauge, « Référence (état sain) : … ») est toujours affichée : c'est la cible quand `target: base`.

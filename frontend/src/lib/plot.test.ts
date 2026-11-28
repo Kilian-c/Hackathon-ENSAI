@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { pendulumFixture, regressionFixture, regressionMethods, regressionSweep } from '../dev/fakeViews'
 import {
   buildFigure, clampPoints, gridPosition, isVisible, segmentsTrace, shortTickLabels, withAlpha, type ChartOptions, syncInitialRanges,
+  layoutForPlotly,
 } from './plot'
 import { displayRoles } from './roles'
 import type { RunResult, SweepResult } from './types.gen'
@@ -569,5 +570,25 @@ describe('aire sous la courbe (ui.fill_area)', () => {
   it('sans le réglage, ou avec false, aucune aire (comportement d’avant)', () => {
     expect(fills(null)).toEqual({ 'f.series.ref': null, 'f.series.rect': null })
     expect(fills({ fill_area: false })).toEqual({ 'f.series.ref': null, 'f.series.rect': null })
+  })
+})
+
+describe('réinitialiser les axes après un zoom', () => {
+  it('donne à Plotly une copie : le zoom qu’il y écrit ne touche pas les bornes du moteur', () => {
+    const engine = { xaxis: { range: [-2.5, 3.2], autorange: false }, yaxis: { range: [-3, 7] }, height: 300 }
+    const given = layoutForPlotly(engine) as { xaxis: { range: number[] }; yaxis: { range: number[] } }
+    // Ce que fait Plotly pendant un zoom : il modifie le tableau, ou le remplace.
+    given.xaxis.range[0] = -1.1
+    given.yaxis.range = [0, 1]
+    expect(engine.xaxis.range).toEqual([-2.5, 3.2])
+    expect(engine.yaxis.range).toEqual([-3, 7])
+    const full = { xaxis: {} as Record<string, unknown>, yaxis: {} as Record<string, unknown> }
+    syncInitialRanges(full, engine)
+    expect(full.xaxis).toMatchObject({ _rangeInitial0: -2.5, _rangeInitial1: 3.2 })
+  })
+
+  it('garde les autres réglages et les axes sans bornes', () => {
+    const given = layoutForPlotly({ xaxis: { autorange: true }, margin: { t: 24 }, height: 300 })
+    expect(given).toEqual({ xaxis: { autorange: true }, margin: { t: 24 }, height: 300 })
   })
 })

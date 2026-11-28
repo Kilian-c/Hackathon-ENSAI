@@ -454,6 +454,21 @@ export function unitCircle(view: ViewResult): Trace | null {
 }
 
 /**
+ * Copie du layout à donner à Plotly : il réécrit le zoom de l'utilisateur DANS l'objet reçu. Sans copie,
+ * les bornes du moteur étaient perdues au premier nouveau dessin pendant un zoom, et la réinitialisation
+ * revenait au zoom. Les axes et leurs bornes sont copiés ; le reste est partagé.
+ */
+export function layoutForPlotly(layout: Layout): Layout {
+  const copy: Layout = { ...layout }
+  for (const [name, axis] of Object.entries(layout)) {
+    if (!/^[xy]axis\d*$/.test(name) || typeof axis !== 'object' || axis === null) continue
+    const range = (axis as { range?: unknown }).range
+    copy[name] = { ...axis, ...(Array.isArray(range) ? { range: [...range] } : {}) }
+  }
+  return copy
+}
+
+/**
  * Plotly retient les bornes du PREMIER dessin et y revient avec « Réinitialiser les axes » ou un
  * double-clic. Quand les bornes du moteur changent (vraie pente, taille d'échantillon, nouveau tirage),
  * ce retour montrait un cadre périmé, parfois vide. Après chaque dessin, on remplace ces bornes initiales

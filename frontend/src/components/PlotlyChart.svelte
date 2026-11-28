@@ -20,7 +20,7 @@
   import { onMount } from 'svelte'
   import MeasuresTable from './MeasuresTable.svelte'
   import {
-    buildFigure, DOMAIN_SUFFIX, INJECTED_SUFFIX, INSPECT_HOVER_DISTANCE, OBSERVATION_META, pointTargets,
+    buildFigure, DOMAIN_SUFFIX, INJECTED_SUFFIX, INSPECT_HOVER_DISTANCE, layoutForPlotly, pointTargets,
     syncInitialRanges, type ChartOptions,
   } from '../lib/plot'
   import { nearestTarget } from '../lib/inspect'
@@ -104,9 +104,11 @@
   $effect(() => {
     if (!el || !figure) return
     const div = el
-    const layout = { ...figure.layout, height }
+    // Plotly reçoit une copie (il y écrit le zoom) : `figure.layout` garde les bornes du moteur.
+    const wanted = figure.layout
+    const layout = { ...layoutForPlotly(wanted), height }
     // Les bornes initiales de Plotly sont celles du dernier dessin, pour que la réinitialisation recadre juste.
-    const sync = () => syncInitialRanges((div as unknown as { _fullLayout?: unknown })._fullLayout, layout)
+    const sync = () => syncInitialRanges((div as unknown as { _fullLayout?: unknown })._fullLayout, wanted)
     const drawn: unknown = Plotly.react(div, figure.data as Plotly.Data[], layout as Partial<Plotly.Layout>, config)
     sync()
     if (drawn instanceof Promise) void drawn.then(sync)
@@ -119,7 +121,7 @@
   interface PlotAxis { _offset: number; _length: number; p2d: (px: number) => number; d2p: (v: number) => number }
   type PlotDiv = HTMLDivElement & {
     _fullLayout?: { xaxis?: PlotAxis; yaxis?: PlotAxis }
-    on?: (event: string, cb: (e: { points?: { data?: { uid?: string; meta?: unknown }; customdata?: unknown; x?: unknown; y?: unknown }[] }) => void) => void
+    on?: (event: string, cb: (e: { points?: { data?: { uid?: string }; customdata?: unknown; x?: unknown; y?: unknown }[] }) => void) => void
   }
 
   let downAt: { x: number; y: number } | null = null
@@ -148,7 +150,7 @@
     const box = el.getBoundingClientRect()
     const px = e.clientX - box.left - xa._offset
     const py = e.clientY - box.top - ya._offset
-    // Inspecteur : un point à portée, même sur le bord du cadre où Plotly ne signale pas le clic.
+    // Inspecteur : le point visible le plus proche, y compris la moitié d'un triangle qui dépasse du cadre.
     if (oninspect && figure) {
       const targets = pointTargets(figure.data as Record<string, unknown>[])
       const hit = nearestTarget(
@@ -180,14 +182,11 @@
         onpickcell?.(pt.x, pt.y)
         return
       }
-      if (!pt || typeof pt.customdata !== 'number') return
-      if (uid.endsWith(INJECTED_SUFFIX)) {
+      // Avec l'inspecteur, seul onClick lit le clic : Plotly acceptait aussi des points que le zoom avait
+      // sortis du cadre (donc invisibles).
+      if (!oninspect && uid.endsWith(INJECTED_SUFFIX) && typeof pt?.customdata === 'number') {
         pointClicked = true
-        if (oninspect) oninspect({ injected: pt.customdata })
-        else onremovepoint?.(pt.customdata)
-      } else if (oninspect && pt.data?.meta === OBSERVATION_META) {
-        pointClicked = true
-        oninspect({ index: pt.customdata })
+        onremovepoint?.(pt.customdata)
       }
     })
   })
