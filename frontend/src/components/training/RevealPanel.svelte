@@ -129,8 +129,10 @@
       {#if view}
         <PlotlyChart {view} {result} methodsOn={new Set(ui.methodsOn)} {showReference} height={380} />
       {/if}
-      <MeasurePanel {result} methodsOn={ui.methodsOn} />
+      <!-- La mesure principale à côté du graphique, les autres en grille dessous : colonnes équilibrées. -->
+      <MeasurePanel {result} methodsOn={ui.methodsOn} part="primary" />
     </div>
+    <MeasurePanel {result} methodsOn={ui.methodsOn} part="others" />
     <p>
       <a class="lab-link" href={labUrl} target="_blank" rel="noopener">Ouvrir dans le Laboratoire ↗</a>
     </p>
