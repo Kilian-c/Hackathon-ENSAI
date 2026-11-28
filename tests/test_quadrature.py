@@ -201,3 +201,22 @@ def test_iterated_integrals_gives_opposite_areas_without_integrability() -> None
     assert res.reps["gap"][0] == pytest.approx(np.pi / 2, abs=0.02)
     assert res.curves["dy"][50] == pytest.approx(1 / (1 + 0.5**2), abs=0.01)
     assert res.curves["dx"][50] == pytest.approx(-1 / (1 + 0.5**2), abs=0.01)
+
+
+def test_iterated_integrals_abs_integral_grows_when_truncation_shrinks() -> None:
+    """∫∫|f| sur [ε, 1]² croît quand ε diminue ; sur le carré tronqué, les deux ordres coïncident."""
+    from backend.methods.quadrature import iterated_integrals
+
+    def run(eps: float):
+        idx = np.arange(4900)
+        gx = np.where(idx < 2450, ((idx // 98) + 0.5) / 25, (((idx - 2450) // 25) + 0.5) / 98)
+        gy = np.where(idx < 2450, ((idx % 98) + 0.5) / 98, (((idx - 2450) % 25) + 0.5) / 25)
+        x = (eps + (1 - eps) * gx)[None, :]
+        y = (eps + (1 - eps) * gy)[None, :]
+        f = (x**2 - y**2) / (x**2 + y**2) ** 2
+        return iterated_integrals(x=x, y=y, f=f, rng=np.random.default_rng(0))
+
+    values = [float(run(e).reps["abs_int"][0]) for e in (0.3, 0.1, 0.03)]
+    assert values == sorted(values) and values[0] == pytest.approx(0.216, abs=0.01)
+    assert values[2] == pytest.approx(1.996, abs=0.05)
+    assert abs(float(run(0.1).reps["gap"][0])) < 0.02

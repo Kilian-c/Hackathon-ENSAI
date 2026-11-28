@@ -355,7 +355,8 @@ export const CATALOG: Catalog = {
         "reps": [
           "dy_dx",
           "dx_dy",
-          "gap"
+          "gap",
+          "abs_int"
         ],
         "curves": [
           "t",
@@ -364,7 +365,7 @@ export const CATALOG: Catalog = {
         ]
       },
       "cost": "repeat * n",
-      "doc": "Les deux intégrales itérées de f sur [0, 1]², chacune sur une grille adaptée à son ordre."
+      "doc": "Les deux intégrales itérées de f sur [lo, 1]², chacune sur une grille adaptée à son ordre."
     },
     {
       "name": "linsolve",

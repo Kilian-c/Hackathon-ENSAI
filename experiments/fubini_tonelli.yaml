@@ -22,7 +22,9 @@ equation:
     membre:
       ok: '\int_{X \times Y} f \, d(\mu \otimes \nu)'
 
-params: {}
+params:
+  eps: { type: number, label: "Troncature ε : on intègre sur [ε, 1]² (0 : le carré entier ; sous 0,03 la grille ne résout plus le coin)",
+         min: 0, max: 0.5, step: 0.01, default: 0, sweep_values: [0, 0.03, 0.1, 0.3] }
 
 hypotheses:
   integrabilite:
@@ -79,8 +81,8 @@ generator:
   n: 4900                         # deux grilles de 2450 points : 25 x 98 (intégrale en y précise), 98 x 25 (en x)
   repeat: 1                       # calcul déterministe : une seule « répétition »
   variables:
-    x: { expr: "where(idx < 2450, ((idx // 98) + 0.5) / 25, (((idx - 2450) // 25) + 0.5) / 98)" }
-    y: { expr: "where(idx < 2450, ((idx % 98) + 0.5) / 98, (((idx - 2450) % 25) + 0.5) / 25)" }
+    x: { expr: "p.eps + (1 - p.eps) * where(idx < 2450, ((idx // 98) + 0.5) / 25, (((idx - 2450) // 25) + 0.5) / 98)" }
+    y: { expr: "p.eps + (1 - p.eps) * where(idx < 2450, ((idx % 98) + 0.5) / 98, (((idx - 2450) % 25) + 0.5) / 25)" }
     f: { expr: "@h.integrabilite" }
 
 methods:
@@ -104,6 +106,10 @@ measures:
       ok: "Les deux intégrales itérées sont à {value} l'une de l'autre."
       warning: "Les deux intégrales itérées diffèrent de {value}."
       broken: "Les deux intégrales itérées diffèrent de {value} : l'ordre d'intégration compte."
+  abs_int:
+    agg: "mean(reps.abs_int)"
+    label: "Intégrale de |f| sur [ε, 1]²"
+    decimals: 2
   dy_dx:
     agg: "mean(reps.dy_dx)"
     label: "Intégrale d'abord en y, puis en x"
@@ -194,3 +200,10 @@ questions:
         verify: "s.ecart == 'broken'"
         focus_view: "integrales"
         explain: "Exact : deux intégrales itérées différentes sont le signe que l'hypothèse d'intégrabilité est violée."
+
+  - id: "ft-q4-prediction"
+    type: prediction
+    prompt: "Avec $f(x, y) = (x^2 - y^2)/(x^2 + y^2)^2$, on intègre $|f|$ sur $[\\varepsilon, 1]^2$. Que devient cette intégrale quand $\\varepsilon$ passe de $0{,}3$ à $0{,}03$ ?"
+    state: { hypotheses: { integrabilite: "diverge" } }
+    sweep: { target: p.eps, from: 0.3, to: 0.03 }
+    measure: abs_int

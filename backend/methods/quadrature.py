@@ -140,7 +140,7 @@ def iterated_integral(
 
 @register_method(
     "iterated_integrals",
-    provides={"reps": ["dy_dx", "dx_dy", "gap"], "curves": ["t", "dy", "dx"]},
+    provides={"reps": ["dy_dx", "dx_dy", "gap", "abs_int"], "curves": ["t", "dy", "dx"]},
     cost="repeat * n",
 )
 def iterated_integrals(
@@ -150,13 +150,18 @@ def iterated_integrals(
     f: np.ndarray,
     rng: np.random.Generator,
 ) -> MethodResult:
-    """Les deux intégrales itérées de f sur [0, 1]², chacune sur une grille adaptée à son ordre.
+    """Les deux intégrales itérées de f sur [lo, 1]², chacune sur une grille adaptée à son ordre.
+
+    Le carré [lo, 1]² se lit sur la grille : `lo` est le bord gauche de la première cellule de x (0 si la
+    grille couvre [0, 1], ε si le générateur tronque en [ε, 1]). Les valeurs sont de vraies intégrales :
+    moyenne de f multipliée par la longueur de l'intervalle, `1 - lo`, pour chaque variable.
 
     Les `n` points se coupent en deux moitiés. La première est une grille A × B (x lent, A petit, B grand) :
     la moyenne de f par ligne approche l'intégrale intérieure F(x) = ∫ f(x, y) dy avec précision, puis la
     moyenne des F donne `dy_dx` (d'abord en y). La seconde est la grille transposée (A' grand, B' petit) :
-    la moyenne par colonne approche G(y) = ∫ f(x, y) dx, puis `dx_dy` (d'abord en x). `gap` = `dy_dx - dx_dy`.
-    `curves` (répétition 0) : `t` (101 points de [0, 1]), `dy` = F et `dx` = G, interpolées sur `t`.
+    la moyenne par colonne approche G(y) = ∫ f(x, y) dx, puis `dx_dy` (d'abord en x). `gap` = `dy_dx - dx_dy`;
+    `abs_int` = ∫∫|f| (moyenne de |f| sur les deux grilles, fois `(1 - lo)²`).
+    `curves` (répétition 0) : `t` (101 points de [lo, 1]), `dy` = F et `dx` = G, interpolées sur `t`.
     """
     x = np.atleast_2d(np.asarray(x, dtype=float))
     y = np.atleast_2d(np.asarray(y, dtype=float))
@@ -181,18 +186,22 @@ def iterated_integrals(
     b2 = half // a2
     f_rows = f[:, :half].reshape(reps, a, half // a)
     f_cols = f[:, half:].reshape(reps, a2, b2)
-    inner_dy = f_rows.mean(axis=2)  # (reps, a) : F(x_i)
-    inner_dx = f_cols.mean(axis=1)  # (reps, b2) : G(y_j)
-    dy_dx = inner_dy.mean(axis=1)
-    dx_dy = inner_dx.mean(axis=1)
     xs = x[0, :half].reshape(a, -1)[:, 0]
     ys = y[0, half:].reshape(a2, b2)[0]
-    t = np.linspace(0.0, 1.0, 101)
+    lo = float(xs[0] - (xs[1] - xs[0]) / 2) if a > 1 else 0.0  # bord gauche du domaine (0 ou ε)
+    length = 1.0 - lo
+    inner_dy = f_rows.mean(axis=2) * length  # (reps, a) : F(x_i) = ∫ f(x_i, y) dy
+    inner_dx = f_cols.mean(axis=1) * length  # (reps, b2) : G(y_j) = ∫ f(x, y_j) dx
+    dy_dx = inner_dy.mean(axis=1) * length
+    dx_dy = inner_dx.mean(axis=1) * length
+    abs_int = (np.abs(f_rows).mean(axis=(1, 2)) + np.abs(f_cols).mean(axis=(1, 2))) / 2 * length**2
+    t = np.linspace(lo, 1.0, 101)
     return MethodResult(
         reps={
             "dy_dx": dy_dx.astype(float),
             "dx_dy": dx_dy.astype(float),
             "gap": (dy_dx - dx_dy).astype(float),
+            "abs_int": abs_int.astype(float),
         },
         curves={"t": t, "dy": np.interp(t, xs, inner_dy[0]), "dx": np.interp(t, ys, inner_dx[0])},
     )
