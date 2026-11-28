@@ -2,15 +2,18 @@
 
 Pitch à 17 h (H29) : 3 minutes, puis 2 minutes de questions. Les chiffres ci-dessous ont été relevés sur le moteur local (graine 42) et vérifiés à l'écran. Le déroulé est le même dans les deux versions ; seule la répartition des rôles change.
 
+Vérifié sur `main` (fusion `3ac526d`) : pytest, ruff, `npm run check` (0 erreur) et `npm test` (263 tests) verts, puis parcours rejoué dans le navigateur contre un moteur et une interface lancés depuis `main`.
+
 ## Avant de commencer (H-15 min)
 
+- **Relancer le moteur et l'interface après chaque `git pull`.** Un moteur lancé avant la fusion ne servait que 11 expériences au lieu de 19, et un serveur Vite lancé avant la fusion affichait le Laboratoire sans mise en page. Une fois après un pull : `cd frontend && npm install` (deux dépendances ajoutées, `ajv` et `yaml`).
 - Moteur : `OMP_NUM_THREADS=1 uv run uvicorn backend.main:app --port 8000`. Interface : `cd frontend && npm run dev`.
 - Navigateur en plein écran (F11), zoom à 80 ou 90 %, console fermée.
 - Ouvrir **dans cet ordre** les onglets (l'Entraînement affiche un écran blanc d'environ 3 s au premier chargement : ouvrez-le avant) :
   1. Accueil : `http://localhost:5173/`
   2. Dés : `http://localhost:5173/?exp=somme-de-des&v=1&seed=42`
   3. Régression : `http://localhost:5173/?exp=regression-lineaire&v=1&h.hetero=0.8&seed=42&on=ols&tab=ic`
-  4. Entraînement : `http://localhost:5173/?train=regression-lineaire&seed=3&v=1`
+  4. Entraînement : `http://localhost:5173/?train=regression-lineaire&seed=10&v=1` (la graine 3 de la première version ne convient plus sur `main` : elle ouvre sur une question de résidus)
   5. Bilan : `http://localhost:5173/?bilan`
 - Plan B : la vidéo de secours, ouverte dans un onglet à part. Aucun repli par fixtures n'a été testé.
 
@@ -22,7 +25,7 @@ Pitch à 17 h (H29) : 3 minutes, puis 2 minutes de questions. Les chiffres ci-de
 | Dés, `dépendance = 0,95` | aplatissement −1,22, « Rompu » |
 | Régression, `h = 0,8` | classique 79,6 % ± 3,6 « Rompu » ; HC3 96,6 % ± 1,6 « Fiable » ; cible 95 % |
 | Sensibilité | courbe bleue qui chute, courbe verte plate ; seuil critique vers `h ≈ 0,34` (Fragile) et `h ≈ 0,62` (Rompu) |
-| Entraînement, graine 3 | première question à 2 choix, bonne réponse : « sans biais, mais intervalles invalides » ; la simulation de validation affiche 74,0 % (état propre à la question, pas 79,6 %) |
+| Entraînement, graine 10 | « Série de 4 questions », bandeau jaune « Il n'existe que 4 questions… » (normal) ; première question à 2 choix, énoncé « (n = 200) », bonne réponse : « Il reste sans biais, mais les intervalles de confiance sont invalides. » ; la simulation de validation, très en dessous de l'énoncé, montre les intervalles empilés avec leurs ratés (son état est propre à la question : ne la comparez pas aux 79,6 % du Laboratoire) |
 | Bilan (profil de démonstration) | « Certain » : 60 % de réussite (12 sur 20) ; Brier 0,35 ; 50 % de bonnes réponses (16 sur 32) ; confiance annoncée 81 % |
 
 ## Déroulé commun
@@ -33,7 +36,7 @@ Pitch à 17 h (H29) : 3 minutes, puis 2 minutes de questions. Les chiffres ci-de
 | 0:35 à 0:50 | Accueil | montrer les deux modes | Casser une hypothèse, mesurer ce qui cède, réparer. |
 | 0:50 à 1:15 | Dés | glisser « Dés lancés indépendamment » vers la droite | Un curseur, et la cloche disparaît. |
 | 1:15 à 2:00 | Régression | intervalles empilés, puis « Afficher la correction », puis « Étude de sensibilité » | 95 % annoncé, 80 % réel ; la correction répare. |
-| 2:00 à 2:30 | Entraînement | répondre, cran « Plutôt sûr », valider, descendre sur la simulation | La correction est une simulation. |
+| 2:00 à 2:30 | Entraînement | répondre, cran « Plutôt sûr », valider, faire défiler environ 8 crans de molette jusqu'à la simulation | La correction est une simulation. |
 | 2:30 à 2:50 | Bilan | « Voir un profil de démonstration » | Savez-vous quand vous avez raison ? |
 | 2:50 à 3:00 | Accueil | aucune | Une expérience = un fichier YAML. |
 
@@ -59,14 +62,14 @@ La personne parle et manipule. Elle ne regarde l'écran que quand elle clique.
 **1:15 à 2:00, la régression (onglet 3)**
 - 1:15 : montrer les intervalles empilés. Les croix rouges sont les intervalles qui ratent la valeur vraie.
 > « Nous voulons 95 % de couverture. Quand la variance n'est pas constante, on tombe à 79,6 %. »
-- 1:30 : cliquer « Afficher la correction ». Lire 96,6 %, « Fiable ».
+- 1:30 : cliquer « Afficher la correction ». Lire 96,6 %, « Fiable » dans le panneau de droite. Le graphique devient alors un mur vert où les ratés disparaissent : ne le commentez pas, passez tout de suite à la sensibilité.
 > « Avec les écarts-types corrigés, HC3, on revient à 96,6 %. »
 - 1:42 : cliquer « Étude de sensibilité ».
 > « Ici, la courbe bleue s'effondre quand l'hétéroscédasticité augmente ; la verte reste plate. On voit à quel moment la méthode cède. »
 
 **2:00 à 2:30, l'Entraînement (onglet 4)**
-- Choisir « Il reste sans biais, mais les intervalles de confiance sont invalides. », puis « Plutôt sûr », puis « Valider ma réponse ».
-- Descendre sur la simulation (les 100 intervalles).
+- Choisir « Il reste sans biais, mais les intervalles de confiance sont invalides. », puis « Plutôt sûr », puis « Valider ma réponse ». Le bouton « Valider ma réponse » peut demander un petit défilement.
+- Faire défiler jusqu'à la simulation (les 100 intervalles, environ 8 crans de molette).
 > « À chaque question, on indique sa confiance. La réponse n'est pas écrite à l'avance : le moteur la rejoue en simulation, sous vos yeux. »
 
 **2:30 à 2:50, le Bilan (onglet 5)**
@@ -115,6 +118,7 @@ La personne parle et manipule. Elle ne regarde l'écran que quand elle clique.
 
 # À ne pas oublier
 
-- Je n'ai vérifié à l'écran que le chargement des pages, les clics de la régression, de l'Entraînement et du Bilan ; le glissement du curseur des dés a été testé par lien direct (`h.dependance=0.95`), pas par glissement.
+- Rejoué à l'écran sur `main` : la régression (intervalles, correction, sensibilité), l'Entraînement (graine 10, validation) et le Bilan. Le curseur des dés n'a été testé que par lien direct (`h.dependance=0.95`) et par chargement de la page, pas par glissement.
+- Les erreurs de console vues pendant les tests venaient de l'extension de portefeuille du navigateur (`evmAsk.js`), pas de l'application.
 - La taille de l'écran du projecteur est inconnue : testez en plein écran avant le pitch.
 - Le chronométrage ci-dessus est une estimation, pas une mesure : chronométrez une répétition complète.
