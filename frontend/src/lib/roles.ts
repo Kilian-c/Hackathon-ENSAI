@@ -60,11 +60,15 @@ const VERDICT_SPECS: Record<Verdict, VerdictSpec> = {
 
 // --- Lecture des couleurs dans tokens.css ---
 
+import { theme } from './theme.svelte'
+
 const cache = new Map<string, string>()
 
 /** Valeur d'une variable CSS de tokens.css (ex. cssVar('--ct-role-method') -> '#4ea1ff'). */
 export function cssVar(name: string): string {
-  const hit = cache.get(name)
+  // Lu à chaque appel : un graphique ou une équation qui appelle cssVar se redessine quand le thème change.
+  const key = `${theme.resolved}|${name}`
+  const hit = cache.get(key)
   if (hit) return hit
   // Hors navigateur (tests unitaires) : on renvoie le nom de la variable, sans mise en cache.
   if (typeof document === 'undefined') return `var(${name})`
@@ -74,7 +78,7 @@ export function cssVar(name: string): string {
     if (import.meta.env.DEV) console.error(`Variable CSS introuvable : ${name} (voir styles/tokens.css)`)
     return '#ff00ff'
   }
-  cache.set(name, value)
+  cache.set(key, value)
   return value
 }
 

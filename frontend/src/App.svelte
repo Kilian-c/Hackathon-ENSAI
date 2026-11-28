@@ -11,6 +11,7 @@
   import CalibrationSummary from './components/summary/CalibrationSummary.svelte'
   import TrainingView from './components/training/TrainingView.svelte'
   import { parseLink } from './lib/state'
+  import ThemeToggle from './components/ThemeToggle.svelte'
 
   const link = parseLink(location.search)
   const query = new URLSearchParams(location.search)
@@ -42,6 +43,8 @@
 {:else}
   <HomeView />
 {/if}
+
+<ThemeToggle />
 
 <style>
   .page {

@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crash-Test</title>
+    <script>
+      // Thème posé avant le premier affichage, pour éviter un flash sombre (même règle que lib/theme.svelte.ts).
+      try {
+        var p = localStorage.getItem('crash-test.theme')
+        var light = p === 'light' || (p !== 'dark' && matchMedia('(prefers-color-scheme: light)').matches)
+        document.documentElement.dataset.theme = light ? 'light' : 'dark'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

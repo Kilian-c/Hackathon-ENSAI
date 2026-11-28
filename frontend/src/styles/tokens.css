@@ -64,6 +64,32 @@
   --ct-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
 }
 
+/* Thème clair (bouton du pied de page, lib/theme.svelte.ts) : palette claire du cahier, annexe E.
+ * Mêmes valeurs que la version impression ci-dessous : modifier les deux ensemble. */
+:root[data-theme='light'] {
+    color-scheme: light;
+    --ct-bg: #ffffff;
+    --ct-surface: #f6f8fa;
+    --ct-surface-2: #eef3f8;
+    --ct-border: #d0d7de;
+    --ct-text: #1f2328;
+    --ct-muted: #57606a;
+
+    --ct-role-method: #1d6fd8;
+    --ct-role-correction: #1f883d;
+    --ct-role-alternative-1: #8250df;
+    --ct-role-alternative-2: #1b7c83;
+    --ct-role-reference: #57606a;
+    --ct-role-truth: #c95e12;
+    --ct-role-rupture: #cf222e;
+    --ct-role-injected: #1f2328;
+    --ct-verdict-warning: #9a6700;
+
+    --ct-plot-grid: #d0d7de;
+    --ct-plot-data: #57606a;
+    --ct-shadow: 0 4px 16px rgb(31 35 40 / 0.12);
+}
+
 /* Version impression (captures, export PDF) : palette claire du cahier, annexe E. */
 @media print {
   :root {
