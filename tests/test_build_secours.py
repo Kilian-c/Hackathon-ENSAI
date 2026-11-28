@@ -20,7 +20,16 @@ script = _script()
 
 
 def git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True, check=check)
+    # UTF-8 explicite : git écrit le README en UTF-8 ; le texte par défaut de Windows (cp1252) le déformerait.
+    return subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=check,
+    )
 
 
 def write(path: Path, text: str) -> None:
