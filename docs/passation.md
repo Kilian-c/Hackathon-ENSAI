@@ -1,5 +1,9 @@
 # Notes de passation (la plus récente en haut)
 
+## Inspecteur fusionné dans `main` (R4, pas une relève)
+- Essayé et validé à l'œil par R4 ; fusionné **sans relecture des propriétaires** (départ de R1) : **Kilian (R3, moteur compris) ou R2 relit après coup** : `runner.py`, `training.py`, `regression_lineaire.yaml` (`inspect: true` sur les résidus), `lib/plot.ts`, `PlotlyChart.svelte`, `LabView.svelte`, `Inspector.svelte`, `lib/inspect.ts`. Détail et limites dans la note « Inspecteur d'observation » plus bas (écrite avant la fusion).
+- Si un souci apparaît avant la démo, retirer `inspect: true` des deux vues de la régression désactive l'inspecteur (adapter alors `tests/test_inspect.py`).
+
 ## Thème clair : les graphiques restaient sombres (R4, branche `r4/bug-theme-graphe`, pas une relève)
 - Signalé par le test utilisateur. **Serveur de développement seulement** (la version construite a été vérifiée : correcte). Après certaines mises à jour à chaud (changement de branche), Vite charge deux copies de `lib/theme.svelte.ts` : le bouton changeait l'une, `cssVar` lisait l'autre ; page claire, graphiques sombres (ou l'inverse).
 - Corrigé : un seul état de thème par page (`globalThis`), partagé par les copies. Test qui échoue sans le correctif. Vérifié au navigateur avec les deux copies chargées (nuage, intervalles, Domaine de validité, dans les deux sens).
