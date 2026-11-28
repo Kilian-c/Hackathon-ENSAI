@@ -365,18 +365,33 @@ def _wanted_disciplines(specs: Mapping[str, ExperimentSpec], filter_: str) -> li
     return sorted(wanted)
 
 
+def _wanted_experiments(specs: Mapping[str, ExperimentSpec], filter_: str) -> list[str]:
+    """Identifiants de `exp:<id>[,<id>...]`, triés, sans doublon. `RunError` si inconnu ou vide."""
+    wanted = sorted({part.strip() for part in filter_.removeprefix("exp:").split(",") if part.strip()})
+    if not wanted:
+        raise RunError("Indiquez au moins un théorème (par exemple « exp:regression-lineaire »).")
+    unknown = [w for w in wanted if w not in specs]
+    if unknown:
+        raise RunError(f"Expérience inconnue : « {unknown[0]} ».")
+    return wanted
+
+
 def canonical_filter(specs: Mapping[str, ExperimentSpec], filter_: str) -> str:
     """Forme unique d'un filtre : l'ordre et l'orthographe des disciplines (accents, majuscules) ne
     changent pas la série, qui dépend de la graine, de cette forme et du contenu des YAML."""
     if filter_.startswith("discipline:"):
         return "discipline:" + ",".join(_wanted_disciplines(specs, filter_))
+    if filter_.startswith("exp:"):
+        return "exp:" + ",".join(_wanted_experiments(specs, filter_))
     return filter_
 
 
 def select_experiments(specs: Mapping[str, ExperimentSpec], filter_: str) -> list[ExperimentSpec]:
-    """`toutes`, un identifiant d'expérience, ou `discipline:<id>[,<id>...]` (une ou plusieurs)."""
+    """`toutes`, un identifiant d'expérience, `discipline:<id>[,<id>...]` ou `exp:<id>[,<id>...]`."""
     if filter_ == "toutes":
         chosen = list(specs.values())
+    elif filter_.startswith("exp:"):
+        chosen = [specs[i] for i in _wanted_experiments(specs, filter_)]
     elif filter_.startswith("discipline:"):
         wanted = set(_wanted_disciplines(specs, filter_))
         chosen = [s for s in specs.values() if discipline_slug(s.discipline) in wanted]

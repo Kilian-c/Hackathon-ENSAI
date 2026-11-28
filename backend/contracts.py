@@ -34,9 +34,12 @@ SeriesRole = Literal[
 ]
 # Axe de balayage : `h.<id>` (hypothèse) ou `p.<id>` (paramètre).
 Axis = Annotated[str, StringConstraints(pattern=r"^[hp]\.[A-Za-z_][A-Za-z0-9_]*$")]
-# Filtre d'Entraînement : `toutes`, un identifiant d'expérience ou `discipline:<nom>`.
+# Filtre d'Entraînement : `toutes`, un identifiant d'expérience, `discipline:<nom>[,<nom>...]` ou
+# `exp:<id>[,<id>...]` (15 expériences au plus : théorèmes choisis un à un).
+_ID = r"[a-z0-9][a-z0-9_-]*"
 TrainingFilter = Annotated[
-    str, StringConstraints(pattern=r"^(toutes|[a-z0-9][a-z0-9_-]*|discipline:\S{1,60})$")
+    str,
+    StringConstraints(pattern=rf"^(toutes|{_ID}|discipline:\S{{1,60}}|exp:{_ID}(,{_ID}){{0,14}})$"),
 ]
 # Une grille de résultats : 1 axe -> liste ; 2 axes -> liste de listes, indexées [axe 2][axe 1].
 Grid = list[float | None] | list[list[float | None]]
