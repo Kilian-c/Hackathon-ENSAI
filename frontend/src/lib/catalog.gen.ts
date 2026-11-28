@@ -292,6 +292,44 @@ export const CATALOG: Catalog = {
       "doc": "Intègre `system` avec le pas `dt` (arrondi pour tomber pile sur t_end)."
     },
     {
+      "name": "iterated_integral",
+      "args": [
+        {
+          "name": "x",
+          "default": null
+        },
+        {
+          "name": "y",
+          "default": null
+        },
+        {
+          "name": "f",
+          "default": null
+        },
+        {
+          "name": "truth",
+          "default": "None"
+        }
+      ],
+      "kinds": [
+        "rectangles",
+        "trapezes",
+        "simpson",
+        "monte_carlo"
+      ],
+      "provides": {
+        "reps": [
+          "est",
+          "error"
+        ],
+        "curves": [
+          "matrix"
+        ]
+      },
+      "cost": "repeat * n",
+      "doc": "Intégrale double de f sur [0, 1]², sommée sur une grille rectangulaire A × B de milieux de cellules."
+    },
+    {
       "name": "linsolve",
       "args": [
         {

@@ -85,3 +85,54 @@ def quadrature(
         reps={"est": est.astype(float), "error": error.astype(float)},
         example={"x": x[0].copy(), "f": f[0].copy()},
     )
+
+
+@register_method(
+    "iterated_integral",
+    provides={"reps": ["est", "error"], "curves": ["matrix"]},
+    cost="repeat * n",
+)
+def iterated_integral(
+    *,
+    x: np.ndarray,
+    y: np.ndarray,
+    f: np.ndarray,
+    truth: float | None = None,
+    rng: np.random.Generator,
+) -> MethodResult:
+    """Intégrale double de f sur [0, 1]², sommée sur une grille rectangulaire A × B de milieux de cellules.
+
+    Le générateur numérote les points `idx` de façon que `x` prenne A valeurs et `y` B valeurs, avec
+    `n = A * B` (x varie lentement, y vite). Choisir A petit et B grand revient à intégrer d'abord en y
+    (intégrale intérieure presque exacte), puis en x : c'est l'intégrale itérée dy puis dx ; A grand et
+    B petit donne l'ordre inverse. `est` : la moyenne de f (l'aire du carré vaut 1) ;
+    `error` : `est - truth` (NaN sans `truth`) ; `matrix` : f de la répétition 0 sur la grille,
+    sous-échantillonnée à 64 lignes et colonnes au plus.
+    """
+    x = np.atleast_2d(np.asarray(x, dtype=float))
+    y = np.atleast_2d(np.asarray(y, dtype=float))
+    f = np.atleast_2d(np.asarray(f, dtype=float))
+    if x.shape != f.shape and x.shape[1] == f.shape[1]:
+        x = np.broadcast_to(x, f.shape)
+    if y.shape != f.shape and y.shape[1] == f.shape[1]:
+        y = np.broadcast_to(y, f.shape)
+    if x.shape != f.shape or y.shape != f.shape or f.ndim != 2:
+        raise ValueError(
+            f"iterated_integral : x, y et f doivent avoir la même forme (repeat, n), "
+            f"reçu {x.shape}, {y.shape} et {f.shape}."
+        )
+    n = f.shape[1]
+    a = len(np.unique(x[0]))
+    if a < 1 or n % a != 0:
+        raise ValueError("iterated_integral : n doit être un multiple du nombre de valeurs de x.")
+    b = n // a
+    if len(np.unique(y[0])) != b:
+        raise ValueError("iterated_integral : la grille doit être rectangulaire (A valeurs de x, B de y).")
+    est = f.mean(axis=1)
+    error = est - float(truth) if truth is not None else np.full_like(est, np.nan)
+    grid = f[0].reshape(a, b)
+    grid = grid[:: max(1, -(-a // 64)), :: max(1, -(-b // 64))]
+    return MethodResult(
+        reps={"est": est.astype(float), "error": error.astype(float)},
+        curves={"matrix": grid.copy()},
+    )

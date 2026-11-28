@@ -1,5 +1,12 @@
 # Notes de passation (la plus récente en haut)
 
+## Catégorie Intégration : 4 expériences livrées sur `r1/integration` (R1, pas une relève)
+- **Faites** : `convergence_dominee.yaml`, `convergence_monotone.yaml` (Beppo-Lévy), `lemme_fatou.yaml` (positivité : les fonctions `-n·1[0, 1/n]` rompent l'inégalité), `fubini_tonelli.yaml` (niveau 3 ; l'ordre d'intégration est un paramètre `ordre`, grille 5 × 980, 70 × 70 ou 980 × 5). Chacune a 3 questions et passe les tests 1, 3, 4, 10 et le test 6 sur 50 tirages. Pastille « Intégration » dans l'Entraînement.
+- **Nouvelle méthode** `iterated_integral` (`backend/methods/quadrature.py`, fichier d'une méthode de plus, aucun contrat modifié) ; catalogue régénéré.
+- **Interface** : formules `$…$` rendues dans le QCM et dans la phrase des hypothèses non cassables ; aire sous la courbe (`ui.fill_area`) ; hypothèses affichées mais non cassables (`disabled_when`).
+- **Pas fait** : continuité d'une intégrale à paramètre (th. 4.4.1) ; `npm run check` et `npm test` non lancés dans cet environnement (`npm` introuvable) : **à lancer avant de fusionner** ; rendu navigateur non vérifié (heatmap de Fubini, formules).
+- **Push** : la branche a été amendée après un premier push : `git push --force-with-lease origin r1/integration`.
+
 ## Visualisation 3D : à discuter en équipe avec R2 et R3, rien de commencé (R1, pas une relève)
 - **Ce qui est prévu au projet (P2, jamais implémenté)** : `CLAUDE.md` section 13 (« régression 3D ») ; cahier, expérience n° 5 « Régression multiple 3D » (corrélation entre X₁ et X₂, point levier en 3D, MCO et Ridge, « plan ajusté en 3D »), fichier prévu `experiments/regression_3d.yaml` ; vues `surface_3d` (P1 dans le tableau des vues) et `vector_space` (P2 : vecteurs, conditionnement, bases, SVD) ; générateur `function` (surfaces sur une grille). Dans le code : un seul commentaire (`frontend/src/lib/plot.ts`, `buildFigure`) ; ces types de vue retombent sur le tableau de secours `measures_table`. Aucun YAML ne les utilise.
 - **Intérêt pédagogique** : multicolinéarité (quand X₁ et X₂ sont corrélés, le plan ajusté pivote et devient instable : version visuelle du VIF, que `multicolinearite.yaml` ne montre qu'en 2D) ; algèbre linéaire (vecteurs presque coplanaires, Gram-Schmidt dans `orthonormalisation`, axes d'une SVD).

@@ -169,3 +169,19 @@ def test_a_locked_hypothesis_is_shown_but_changes_no_verdict() -> None:
         result = runner.run(spec, EngineState(hypotheses={"mesurable": value}))
         assert result.measures["ecart"].values == reference.measures["ecart"].values
         assert result.measures["ecart"].states == {"rect": "ok"}
+
+
+def test_iterated_integral_follows_the_order_of_the_grid() -> None:
+    """(x² − y²) / (x² + y²)² : l'ordre décide (π/4 ou −π/4), la grille carrée donne 0."""
+    from backend.methods.quadrature import iterated_integral
+
+    def run(a: int, b: int) -> float:
+        idx = np.arange(a * b)
+        x = ((idx // b + 0.5) / a)[None, :]
+        y = ((idx % b + 0.5) / b)[None, :]
+        f = (x**2 - y**2) / (x**2 + y**2) ** 2
+        return float(iterated_integral(x=x, y=y, f=f, truth=0.0, rng=np.random.default_rng(0)).reps["est"][0])
+
+    assert run(5, 980) == pytest.approx(np.pi / 4, abs=0.05)
+    assert run(980, 5) == pytest.approx(-np.pi / 4, abs=0.05)
+    assert run(70, 70) == pytest.approx(0.0, abs=1e-9)
