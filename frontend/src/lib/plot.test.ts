@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pendulumFixture, regressionFixture, regressionMethods, regressionSweep } from '../dev/fakeViews'
-import { buildFigure, clampPoints, gridPosition, isVisible, withAlpha, type ChartOptions } from './plot'
+import { buildFigure, clampPoints, gridPosition, isVisible, withAlpha, type ChartOptions, syncInitialRanges } from './plot'
 import { displayRoles } from './roles'
 import type { RunResult, SweepResult } from './types.gen'
 import type { Series, ViewResult } from './views'
@@ -467,5 +467,21 @@ describe('Sensibilité en échelle logarithmique', () => {
       series: [{ ...base, id: 'res.points.m', slot: 'points', method: 'm', role: 'method', label: 'r', x: [1], y: [1] }],
     } as unknown as ViewResult
     expect(buildFigure(res, { methodsOn: new Set(['m']), showReference: false })!.layout.shapes).toEqual([])
+  })
+})
+
+describe('réinitialiser les axes', () => {
+  it('prend les bornes du dernier dessin, pas celles du premier', () => {
+    const full = { xaxis: { _rangeInitial0: 1.1, _rangeInitial1: 1.9 }, yaxis: {} as Record<string, unknown> }
+    syncInitialRanges(full, { xaxis: { range: [-2.4, -1.6] }, yaxis: { range: [-1, 100] }, height: 340 })
+    expect(full.xaxis).toMatchObject({ _rangeInitial0: -2.4, _rangeInitial1: -1.6 })
+    expect(full.yaxis).toMatchObject({ _rangeInitial0: -1, _rangeInitial1: 100 })
+  })
+
+  it('laisse les axes automatiques et tolère un graphique pas encore prêt', () => {
+    const full = { xaxis: { _rangeInitial0: 3 } as Record<string, unknown> }
+    syncInitialRanges(full, { xaxis: { autorange: true } })
+    expect(full.xaxis).toEqual({ _rangeInitial0: 3 })
+    expect(() => syncInitialRanges(undefined, { xaxis: { range: [0, 1] } })).not.toThrow()
   })
 })
