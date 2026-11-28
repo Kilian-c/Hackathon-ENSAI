@@ -19,7 +19,7 @@
   import Plotly from 'plotly.js-dist-min'
   import { onMount } from 'svelte'
   import MeasuresTable from './MeasuresTable.svelte'
-  import { buildFigure, DOMAIN_SUFFIX, INJECTED_SUFFIX, type ChartOptions, syncInitialRanges } from '../lib/plot'
+  import { buildFigure, DOMAIN_SUFFIX, INJECTED_SUFFIX, type ChartOptions, syncInitialRanges, layoutForPlotly } from '../lib/plot'
   import { PLOTLY_FR } from '../lib/plotlyLocale'
   import type { DisplayRole } from '../lib/roles'
   import type { RunResult } from '../lib/types.gen'
@@ -88,9 +88,11 @@
   $effect(() => {
     if (!el || !figure) return
     const div = el
-    const layout = { ...figure.layout, height }
+    // Plotly reçoit une copie (il y écrit le zoom) : `figure.layout` garde les bornes du moteur.
+    const wanted = figure.layout
+    const layout = { ...layoutForPlotly(wanted), height }
     // Les bornes initiales de Plotly sont celles du dernier dessin, pour que la réinitialisation recadre juste.
-    const sync = () => syncInitialRanges((div as unknown as { _fullLayout?: unknown })._fullLayout, layout)
+    const sync = () => syncInitialRanges((div as unknown as { _fullLayout?: unknown })._fullLayout, wanted)
     const drawn: unknown = Plotly.react(div, figure.data as Plotly.Data[], layout as Partial<Plotly.Layout>, config)
     sync()
     if (drawn instanceof Promise) void drawn.then(sync)
