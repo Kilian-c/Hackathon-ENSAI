@@ -66,7 +66,7 @@
                 {healthy ? 'Casser cette hypothèse' : "Voir l'effet"} →
               </button>
             {:else}
-              <span class="locked" title={locked}>🔒 Non cassable ici</span>
+              <span class="locked" title={locked.replace(/\$/g, '')}>🔒 Non cassable ici</span>
             {/if}
           </div>
           {#if locked !== null}
