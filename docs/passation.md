@@ -1,5 +1,10 @@
 # Notes de passation (la plus récente en haut)
 
+## Vérifications à l'œil restantes (R4, 2 h, pas une relève)
+- **OK** : balayage automatique.
+- **Signalé, non reproduit** : « Ouvrir dans le Laboratoire » depuis une correction d'Entraînement ouvrirait toujours Expérimenter. Le lien contient `stage=comprendre&hyp=<id>` dès que la question a une hypothèse, et le Laboratoire l'honore (vérifié). Les questions `prediction` et certains `diagnostic_auto` n'ont pas d'hypothèse : Expérimenter est alors normal. Détail et suite dans `docs/notes/r4.md`.
+- **Reportés** : banc de méthodes (« Comparer aussi : »), points ajoutés par clic, tableau des seuils suggérés de l'Import. Marche à suivre dans `docs/notes/r4.md`.
+
 ## Problèmes potentiels relevés après la fusion de `r4/bug-reinit-axes` (R4, pas une relève)
 État vérifié sur `main` : pytest, ruff, `npm run check` (0 erreur), `npm test` (199) et build verts ; les 15 expériences répondent (état sain Fiable, sans avertissement), série de 10 questions sans abandon ; réinitialisation des axes vérifiée sur les 10 vues de la régression et des matrices de Wigner. Aucun de ces points n'est bloquant.
 1. **Correction des axes** (R3, R1 relit) : s'appuie sur des champs internes de Plotly (`_rangeInitial0/1`, `_autorangeInitial`). Les tests unitaires ne détecteraient pas un changement de Plotly : après une montée de version, revérifier le bouton au navigateur.
