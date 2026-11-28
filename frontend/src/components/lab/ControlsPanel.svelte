@@ -8,6 +8,7 @@
 <script lang="ts">
   import HypothesisControl from './HypothesisControl.svelte'
   import ParamControl from './ParamControl.svelte'
+  import { disabledNotice } from '../../lib/disabled'
   import { hypothesisStatus, isHealthy } from '../../lib/lab'
   import type { EngineState, ExperimentSpec } from '../../lib/types.gen'
 
@@ -46,7 +47,13 @@
             <span class="status">{hypothesisStatus(h, value)}</span>
           {/if}
         </div>
-        <HypothesisControl {id} hypothesis={h} {value} onchange={(v) => onhypothesis(id, v)} />
+        <HypothesisControl
+          {id}
+          hypothesis={h}
+          {value}
+          onchange={(v) => onhypothesis(id, v)}
+          disabledText={disabledNotice(h, { hypotheses: engine.hypotheses, params: engine.params })}
+        />
       </li>
     {/each}
   </ul>

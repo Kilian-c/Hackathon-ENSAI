@@ -140,3 +140,32 @@ def test_curve_gets_its_reference_when_read_from_example() -> None:
     view = next(v for v in broken.views if v.id == "courbe")
     assert {s.role for s in view.series} == {"method", "reference"}  # la Référence saine est superposée
     assert broken.measures["ecart"].states["rect"] == "broken"
+
+
+LOCKED = """  mesurable:
+    type: boolean
+    healthy_value: true
+    label: "f mesurable"
+    category: "mesurabilite"
+    ok_label: "Mesurable"
+    broken_label: "Non mesurable"
+    robust_expected: true
+    disabled_when: "True"
+    disabled_text: "Toujours vraie ici : une fonction non mesurable ne se simule pas."
+    statement_tex: 'f^{-1}(B) \\in \\mathcal{A}'
+    why: "Sans mesurabilité, l'intégrale n'a pas de sens."
+    when_broken: "Elle ne peut pas être cassée numériquement."
+    affects: []
+"""
+
+
+def test_a_locked_hypothesis_is_shown_but_changes_no_verdict() -> None:
+    """Mesurabilité : `disabled_when` et `robust_expected`, sans effet sur le calcul (plan, étape 2)."""
+    spec = load_experiment(YAML.replace("counterexamples:", LOCKED + "counterexamples:", 1))
+    hypothesis = spec.hypotheses["mesurable"]
+    assert hypothesis.disabled_when == "True" and "ne se simule pas" in (hypothesis.disabled_text or "")
+    reference = runner.run(spec, EngineState())
+    for value in (True, False):
+        result = runner.run(spec, EngineState(hypotheses={"mesurable": value}))
+        assert result.measures["ecart"].values == reference.measures["ecart"].values
+        assert result.measures["ecart"].states == {"rect": "ok"}
